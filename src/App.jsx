@@ -4,8 +4,8 @@ import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculato
 // --- Translation Dictionary ---
 const TRANSLATIONS = {
   zh: {
-    title: "物流成本計算器",
-    subtitle: "Logistics Cost & Packing Estimator",
+    title: "DimPack3D",
+    subtitle: "3D 包裝計算器 | Packaging Calculator",
     modePacking: "產品裝箱 (Packing)",
     modeLoading: "貨櫃裝載 (Container)",
     productSpecs: "產品規格 (Product)",
@@ -85,8 +85,8 @@ const TRANSLATIONS = {
     disclaimer: "*注意：實際運費可能因 Carrier 進位規則(如不足0.5kg當0.5kg計)而略有不同。"
   },
   en: {
-    title: "Logistics Cost Calculator",
-    subtitle: "Logistics Cost & Packing Estimator",
+    title: "DimPack3D",
+    subtitle: "3D Packaging Calculator",
     modePacking: "Product Packing",
     modeLoading: "Container Loading",
     productSpecs: "Product Specs",
@@ -1193,6 +1193,27 @@ export default function LogisticsCalculator() {
       />
 
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-4">
+
+        {/* Header with Logo */}
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <svg viewBox="0 0 60 60" className="w-10 h-10">
+            <polygon points="30,5 55,17 30,29 5,17" fill="#60A5FA"/>
+            <polygon points="5,17 30,29 30,55 5,43" fill="#2563EB"/>
+            <polygon points="30,29 55,17 55,43 30,55" fill="#1D4ED8"/>
+            <line x1="30" y1="5" x2="30" y2="0" stroke="#93C5FD" strokeWidth="1.5"/>
+            <line x1="27" y1="0" x2="33" y2="0" stroke="#93C5FD" strokeWidth="1.5"/>
+            <line x1="57" y1="30" x2="61" y2="28" stroke="#93C5FD" strokeWidth="1.5"/>
+            <line x1="61" y1="25" x2="61" y2="31" stroke="#93C5FD" strokeWidth="1.5"/>
+          </svg>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              <span className="text-blue-600">Dim</span>
+              <span className="text-slate-800">Pack</span>
+              <span className="text-blue-400">3D</span>
+            </h1>
+            <p className="text-xs text-slate-500">{t('subtitle')}</p>
+          </div>
+        </div>
 
         {/* Top Navigation */}
         <div className="flex flex-col md:flex-row gap-3 bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 justify-between items-center">

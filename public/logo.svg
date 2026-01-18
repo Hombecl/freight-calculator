@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80">
+  <!-- 3D Box Icon -->
+  <g transform="translate(10, 10)">
+    <!-- Top face -->
+    <polygon points="30,5 55,17 30,29 5,17" fill="#60A5FA"/>
+    <!-- Left face -->
+    <polygon points="5,17 30,29 30,55 5,43" fill="#2563EB"/>
+    <!-- Right face -->
+    <polygon points="30,29 55,17 55,43 30,55" fill="#1D4ED8"/>
+    <!-- Dimension lines -->
+    <line x1="30" y1="5" x2="30" y2="0" stroke="#93C5FD" stroke-width="1.5"/>
+    <line x1="27" y1="0" x2="33" y2="0" stroke="#93C5FD" stroke-width="1.5"/>
+    <line x1="57" y1="30" x2="61" y2="28" stroke="#93C5FD" stroke-width="1.5"/>
+    <line x1="61" y1="25" x2="61" y2="31" stroke="#93C5FD" stroke-width="1.5"/>
+  </g>
+
+  <!-- Text: DimPack3D -->
+  <text x="80" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="700" fill="#1E3A5F">
+    <tspan fill="#2563EB">Dim</tspan><tspan fill="#1E3A5F">Pack</tspan><tspan fill="#60A5FA">3D</tspan>
+  </text>
+</svg>
