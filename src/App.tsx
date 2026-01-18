@@ -1,8 +1,175 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight } from 'lucide-react';
 
+// ===== Type Definitions =====
+type Language = 'zh' | 'en';
+type LengthUnit = 'cm' | 'inch';
+type WeightUnit = 'kg' | 'lb';
+type Currency = 'USD' | 'RMB';
+type Mode = 'packing' | 'loading';
+type ContainerKey = '20gp' | '40gp' | '40hq';
+type ScenarioType = 'standard' | 'mixed' | 'layered';
+
+interface Dimensions {
+  l: number;
+  w: number;
+  h: number;
+}
+
+interface DimensionsWithWeight extends Dimensions {
+  weight: number;
+}
+
+interface Units {
+  length: LengthUnit;
+  weight: WeightUnit;
+  currency: Currency;
+}
+
+interface Rates {
+  air: number;
+  airCurrency: Currency;
+  sea: number;
+  seaCurrency: Currency;
+  seaUnit: 'cbm' | 'kg';
+}
+
+interface ContainerSpec extends Dimensions {
+  cbm: number;
+}
+
+interface PackedItem {
+  x: number;
+  y: number;
+  z: number;
+  l: number;
+  w: number;
+  h: number;
+  colorType: number;
+}
+
+interface Gaps {
+  l: number;
+  w: number;
+  h: number;
+  isMixed?: boolean;
+}
+
+interface PackingScenario {
+  nameKey: string;
+  descKey: string;
+  dims: [number, number, number];
+  type: ScenarioType;
+  count: number;
+  utilization: number;
+  gaps: Gaps;
+  items: PackedItem[];
+}
+
+interface CustomCarton extends DimensionsWithWeight {
+  labelKey: string | null;
+  name: string;
+}
+
+interface PackingCosts {
+  air: { total: number; unit: number };
+  sea: { total: number; unit: number };
+  stats: {
+    cbm: number;
+    grossWeight: number;
+    dimWeightAir: number;
+    chargeableAir: number;
+    utilization: number;
+    isDimWeight: boolean;
+  };
+}
+
+interface LoadingStats {
+  count: number;
+  totalCbm: number;
+  utilization: number;
+}
+
+// Component Props Types
+interface ThreeVisualizerProps {
+  outer: Dimensions;
+  inner: Dimensions;
+  scenario: PackingScenario | null;
+  units: Units;
+  t: (key: string) => string;
+  isContainerMode?: boolean;
+}
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  rates: Rates;
+  setRates: React.Dispatch<React.SetStateAction<Rates>>;
+  dimFactor: number;
+  setDimFactor: React.Dispatch<React.SetStateAction<number>>;
+  exchangeRate: number;
+  setExchangeRate: React.Dispatch<React.SetStateAction<number>>;
+  units: Units;
+  customCartons: CustomCarton[];
+  setCustomCartons: React.Dispatch<React.SetStateAction<CustomCarton[]>>;
+  t: (key: string) => string;
+}
+
+interface SimulationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  item: DimensionsWithWeight;
+  outer: DimensionsWithWeight;
+  units: Units;
+  onApply: (carton: DimensionsWithWeight) => void;
+  customCartons: CustomCarton[];
+  rates: Rates;
+  dimFactor: number;
+  exchangeRate: number;
+  t: (key: string) => string;
+  cartonThickness: number;
+  isContainerMode?: boolean;
+}
+
+interface CompactCardProps {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+  icon?: React.ComponentType<{ className?: string; size?: number }>;
+  highlight?: boolean;
+  action?: React.ReactNode;
+}
+
+interface CompactInputProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  unit?: string;
+  step?: string;
+  className?: string;
+}
+
+interface StatRowProps {
+  label: string;
+  value: string;
+  sub?: string;
+  isAlert?: boolean;
+  isSuccess?: boolean;
+}
+
+// Three.js global
+declare global {
+  interface Window {
+    THREE: typeof import('three');
+  }
+}
+
+// Translation dictionary type
+type TranslationKey = keyof typeof TRANSLATIONS.zh;
+type TranslationDictionary = Record<Language, Record<string, string>>;
+
 // --- Translation Dictionary ---
-const TRANSLATIONS = {
+const TRANSLATIONS: TranslationDictionary = {
   zh: {
     title: "DimPack3D",
     subtitle: "3D 包裝計算器 | Packaging Calculator",
@@ -168,14 +335,14 @@ const TRANSLATIONS = {
 };
 
 // --- Constants ---
-const CONTAINER_SPECS = {
+const CONTAINER_SPECS: Record<ContainerKey, ContainerSpec> = {
   '20gp': { l: 589, w: 235, h: 239, cbm: 33.1 },
   '40gp': { l: 1203, w: 235, h: 239, cbm: 67.5 },
   '40hq': { l: 1203, w: 235, h: 269, cbm: 76.1 }
 };
 
 // --- Three.js Helper Hook ---
-const useThree = () => {
+const useThree = (): boolean => {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -198,20 +365,20 @@ const useThree = () => {
 
 // --- Algorithms (Advanced) ---
 
-const calculatePackingScenarios = (item, space) => {
+const calculatePackingScenarios = (item: Dimensions, space: Dimensions): PackingScenario[] => {
   // Use Inner Dimensions for the space available
   const { l: cL, w: cW, h: cH } = space;
 
   if (item.l <= 0 || item.w <= 0 || item.h <= 0 || cL <= 0 || cW <= 0 || cH <= 0) return [];
 
-  const candidates = [];
+  const candidates: PackingScenario[] = [];
   const itemVol = item.l * item.w * item.h;
   const spaceVol = cL * cW * cH;
 
   // Helper: Create a box item definition
-  const createItem = (x, y, z, dim, colorType) => ({ x, y, z, l: dim[0], w: dim[1], h: dim[2], colorType });
+  const createItem = (x: number, y: number, z: number, dim: [number, number, number], colorType: number): PackedItem => ({ x, y, z, l: dim[0], w: dim[1], h: dim[2], colorType });
 
-  const orientations = [
+  const orientations: [number, number, number][] = [
     [item.l, item.w, item.h], [item.l, item.h, item.w],
     [item.w, item.l, item.h], [item.w, item.h, item.l],
     [item.h, item.l, item.w], [item.h, item.w, item.l]
@@ -225,7 +392,7 @@ const calculatePackingScenarios = (item, space) => {
     const count = cols * rows * layers;
 
     if (count > 0) {
-      const items = [];
+      const items: PackedItem[] = [];
       for (let z = 0; z < layers; z++) {
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < cols; x++) {
@@ -252,14 +419,14 @@ const calculatePackingScenarios = (item, space) => {
   });
 
   // 2. SCENARIO B: Mixed (Gap Filling)
-  let bestMixed = { count: 0 };
+  let bestMixed: Partial<PackingScenario> & { count: number } = { count: 0 };
 
   orientations.forEach((dims) => {
     const cols = Math.floor(cL / dims[0]);
     const rows = Math.floor(cW / dims[1]);
     const layers = Math.floor(cH / dims[2]);
 
-    let currentItems = [];
+    const currentItems: PackedItem[] = [];
     for (let z = 0; z < layers; z++) {
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
@@ -270,7 +437,7 @@ const calculatePackingScenarios = (item, space) => {
 
     const usedL = cols * dims[0];
     const remainL = cL - usedL;
-    let gapItemsL = [];
+    let gapItemsL: PackedItem[] = [];
 
     if (remainL > 0) {
         const gapOrientations = orientations.filter(d => d[0] <= remainL);
@@ -311,13 +478,13 @@ const calculatePackingScenarios = (item, space) => {
         };
     }
   });
-  if (bestMixed.count > 0) candidates.push(bestMixed);
+  if (bestMixed.count > 0) candidates.push(bestMixed as PackingScenario);
 
 
   // 3. SCENARIO C: Mixed Layers
-  let bestLayered = { count: 0 };
-  const standingDims = orientations.reduce((prev, curr) => curr[2] > prev[2] ? curr : prev, [0,0,0]);
-  const flatDims = orientations.reduce((prev, curr) => curr[2] < prev[2] ? curr : prev, [999,999,999]);
+  let bestLayered: Partial<PackingScenario> & { count: number } = { count: 0 };
+  const standingDims = orientations.reduce((prev, curr) => curr[2] > prev[2] ? curr : prev, [0,0,0] as [number, number, number]);
+  const flatDims = orientations.reduce((prev, curr) => curr[2] < prev[2] ? curr : prev, [999,999,999] as [number, number, number]);
 
   if (standingDims[2] !== flatDims[2]) {
       const standingLayers = Math.floor(cH / standingDims[2]);
@@ -337,7 +504,7 @@ const calculatePackingScenarios = (item, space) => {
           const total = sCount + fCount;
 
           if (total > bestLayered.count) {
-              const items = [];
+              const items: PackedItem[] = [];
               for (let z = 0; z < i; z++) {
                   for (let y = 0; y < sRows; y++) {
                       for (let x = 0; x < sCols; x++) {
@@ -365,7 +532,7 @@ const calculatePackingScenarios = (item, space) => {
           }
       }
   }
-  if (bestLayered.count > 0) candidates.push(bestLayered);
+  if (bestLayered.count > 0) candidates.push(bestLayered as PackingScenario);
 
   // Sort Logic: Count DESC, then Utilization DESC
   candidates.sort((a, b) => {
@@ -374,10 +541,10 @@ const calculatePackingScenarios = (item, space) => {
   });
 
   // Filter Logic
-  const finalScenarios = [];
-  const seenKeys = new Set();
+  const finalScenarios: PackingScenario[] = [];
+  const seenKeys = new Set<string>();
 
-  const addIfUnique = (sc) => {
+  const addIfUnique = (sc: PackingScenario) => {
       const key = `${sc.type}-${sc.count}-${sc.utilization.toFixed(2)}`;
       if (!seenKeys.has(key)) {
           finalScenarios.push(sc);
@@ -406,17 +573,17 @@ const calculatePackingScenarios = (item, space) => {
 
 
 // --- 3D Visualizer Component ---
-const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = false }) => {
-  const containerRef = useRef(null);
+const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenario, units, t, isContainerMode = false }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-  const requestRef = useRef(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const requestRef = useRef<number | null>(null);
   const [isHudExpanded, setIsHudExpanded] = useState(true);
 
   // Helper to format Metric values to User Units
-  const formatDim = (val) => {
+  const formatDim = (val: number): string => {
     if (units.length === 'inch') {
       return (val / 2.54).toFixed(2);
     }
@@ -497,9 +664,9 @@ const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = f
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
 
-    const onMouseDown = (e) => { isDragging = true; };
-    const onMouseUp = (e) => { isDragging = false; };
-    const onMouseMove = (e) => {
+    const onMouseDown = () => { isDragging = true; };
+    const onMouseUp = () => { isDragging = false; };
+    const onMouseMove = (e: MouseEvent) => {
       if (isDragging) {
         const deltaMove = { x: e.offsetX - previousMousePosition.x, y: e.offsetY - previousMousePosition.y };
         group.rotation.y += deltaMove.x * 0.01;
@@ -508,7 +675,7 @@ const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = f
       previousMousePosition = { x: e.offsetX, y: e.offsetY };
     };
 
-    const onWheel = (e) => {
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const scale = e.deltaY > 0 ? 1.1 : 0.9;
       const newPos = camera.position.clone().multiplyScalar(scale);
@@ -522,9 +689,9 @@ const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = f
     window.addEventListener('mouseup', onMouseUp);
     dom.addEventListener('mousemove', onMouseMove);
     dom.addEventListener('wheel', onWheel, { passive: false });
-    dom.addEventListener('touchstart', () => isDragging = true, {passive: true});
-    dom.addEventListener('touchend', () => isDragging = false, {passive: true});
-    dom.addEventListener('touchmove', (e) => {
+    dom.addEventListener('touchstart', () => { isDragging = true; }, {passive: true});
+    dom.addEventListener('touchend', () => { isDragging = false; }, {passive: true});
+    dom.addEventListener('touchmove', (e: TouchEvent) => {
         if(isDragging && e.touches[0]) {
              const touch = e.touches[0];
              const deltaMove = { x: touch.clientX - previousMousePosition.x, y: touch.clientY - previousMousePosition.y };
@@ -544,7 +711,9 @@ const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = f
     animate();
 
     return () => {
-      cancelAnimationFrame(requestRef.current);
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
       if (containerRef.current && renderer.domElement) {
          containerRef.current.removeChild(renderer.domElement);
       }
@@ -623,7 +792,7 @@ const ThreeVisualizer = ({ outer, inner, scenario, units, t, isContainerMode = f
 
 
 // --- UI Components ---
-const CompactCard = ({ children, className = "", title, icon: Icon, highlight = false, action = null }) => (
+const CompactCard: React.FC<CompactCardProps> = ({ children, className = "", title, icon: Icon, highlight = false, action = null }) => (
   <div className={`bg-white rounded-lg shadow-sm border ${highlight ? 'border-blue-200 shadow-md' : 'border-gray-200'} flex flex-col h-full ${className}`}>
     {title && (
       <div className={`px-4 py-3 border-b flex items-center justify-between ${highlight ? 'bg-blue-50/50' : 'bg-gray-50/50'}`}>
@@ -640,7 +809,7 @@ const CompactCard = ({ children, className = "", title, icon: Icon, highlight = 
   </div>
 );
 
-const CompactInput = ({ label, value, onChange, unit, step = "0.1", className="" }) => (
+const CompactInput: React.FC<CompactInputProps> = ({ label, value, onChange, unit, step = "0.1", className="" }) => (
   <div className={`flex flex-col w-full ${className}`}>
     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{label}</label>
     <div className="relative flex items-center">
@@ -656,7 +825,7 @@ const CompactInput = ({ label, value, onChange, unit, step = "0.1", className=""
   </div>
 );
 
-const StatRow = ({ label, value, sub, isAlert = false, isSuccess = false }) => (
+const StatRow: React.FC<StatRowProps> = ({ label, value, sub, isAlert = false, isSuccess = false }) => (
   <div className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
     <span className="text-xs text-gray-500 font-medium">{label}</span>
     <div className="text-right">
@@ -668,7 +837,7 @@ const StatRow = ({ label, value, sub, isAlert = false, isSuccess = false }) => (
   </div>
 );
 
-const SettingsModal = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units, customCartons, setCustomCartons, t }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units, customCartons, setCustomCartons, t }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -763,10 +932,10 @@ const SettingsModal = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFact
   );
 };
 
-const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customCartons, rates, dimFactor, exchangeRate, t, cartonThickness, isContainerMode = false }) => {
+const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item, outer, units, onApply, customCartons, rates, dimFactor, exchangeRate, t, cartonThickness, isContainerMode = false }) => {
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [simOuter, setSimOuter] = useState(outer);
-  const [simItem, setSimItem] = useState(item);
+  const [simOuter, setSimOuter] = useState<DimensionsWithWeight>(outer);
+  const [simItem, setSimItem] = useState<DimensionsWithWeight>(item);
   const [isTuningOpen, setIsTuningOpen] = useState(false);
 
   useEffect(() => {
@@ -776,7 +945,7 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
     }
   }, [outer, item, isOpen]);
 
-  const packingSpace = useMemo(() => {
+  const packingSpace = useMemo((): Dimensions => {
       if (isContainerMode) return simOuter;
 
       let metricThickness = 0;
@@ -788,7 +957,6 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
           l: Math.max(0, simOuter.l - (metricThickness * 2)),
           w: Math.max(0, simOuter.w - (metricThickness * 2)),
           h: Math.max(0, simOuter.h - (metricThickness * 2)),
-          weight: simOuter.weight
       };
   }, [simOuter, cartonThickness, units, isContainerMode]);
 
@@ -796,21 +964,21 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
     return calculatePackingScenarios(simItem, packingSpace);
   }, [simItem, packingSpace]);
 
-  const current = scenarios[selectedIdx] || {};
+  const current = scenarios[selectedIdx] || null;
 
-  const fromMetricL = (val) => units.length === 'inch' ? val / 2.54 : val;
-  const fromMetricW = (val) => units.weight === 'lb' ? val / 0.453592 : val;
-  const displayLength = (val) => `${fromMetricL(val).toFixed(2)} ${units.length}`;
-  const displayWeight = (val) => `${fromMetricW(val).toFixed(2)} ${units.weight}`;
-  const convertRate = (amount, fromCurr) => {
+  const fromMetricL = (val: number): number => units.length === 'inch' ? val / 2.54 : val;
+  const fromMetricW = (val: number): number => units.weight === 'lb' ? val / 0.453592 : val;
+  const displayLength = (val: number): string => `${fromMetricL(val).toFixed(2)} ${units.length}`;
+  const displayWeight = (val: number): string => `${fromMetricW(val).toFixed(2)} ${units.weight}`;
+  const convertRate = (amount: number, fromCurr: Currency): number => {
     if (fromCurr === units.currency) return amount;
     if (fromCurr === 'USD' && units.currency === 'RMB') return amount * exchangeRate;
     if (fromCurr === 'RMB' && units.currency === 'USD') return amount / exchangeRate;
     return amount;
   };
-  const displayMoney = (val) => `${units.currency} ${val.toFixed(2)}`;
+  const displayMoney = (val: number): string => `${units.currency} ${val.toFixed(2)}`;
 
-  const getUnitCosts = (sc) => {
+  const getUnitCosts = (sc: PackingScenario): { air: number; sea: number } => {
       if (isContainerMode) return { air: 0, sea: 0 };
 
       const count = sc.count;
@@ -835,7 +1003,7 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
       return { air: totalAir / count, sea: totalSea / count };
   };
 
-  const handleTune = (dim, delta) => {
+  const handleTune = (dim: 'l' | 'w' | 'h', delta: number) => {
     let deltaMetric = delta;
     if (units.length === 'inch') deltaMetric = delta * 2.54;
     setSimItem(prev => ({ ...prev, [dim]: Math.max(0.1, prev[dim] + deltaMetric) }));
@@ -878,13 +1046,13 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
                   onChange={(e) => {
                      const val = e.target.value;
                      if (isContainerMode) {
-                        const spec = CONTAINER_SPECS[val];
+                        const spec = CONTAINER_SPECS[val as ContainerKey];
                         if(spec) setSimOuter({...spec, weight: 0});
                      } else {
                         if (val === 'custom') { setSimOuter(outer); }
                         else {
                            const std = customCartons[parseInt(val)];
-                           let m = {l:std.l, w:std.w, h:std.h, weight:std.weight};
+                           let m: DimensionsWithWeight = {l:std.l, w:std.w, h:std.h, weight:std.weight};
                            if(units.length==='inch') { m.l*=2.54; m.w*=2.54; m.h*=2.54; }
                            if(units.weight==='lb') { m.weight*=0.453592; }
                            setSimOuter(m);
@@ -916,7 +1084,7 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
                   {!isContainerMode && (
                     <div className="text-right">
                       <span className="block font-bold text-gray-400">{t('grossWt')}:</span>
-                      {displayWeight((current.count || 0) * simItem.weight + simOuter.weight)}
+                      {displayWeight((current?.count || 0) * simItem.weight + simOuter.weight)}
                     </div>
                   )}
                </div>
@@ -935,7 +1103,7 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
                </button>
                {isTuningOpen && (
                  <div className="p-3 bg-purple-50/30 grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-200">
-                    {['l', 'w', 'h'].map(dim => (
+                    {(['l', 'w', 'h'] as const).map(dim => (
                       <div key={dim} className="bg-white border border-purple-100 rounded p-1.5 flex flex-col items-center">
                          <span className="text-[9px] font-bold text-purple-400 uppercase mb-1">{t(dim==='l'?'length':dim==='w'?'width':'height')}</span>
                          <div className="font-mono text-sm font-bold text-gray-800 mb-1">{displayLength(simItem[dim])}</div>
@@ -1000,20 +1168,20 @@ const SimulationModal = ({ isOpen, onClose, item, outer, units, onApply, customC
 
 export default function LogisticsCalculator() {
   // --- Global Settings ---
-  const [lang, setLang] = useState('zh');
-  const [units, setUnits] = useState({ length: 'cm', weight: 'kg', currency: 'USD' });
-  const [rates, setRates] = useState({ air: 6.5, airCurrency: 'USD', sea: 200, seaCurrency: 'USD', seaUnit: 'cbm' });
+  const [lang, setLang] = useState<Language>('zh');
+  const [units, setUnits] = useState<Units>({ length: 'cm', weight: 'kg', currency: 'USD' });
+  const [rates, setRates] = useState<Rates>({ air: 6.5, airCurrency: 'USD', sea: 200, seaCurrency: 'USD', seaUnit: 'cbm' });
   const [dimFactor, setDimFactor] = useState(5000);
   const [exchangeRate, setExchangeRate] = useState(7.2);
   const [cartonThickness, setCartonThickness] = useState(0.5);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSimOpen, setIsSimOpen] = useState(false);
-  const [mode, setMode] = useState('packing'); // 'packing' | 'loading'
+  const [mode, setMode] = useState<Mode>('packing');
 
-  const t = (key) => TRANSLATIONS[lang][key] || key;
+  const t = (key: string): string => TRANSLATIONS[lang][key] || key;
 
   // --- States ---
-  const [customCartons, setCustomCartons] = useState([
+  const [customCartons, setCustomCartons] = useState<CustomCarton[]>([
     { labelKey: 'carton1', name: '工廠標準 A (小)', l: 30, w: 20, h: 15, weight: 0.5 },
     { labelKey: 'carton2', name: '工廠標準 B (中)', l: 40, w: 30, h: 25, weight: 0.8 },
     { labelKey: 'carton3', name: '工廠標準 C (大)', l: 50, w: 40, h: 30, weight: 1.2 },
@@ -1022,12 +1190,12 @@ export default function LogisticsCalculator() {
   ]);
 
   // Packing Mode Inputs
-  const [product, setProduct] = useState({ l: 20, w: 12, h: 8, weight: 0.8 });
-  const [carton, setCarton] = useState({ l: 60, w: 40, h: 40, weight: 1.5 });
+  const [product, setProduct] = useState<DimensionsWithWeight>({ l: 20, w: 12, h: 8, weight: 0.8 });
+  const [carton, setCarton] = useState<DimensionsWithWeight>({ l: 60, w: 40, h: 40, weight: 1.5 });
 
   // Loading Mode Inputs
-  const [shipmentCarton, setShipmentCarton] = useState({ l: 60, w: 40, h: 40, weight: 12.5 }); // Default large carton
-  const [selectedContainerKey, setSelectedContainerKey] = useState('20gp');
+  const [shipmentCarton, setShipmentCarton] = useState<DimensionsWithWeight>({ l: 60, w: 40, h: 40, weight: 12.5 }); // Default large carton
+  const [selectedContainerKey, setSelectedContainerKey] = useState<ContainerKey>('20gp');
 
   // --- Helper Functions ---
   const handleReset = () => {
@@ -1037,27 +1205,27 @@ export default function LogisticsCalculator() {
         setShipmentCarton({l:0,w:0,h:0,weight:0});
     }
   };
-  const toMetricL = (val) => units.length === 'inch' ? val * 2.54 : val;
-  const toMetricW = (val) => units.weight === 'lb' ? val * 0.453592 : val;
-  const fromMetricL = (val) => units.length === 'inch' ? val / 2.54 : val;
-  const fromMetricW = (val) => units.weight === 'lb' ? val / 0.453592 : val;
-  const displayWeight = (val) => `${fromMetricW(val).toFixed(2)} ${units.weight}`;
-  const displayLength = (val) => `${fromMetricL(val).toFixed(2)} ${units.length}`;
-  const convertCurrency = (amount, fromCurr, toCurr) => {
+  const toMetricL = (val: number): number => units.length === 'inch' ? val * 2.54 : val;
+  const toMetricW = (val: number): number => units.weight === 'lb' ? val * 0.453592 : val;
+  const fromMetricL = (val: number): number => units.length === 'inch' ? val / 2.54 : val;
+  const fromMetricW = (val: number): number => units.weight === 'lb' ? val / 0.453592 : val;
+  const displayWeight = (val: number): string => `${fromMetricW(val).toFixed(2)} ${units.weight}`;
+  const displayLength = (val: number): string => `${fromMetricL(val).toFixed(2)} ${units.length}`;
+  const convertCurrency = (amount: number, fromCurr: Currency, toCurr: Currency): number => {
     if (fromCurr === toCurr) return amount;
     if (fromCurr === 'USD' && toCurr === 'RMB') return amount * exchangeRate;
     if (fromCurr === 'RMB' && toCurr === 'USD') return amount / exchangeRate;
     return amount;
   };
-  const displayMoney = (val, currencyCode = units.currency) => `${currencyCode} ${val.toFixed(2)}`;
+  const displayMoney = (val: number, currencyCode: Currency = units.currency): string => `${currencyCode} ${val.toFixed(2)}`;
 
   // --- Toggle Functions (Restored) ---
   const toggleLengthUnit = () => {
     const isCm = units.length === 'cm';
-    const newUnit = isCm ? 'inch' : 'cm';
+    const newUnit: LengthUnit = isCm ? 'inch' : 'cm';
     const factor = isCm ? 1 / 2.54 : 2.54;
 
-    const convert = (v) => parseFloat((v * factor).toFixed(2));
+    const convert = (v: number): number => parseFloat((v * factor).toFixed(2));
 
     setProduct(p => ({ ...p, l: convert(p.l), w: convert(p.w), h: convert(p.h) }));
     setCarton(c => ({ ...c, l: convert(c.l), w: convert(c.w), h: convert(c.h) }));
@@ -1072,10 +1240,10 @@ export default function LogisticsCalculator() {
 
   const toggleWeightUnit = () => {
     const isKg = units.weight === 'kg';
-    const newUnit = isKg ? 'lb' : 'kg';
+    const newUnit: WeightUnit = isKg ? 'lb' : 'kg';
     const factor = isKg ? 2.20462 : 1 / 2.20462;
 
-    const convert = (v) => parseFloat((v * factor).toFixed(3));
+    const convert = (v: number): number => parseFloat((v * factor).toFixed(3));
 
     setProduct(p => ({ ...p, weight: convert(p.weight) }));
     setCarton(c => ({ ...c, weight: convert(c.weight) }));
@@ -1085,7 +1253,7 @@ export default function LogisticsCalculator() {
   };
 
   // --- Calculations: Packing Mode ---
-  const innerCartonMetric = useMemo(() => {
+  const innerCartonMetric = useMemo((): Dimensions => {
       const metricL = toMetricL(carton.l);
       const metricW = toMetricL(carton.w);
       const metricH = toMetricL(carton.h);
@@ -1104,7 +1272,7 @@ export default function LogisticsCalculator() {
 
   const bestPacking = packingScenarios[0] || null;
 
-  const packingCosts = useMemo(() => {
+  const packingCosts = useMemo((): PackingCosts | null => {
     if (!bestPacking) return null;
     const cVol = toMetricL(carton.l) * toMetricL(carton.w) * toMetricL(carton.h);
     const cbm = cVol / 1000000;
@@ -1131,7 +1299,7 @@ export default function LogisticsCalculator() {
   ), [shipmentCarton, containerMetric, units]);
 
   const bestLoading = loadingScenarios[0] || null;
-  const loadingStats = useMemo(() => {
+  const loadingStats = useMemo((): LoadingStats | null => {
       if(!bestLoading) return null;
       const count = bestLoading.count;
       const cartonVol = toMetricL(shipmentCarton.l) * toMetricL(shipmentCarton.w) * toMetricL(shipmentCarton.h);
@@ -1144,7 +1312,7 @@ export default function LogisticsCalculator() {
   }, [bestLoading, shipmentCarton, units]);
 
   // --- Handlers ---
-  const handleApplyCarton = (newCarton) => {
+  const handleApplyCarton = (newCarton: DimensionsWithWeight) => {
     let appliedCarton = { ...newCarton };
     if (units.length === 'inch') {
        appliedCarton.l = newCarton.l / 2.54; appliedCarton.w = newCarton.w / 2.54; appliedCarton.h = newCarton.h / 2.54;
@@ -1167,12 +1335,12 @@ export default function LogisticsCalculator() {
       }
   };
 
-  const simProduct = { l: toMetricL(product.l), w: toMetricL(product.w), h: toMetricL(product.h), weight: toMetricW(product.weight) };
-  const simCartonInit = { l: toMetricL(carton.l), w: toMetricL(carton.w), h: toMetricL(carton.h), weight: toMetricW(carton.weight) };
+  const simProduct: DimensionsWithWeight = { l: toMetricL(product.l), w: toMetricL(product.w), h: toMetricL(product.h), weight: toMetricW(product.weight) };
+  const simCartonInit: DimensionsWithWeight = { l: toMetricL(carton.l), w: toMetricL(carton.w), h: toMetricL(carton.h), weight: toMetricW(carton.weight) };
 
   // Loading Sim Props
-  const simShipmentCarton = { l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h), weight: toMetricW(shipmentCarton.weight) };
-  const simContainer = CONTAINER_SPECS[selectedContainerKey]; // Already metric
+  const simShipmentCarton: DimensionsWithWeight = { l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h), weight: toMetricW(shipmentCarton.weight) };
+  const simContainer: DimensionsWithWeight = { ...CONTAINER_SPECS[selectedContainerKey], weight: 0 }; // Already metric
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex flex-col">
@@ -1317,8 +1485,8 @@ export default function LogisticsCalculator() {
                     <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">PCS / Box</div>
                   </div>
                   <div className="flex-1 space-y-2">
-                    <div className="flex justify-between text-xs font-bold text-gray-600"><span>{t('utilization')}</span><span className={packingCosts?.stats.utilization < 70 ? 'text-orange-500' : 'text-green-600'}>{packingCosts ? packingCosts.stats.utilization.toFixed(1) : 0}%</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${packingCosts?.stats.utilization > 80 ? 'bg-green-500' : 'bg-orange-400'}`} style={{ width: `${packingCosts ? packingCosts.stats.utilization : 0}%` }}></div></div>
+                    <div className="flex justify-between text-xs font-bold text-gray-600"><span>{t('utilization')}</span><span className={packingCosts?.stats.utilization && packingCosts.stats.utilization < 70 ? 'text-orange-500' : 'text-green-600'}>{packingCosts ? packingCosts.stats.utilization.toFixed(1) : 0}%</span></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className={`h-full rounded-full transition-all duration-500 ${packingCosts?.stats.utilization && packingCosts.stats.utilization > 80 ? 'bg-green-500' : 'bg-orange-400'}`} style={{ width: `${packingCosts ? packingCosts.stats.utilization : 0}%` }}></div></div>
                   </div>
                 </div>
                 <div className="hidden md:block w-px h-16 bg-gray-200"></div>
@@ -1353,7 +1521,7 @@ export default function LogisticsCalculator() {
                     <select
                       className="w-full p-2 border border-gray-300 rounded font-bold text-gray-700"
                       value={selectedContainerKey}
-                      onChange={(e) => setSelectedContainerKey(e.target.value)}
+                      onChange={(e) => setSelectedContainerKey(e.target.value as ContainerKey)}
                     >
                        <option value="20gp">{t('container20gp')}</option>
                        <option value="40gp">{t('container40gp')}</option>
@@ -1385,7 +1553,7 @@ export default function LogisticsCalculator() {
                   <div className="w-px h-12 bg-gray-200"></div>
                   <div className="text-center">
                      <div className="text-xs text-gray-400 uppercase font-bold mb-1">{t('containerUtil')}</div>
-                     <div className={`text-2xl font-bold ${loadingStats?.utilization > 85 ? 'text-green-600' : 'text-orange-500'}`}>{loadingStats ? loadingStats.utilization.toFixed(1) + '%' : '-'}</div>
+                     <div className={`text-2xl font-bold ${loadingStats?.utilization && loadingStats.utilization > 85 ? 'text-green-600' : 'text-orange-500'}`}>{loadingStats ? loadingStats.utilization.toFixed(1) + '%' : '-'}</div>
                   </div>
                </div>
             </CompactCard>
