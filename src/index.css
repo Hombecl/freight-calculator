@@ -27,6 +27,29 @@
   scroll-behavior: smooth;
 }
 
+/* Mobile touch improvements */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent pull-to-refresh on modals */
+.overflow-y-auto {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  button, input, select {
+    min-height: 44px;
+  }
+
+  input[type="number"] {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
+}
+
 /* Input number arrows - hide on Chrome/Safari */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -43,4 +66,12 @@ input[type="number"] {
 :focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .min-h-screen {
+    min-height: calc(100vh - env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
