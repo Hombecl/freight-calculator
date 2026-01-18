@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight, HardDrive } from 'lucide-react';
 
 // ===== Type Definitions =====
 type Language = 'zh' | 'en';
@@ -113,6 +113,7 @@ interface SettingsModalProps {
   customCartons: CustomCarton[];
   setCustomCartons: React.Dispatch<React.SetStateAction<CustomCarton[]>>;
   t: (key: string) => string;
+  onClearData?: () => void;
 }
 
 interface SimulationModalProps {
@@ -163,6 +164,52 @@ declare global {
     THREE: typeof import('three');
   }
 }
+
+// LocalStorage data structure
+interface StoredData {
+  version: number;
+  lang: Language;
+  units: Units;
+  rates: Rates;
+  dimFactor: number;
+  exchangeRate: number;
+  cartonThickness: number;
+  customCartons: CustomCarton[];
+  product: DimensionsWithWeight;
+  carton: DimensionsWithWeight;
+  shipmentCarton: DimensionsWithWeight;
+  selectedContainerKey: ContainerKey;
+  mode: Mode;
+}
+
+const STORAGE_KEY = 'dimpack3d-settings';
+const STORAGE_VERSION = 1;
+
+// --- LocalStorage Helper Functions ---
+const loadFromStorage = (): Partial<StoredData> | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const data = JSON.parse(stored) as StoredData;
+    // Version check for future migrations
+    if (data.version !== STORAGE_VERSION) {
+      console.log('Storage version mismatch, using defaults');
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('Failed to load from localStorage:', e);
+    return null;
+  }
+};
+
+const saveToStorage = (data: StoredData): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+};
 
 // Translation dictionary type
 type TranslationKey = keyof typeof TRANSLATIONS.zh;
@@ -249,7 +296,11 @@ const TRANSLATIONS: TranslationDictionary = {
     legendStandard: "標準",
     legendGap: "縫隙",
     legendLayered: "層疊",
-    disclaimer: "*注意：實際運費可能因 Carrier 進位規則(如不足0.5kg當0.5kg計)而略有不同。"
+    disclaimer: "*注意：實際運費可能因 Carrier 進位規則(如不足0.5kg當0.5kg計)而略有不同。",
+    dataSaved: "數據已自動保存",
+    clearData: "清除保存數據",
+    clearDataConfirm: "確定清除所有保存的數據嗎？",
+    dataCleared: "數據已清除"
   },
   en: {
     title: "DimPack3D",
@@ -330,7 +381,11 @@ const TRANSLATIONS: TranslationDictionary = {
     legendStandard: "Standard",
     legendGap: "Gap Fill",
     legendLayered: "Layered",
-    disclaimer: "*Note: Actual freight may vary due to carrier rounding rules (e.g. round up to 0.5kg)."
+    disclaimer: "*Note: Actual freight may vary due to carrier rounding rules (e.g. round up to 0.5kg).",
+    dataSaved: "Data auto-saved",
+    clearData: "Clear saved data",
+    clearDataConfirm: "Clear all saved data?",
+    dataCleared: "Data cleared"
   }
 };
 
@@ -837,7 +892,16 @@ const StatRow: React.FC<StatRowProps> = ({ label, value, sub, isAlert = false, i
   </div>
 );
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units, customCartons, setCustomCartons, t }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units, customCartons, setCustomCartons, t, onClearData }) => {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearData = () => {
+    if (onClearData) {
+      onClearData();
+      setShowClearConfirm(false);
+    }
+  };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -919,6 +983,42 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, s
                ))}
              </div>
           </div>
+
+          {/* Section 3: Data Management */}
+          {onClearData && (
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-gray-500 uppercase border-b border-gray-100 pb-1 flex items-center gap-2">
+                <HardDrive size={12} /> {t('dataSaved')}
+              </h4>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-xs text-green-700 mb-3">{t('dataSaved')}</p>
+                {!showClearConfirm ? (
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium underline"
+                  >
+                    {t('clearData')}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-600">{t('clearDataConfirm')}</span>
+                    <button
+                      onClick={handleClearData}
+                      className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setShowClearConfirm(false)}
+                      className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
         <div className="bg-gray-50 px-4 py-3 border-t flex-shrink-0">
@@ -1167,35 +1267,79 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
 };
 
 export default function LogisticsCalculator() {
-  // --- Global Settings ---
-  const [lang, setLang] = useState<Language>('zh');
-  const [units, setUnits] = useState<Units>({ length: 'cm', weight: 'kg', currency: 'USD' });
-  const [rates, setRates] = useState<Rates>({ air: 6.5, airCurrency: 'USD', sea: 200, seaCurrency: 'USD', seaUnit: 'cbm' });
-  const [dimFactor, setDimFactor] = useState(5000);
-  const [exchangeRate, setExchangeRate] = useState(7.2);
-  const [cartonThickness, setCartonThickness] = useState(0.5);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isSimOpen, setIsSimOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>('packing');
-
-  const t = (key: string): string => TRANSLATIONS[lang][key] || key;
-
-  // --- States ---
-  const [customCartons, setCustomCartons] = useState<CustomCarton[]>([
+  // --- Default Values ---
+  const defaultUnits: Units = { length: 'cm', weight: 'kg', currency: 'USD' };
+  const defaultRates: Rates = { air: 6.5, airCurrency: 'USD', sea: 200, seaCurrency: 'USD', seaUnit: 'cbm' };
+  const defaultCustomCartons: CustomCarton[] = [
     { labelKey: 'carton1', name: '工廠標準 A (小)', l: 30, w: 20, h: 15, weight: 0.5 },
     { labelKey: 'carton2', name: '工廠標準 B (中)', l: 40, w: 30, h: 25, weight: 0.8 },
     { labelKey: 'carton3', name: '工廠標準 C (大)', l: 50, w: 40, h: 30, weight: 1.2 },
     { labelKey: 'carton4', name: '出口專用紙箱 D', l: 60, w: 40, h: 40, weight: 1.5 },
     { labelKey: 'carton5', name: '特大號紙箱 E', l: 60, w: 50, h: 50, weight: 1.8 },
-  ]);
+  ];
+  const defaultProduct: DimensionsWithWeight = { l: 20, w: 12, h: 8, weight: 0.8 };
+  const defaultCarton: DimensionsWithWeight = { l: 60, w: 40, h: 40, weight: 1.5 };
+  const defaultShipmentCarton: DimensionsWithWeight = { l: 60, w: 40, h: 40, weight: 12.5 };
+
+  // --- Load from LocalStorage on initial render ---
+  const getInitialState = <T,>(key: keyof StoredData, defaultValue: T): T => {
+    const stored = loadFromStorage();
+    if (stored && stored[key] !== undefined) {
+      return stored[key] as T;
+    }
+    return defaultValue;
+  };
+
+  // --- Global Settings ---
+  const [lang, setLang] = useState<Language>(() => getInitialState('lang', 'zh'));
+  const [units, setUnits] = useState<Units>(() => getInitialState('units', defaultUnits));
+  const [rates, setRates] = useState<Rates>(() => getInitialState('rates', defaultRates));
+  const [dimFactor, setDimFactor] = useState(() => getInitialState('dimFactor', 5000));
+  const [exchangeRate, setExchangeRate] = useState(() => getInitialState('exchangeRate', 7.2));
+  const [cartonThickness, setCartonThickness] = useState(() => getInitialState('cartonThickness', 0.5));
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSimOpen, setIsSimOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>(() => getInitialState('mode', 'packing'));
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  const t = (key: string): string => TRANSLATIONS[lang][key] || key;
+
+  // --- States ---
+  const [customCartons, setCustomCartons] = useState<CustomCarton[]>(() => getInitialState('customCartons', defaultCustomCartons));
 
   // Packing Mode Inputs
-  const [product, setProduct] = useState<DimensionsWithWeight>({ l: 20, w: 12, h: 8, weight: 0.8 });
-  const [carton, setCarton] = useState<DimensionsWithWeight>({ l: 60, w: 40, h: 40, weight: 1.5 });
+  const [product, setProduct] = useState<DimensionsWithWeight>(() => getInitialState('product', defaultProduct));
+  const [carton, setCarton] = useState<DimensionsWithWeight>(() => getInitialState('carton', defaultCarton));
 
   // Loading Mode Inputs
-  const [shipmentCarton, setShipmentCarton] = useState<DimensionsWithWeight>({ l: 60, w: 40, h: 40, weight: 12.5 }); // Default large carton
-  const [selectedContainerKey, setSelectedContainerKey] = useState<ContainerKey>('20gp');
+  const [shipmentCarton, setShipmentCarton] = useState<DimensionsWithWeight>(() => getInitialState('shipmentCarton', defaultShipmentCarton));
+  const [selectedContainerKey, setSelectedContainerKey] = useState<ContainerKey>(() => getInitialState('selectedContainerKey', '20gp'));
+
+  // --- Save to LocalStorage whenever state changes ---
+  useEffect(() => {
+    // Skip initial render to avoid overwriting with defaults before loading
+    if (!isDataLoaded) {
+      setIsDataLoaded(true);
+      return;
+    }
+
+    const dataToSave: StoredData = {
+      version: STORAGE_VERSION,
+      lang,
+      units,
+      rates,
+      dimFactor,
+      exchangeRate,
+      cartonThickness,
+      customCartons,
+      product,
+      carton,
+      shipmentCarton,
+      selectedContainerKey,
+      mode,
+    };
+    saveToStorage(dataToSave);
+  }, [lang, units, rates, dimFactor, exchangeRate, cartonThickness, customCartons, product, carton, shipmentCarton, selectedContainerKey, mode, isDataLoaded]);
 
   // --- Helper Functions ---
   const handleReset = () => {
@@ -1205,6 +1349,25 @@ export default function LogisticsCalculator() {
         setShipmentCarton({l:0,w:0,h:0,weight:0});
     }
   };
+
+  const handleClearAllData = useCallback(() => {
+    // Clear localStorage
+    localStorage.removeItem(STORAGE_KEY);
+    // Reset all states to defaults
+    setLang('zh');
+    setUnits(defaultUnits);
+    setRates(defaultRates);
+    setDimFactor(5000);
+    setExchangeRate(7.2);
+    setCartonThickness(0.5);
+    setCustomCartons(defaultCustomCartons);
+    setProduct(defaultProduct);
+    setCarton(defaultCarton);
+    setShipmentCarton(defaultShipmentCarton);
+    setSelectedContainerKey('20gp');
+    setMode('packing');
+    setIsSettingsOpen(false);
+  }, []);
   const toMetricL = (val: number): number => units.length === 'inch' ? val * 2.54 : val;
   const toMetricW = (val: number): number => units.weight === 'lb' ? val * 0.453592 : val;
   const fromMetricL = (val: number): number => units.length === 'inch' ? val / 2.54 : val;
@@ -1349,6 +1512,7 @@ export default function LogisticsCalculator() {
         rates={rates} setRates={setRates} dimFactor={dimFactor} setDimFactor={setDimFactor}
         units={units} exchangeRate={exchangeRate} setExchangeRate={setExchangeRate}
         customCartons={customCartons} setCustomCartons={setCustomCartons} t={t}
+        onClearData={handleClearAllData}
       />
 
       <SimulationModal
