@@ -987,8 +987,8 @@ export default function HomePage() {
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               {lang === 'zh'
-                ? '產品尺寸 20×15×8 cm，看看不同箱子和擺放方式的差異'
-                : 'Product: 20×15×8 cm - See how box choice and orientation affects efficiency'}
+                ? '產品尺寸 22×14×5 cm，看看不同箱子和擺放方式的差異'
+                : 'Product: 22×14×5 cm - See how box choice and orientation affects efficiency'}
             </p>
           </div>
 
@@ -1002,21 +1002,21 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="bg-gradient-to-br from-red-50 to-slate-50 border-2 border-red-200 rounded-2xl overflow-hidden h-full">
-                {/* 3D Preview - Bad orientation */}
+                {/* 3D Preview - Bad orientation: flat laying */}
                 <div className="aspect-square relative">
                   <Packing3DPreview
-                    product={{ l: 20, w: 15, h: 8 }}
-                    carton={{ l: 50, w: 50, h: 50 }}
-                    forceOrientation={{ l: 20, w: 15, h: 8 }} // Force upright position
+                    product={{ l: 22, w: 14, h: 5 }}
+                    carton={{ l: 50, w: 40, h: 35 }}
+                    forceOrientation={{ l: 22, w: 14, h: 5 }} // Force flat position
                     cartonColor={0xef4444}
                     autoRotate={true}
                   />
                   {/* Utilization badge */}
                   <div className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                    {lang === 'zh' ? '利用率' : 'Util'}: 58%
+                    {lang === 'zh' ? '利用率' : 'Util'}: 62%
                   </div>
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                    8 {lang === 'zh' ? '件/箱' : 'pcs'}
+                    28 {lang === 'zh' ? '件/箱' : 'pcs'}
                   </div>
                 </div>
 
@@ -1024,14 +1024,14 @@ export default function HomePage() {
                 <div className="p-4 bg-white border-t border-red-100">
                   <div className="flex items-center gap-2 mb-2">
                     <X size={16} className="text-red-500" />
-                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '50×50×50 cm 箱子' : '50×50×50 cm box'}</span>
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '50×40×35 cm 箱，平放' : '50×40×35 cm box, flat'}</span>
                   </div>
                   <p className="text-xs text-slate-500 mb-3">
-                    {lang === 'zh' ? '買了個正方形箱，產品直接放入，大量空間浪費' : 'Square box, products placed randomly - wasted space'}
+                    {lang === 'zh' ? '產品平放入箱，尺寸不是完美倍數，浪費空間' : 'Products laid flat, box size not perfect multiple - wasted space'}
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
-                    <span className="font-bold text-red-600">125 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                    <span className="font-bold text-red-600">36 {lang === 'zh' ? '箱' : 'boxes'}</span>
                   </div>
                 </div>
               </div>
@@ -1045,21 +1045,21 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-slate-50 border-2 border-amber-300 rounded-2xl overflow-hidden h-full">
-                {/* 3D Preview - Optimized orientation, same box */}
+                {/* 3D Preview - Optimized orientation: standing on side */}
                 <div className="aspect-square relative">
                   <Packing3DPreview
-                    product={{ l: 20, w: 15, h: 8 }}
-                    carton={{ l: 50, w: 50, h: 50 }}
-                    // No forceOrientation = auto-optimize
+                    product={{ l: 22, w: 14, h: 5 }}
+                    carton={{ l: 50, w: 40, h: 35 }}
+                    forceOrientation={{ l: 22, w: 5, h: 14 }} // Force side-standing position
                     cartonColor={0xf59e0b}
                     autoRotate={true}
                   />
                   {/* Utilization badge */}
                   <div className="absolute top-3 left-3 bg-amber-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                    {lang === 'zh' ? '利用率' : 'Util'}: 77%
+                    {lang === 'zh' ? '利用率' : 'Util'}: 70%
                   </div>
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                    12 {lang === 'zh' ? '件/箱' : 'pcs'}
+                    32 {lang === 'zh' ? '件/箱' : 'pcs'}
                   </div>
                 </div>
 
@@ -1067,16 +1067,16 @@ export default function HomePage() {
                 <div className="p-4 bg-white border-t border-amber-100">
                   <div className="flex items-center gap-2 mb-2">
                     <Check size={16} className="text-amber-500" />
-                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '同樣箱子，優化擺放' : 'Same box, optimized layout'}</span>
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '同樣箱子，側放' : 'Same box, side-standing'}</span>
                   </div>
                   <p className="text-xs text-slate-500 mb-3">
-                    {lang === 'zh' ? '用 DimPack3D 計算最佳旋轉方向，多放 50%' : 'DimPack3D finds best rotation - 50% more fits'}
+                    {lang === 'zh' ? '用 DimPack3D 計算最佳旋轉方向，多放 14%' : 'DimPack3D finds best rotation - 14% more fits'}
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 line-through text-xs">125</span>
-                      <span className="font-bold text-amber-600">84 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                      <span className="text-slate-400 line-through text-xs">36</span>
+                      <span className="font-bold text-amber-600">32 {lang === 'zh' ? '箱' : 'boxes'}</span>
                     </div>
                   </div>
                 </div>
@@ -1092,20 +1092,20 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-2xl overflow-hidden h-full shadow-lg shadow-green-100">
-                {/* 3D Preview - Recommended box */}
+                {/* 3D Preview - Recommended box: perfect fit */}
                 <div className="aspect-square relative">
                   <Packing3DPreview
-                    product={{ l: 20, w: 15, h: 8 }}
-                    carton={{ l: 60, w: 45, h: 32 }} // Optimized box size
+                    product={{ l: 22, w: 14, h: 5 }}
+                    carton={{ l: 44, w: 42, h: 30 }} // Perfect fit box size
                     cartonColor={0x22c55e}
                     autoRotate={true}
                   />
                   {/* Utilization badge */}
                   <div className="absolute top-3 left-3 bg-green-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                    {lang === 'zh' ? '利用率' : 'Util'}: 92%
+                    {lang === 'zh' ? '利用率' : 'Util'}: 100%
                   </div>
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                    24 {lang === 'zh' ? '件/箱' : 'pcs'}
+                    36 {lang === 'zh' ? '件/箱' : 'pcs'}
                   </div>
                 </div>
 
@@ -1113,16 +1113,16 @@ export default function HomePage() {
                 <div className="p-4 bg-white border-t border-green-100">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle size={16} className="text-green-500" />
-                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '60×45×32 cm 建議箱' : '60×45×32 cm recommended'}</span>
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '44×42×30 cm 建議箱' : '44×42×30 cm recommended'}</span>
                   </div>
                   <p className="text-xs text-slate-500 mb-3">
-                    {lang === 'zh' ? '選擇最適合產品尺寸的紙箱，達到最高效率' : 'Box sized perfectly for product - maximum efficiency'}
+                    {lang === 'zh' ? '選擇完美倍數尺寸的紙箱，零浪費' : 'Box sized as perfect multiple - zero waste'}
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 line-through text-xs">125</span>
-                      <span className="font-bold text-green-600">42 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                      <span className="text-slate-400 line-through text-xs">36</span>
+                      <span className="font-bold text-green-600">28 {lang === 'zh' ? '箱' : 'boxes'}</span>
                     </div>
                   </div>
                 </div>
@@ -1140,22 +1140,22 @@ export default function HomePage() {
               <div className="grid md:grid-cols-4 gap-4 mb-6">
                 <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
                   <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '紙箱減少' : 'Fewer Boxes'}</div>
-                  <div className="text-3xl font-black">66%</div>
-                  <div className="text-green-200 text-xs">125 → 42</div>
+                  <div className="text-3xl font-black">22%</div>
+                  <div className="text-green-200 text-xs">36 → 28</div>
                 </div>
                 <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
                   <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '利用率提升' : 'Utilization Up'}</div>
-                  <div className="text-3xl font-black">+34%</div>
-                  <div className="text-green-200 text-xs">58% → 92%</div>
+                  <div className="text-3xl font-black">+38%</div>
+                  <div className="text-green-200 text-xs">62% → 100%</div>
                 </div>
                 <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
                   <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '每箱裝載量' : 'Units/Box'}</div>
-                  <div className="text-3xl font-black">3×</div>
-                  <div className="text-green-200 text-xs">8 → 24</div>
+                  <div className="text-3xl font-black">+29%</div>
+                  <div className="text-green-200 text-xs">28 → 36</div>
                 </div>
                 <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
                   <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '運費節省' : 'Shipping Saved'}</div>
-                  <div className="text-3xl font-black">~$800</div>
+                  <div className="text-3xl font-black">~$80</div>
                   <div className="text-green-200 text-xs">{lang === 'zh' ? '每1000件' : 'per 1000 units'}</div>
                 </div>
               </div>
