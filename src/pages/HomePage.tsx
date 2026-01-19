@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useState, useEffect, useMemo } from 'react';
+import Packing3DPreview from '../components/Packing3DPreview';
 
 // Animated counter component
 function AnimatedNumber({ value, suffix = '', prefix = '' }: { value: number; suffix?: string; prefix?: string }) {
@@ -531,198 +532,143 @@ export default function HomePage() {
 
           {/* 3D Preview Cards */}
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Packing 3D View */}
-            <div className="group bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
-              <div className="aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 p-6 relative overflow-hidden">
-                {/* Simulated 3D Packing View */}
-                <svg viewBox="0 0 200 150" className="w-full h-full">
-                  <defs>
-                    <linearGradient id="boxTop" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#93C5FD"/>
-                      <stop offset="100%" stopColor="#3B82F6"/>
-                    </linearGradient>
-                    <linearGradient id="boxLeft" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#2563EB"/>
-                      <stop offset="100%" stopColor="#1E40AF"/>
-                    </linearGradient>
-                    <linearGradient id="boxRight" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#1D4ED8"/>
-                      <stop offset="100%" stopColor="#1E3A8A"/>
-                    </linearGradient>
-                  </defs>
-
-                  {/* Carton outline */}
-                  <g transform="translate(30, 20)" opacity="0.3">
-                    <polygon points="70,5 130,35 70,65 10,35" fill="none" stroke="#60A5FA" strokeWidth="1.5" strokeDasharray="4,2"/>
-                    <polygon points="10,35 70,65 70,120 10,90" fill="none" stroke="#60A5FA" strokeWidth="1.5" strokeDasharray="4,2"/>
-                    <polygon points="70,65 130,35 130,90 70,120" fill="none" stroke="#60A5FA" strokeWidth="1.5" strokeDasharray="4,2"/>
-                  </g>
-
-                  {/* Products inside - Layer 1 */}
-                  <g transform="translate(45, 55)">
-                    <g className="animate-pulse animation-delay-300">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                    <g transform="translate(25, 0)" className="animate-pulse animation-delay-500">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                    <g transform="translate(50, 0)" className="animate-pulse animation-delay-700">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                  </g>
-
-                  {/* Products - Layer 2 */}
-                  <g transform="translate(45, 35)">
-                    <g className="animate-pulse animation-delay-400">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                    <g transform="translate(25, 0)" className="animate-pulse animation-delay-600">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                    <g transform="translate(50, 0)" className="animate-pulse animation-delay-900">
-                      <polygon points="15,2 28,9 15,16 2,9" fill="#FCD34D"/>
-                      <polygon points="2,9 15,16 15,26 2,19" fill="#F59E0B"/>
-                      <polygon points="15,16 28,9 28,19 15,26" fill="#D97706"/>
-                    </g>
-                  </g>
-
+            {/* Packing 3D View - REAL 3D */}
+            <Link to="/packing" className="group">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
+                <div className="aspect-[4/3] relative overflow-hidden">
+                  {/* Real 3D Component */}
+                  <Packing3DPreview
+                    product={{ l: 15, w: 10, h: 5 }}
+                    carton={{ l: 60, w: 40, h: 40 }}
+                    autoRotate={true}
+                  />
                   {/* Stats overlay */}
-                  <g>
-                    <rect x="8" y="8" width="50" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
-                    <text x="14" y="22" fill="#10B981" fontSize="10" fontWeight="bold">24 pcs</text>
-                  </g>
-                </svg>
-
-                {/* Glow effect */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-16 bg-blue-500/20 blur-2xl" />
+                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-sm font-bold text-emerald-400">
+                    24 pcs
+                  </div>
+                  {/* Drag hint */}
+                  <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-[10px] text-slate-300">
+                    {lang === 'zh' ? '拖曳旋轉' : 'Drag to rotate'}
+                  </div>
+                </div>
+                <div className="p-4 text-center">
+                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{lang === 'zh' ? '產品裝箱視圖' : 'Product Packing View'}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '查看每件產品如何擺放' : 'See how each product fits'}</p>
+                </div>
               </div>
-              <div className="p-4 text-center">
-                <h3 className="font-bold text-slate-900">{lang === 'zh' ? '產品裝箱視圖' : 'Product Packing View'}</h3>
-                <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '查看每件產品如何擺放' : 'See how each product fits'}</p>
-              </div>
-            </div>
+            </Link>
 
             {/* Container Loading View */}
-            <div className="group bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
-              <div className="aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 p-6 relative overflow-hidden">
-                {/* Simulated Container View */}
-                <svg viewBox="0 0 200 150" className="w-full h-full">
-                  {/* Container outline */}
-                  <g transform="translate(20, 15)">
-                    {/* Container floor */}
-                    <polygon points="80,40 160,70 80,100 0,70" fill="#1E3A5F" opacity="0.5"/>
-                    {/* Container left wall */}
-                    <polygon points="0,70 80,100 80,130 0,100" fill="#0F172A" opacity="0.7"/>
-                    {/* Container right wall */}
-                    <polygon points="80,100 160,70 160,100 80,130" fill="#1E293B" opacity="0.6"/>
-
-                    {/* Cartons inside - Row 1 */}
-                    <g className="animate-pulse animation-delay-300">
-                      <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop)"/>
-                      <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft)"/>
-                      <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight)"/>
+            <Link to="/container" className="group">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
+                <div className="aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 p-6 relative overflow-hidden">
+                  {/* Simulated Container View */}
+                  <svg viewBox="0 0 200 150" className="w-full h-full">
+                    <defs>
+                      <linearGradient id="boxTop2" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#93C5FD"/>
+                        <stop offset="100%" stopColor="#3B82F6"/>
+                      </linearGradient>
+                      <linearGradient id="boxLeft2" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#2563EB"/>
+                        <stop offset="100%" stopColor="#1E40AF"/>
+                      </linearGradient>
+                      <linearGradient id="boxRight2" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#1D4ED8"/>
+                        <stop offset="100%" stopColor="#1E3A8A"/>
+                      </linearGradient>
+                    </defs>
+                    {/* Container outline */}
+                    <g transform="translate(20, 15)">
+                      <polygon points="80,40 160,70 80,100 0,70" fill="#1E3A5F" opacity="0.5"/>
+                      <polygon points="0,70 80,100 80,130 0,100" fill="#0F172A" opacity="0.7"/>
+                      <polygon points="80,100 160,70 160,100 80,130" fill="#1E293B" opacity="0.6"/>
+                      {/* Cartons inside */}
+                      <g className="animate-pulse animation-delay-300">
+                        <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop2)"/>
+                        <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft2)"/>
+                        <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight2)"/>
+                      </g>
+                      <g transform="translate(25, 0)" className="animate-pulse animation-delay-500">
+                        <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop2)"/>
+                        <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft2)"/>
+                        <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight2)"/>
+                      </g>
+                      <g transform="translate(50, 0)" className="animate-pulse animation-delay-700">
+                        <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop2)"/>
+                        <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft2)"/>
+                        <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight2)"/>
+                      </g>
+                      <g transform="translate(25, -12)" className="animate-pulse animation-delay-400">
+                        <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop2)"/>
+                        <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft2)"/>
+                        <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight2)"/>
+                      </g>
+                      <g transform="translate(50, -12)" className="animate-pulse animation-delay-600">
+                        <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop2)"/>
+                        <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft2)"/>
+                        <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight2)"/>
+                      </g>
                     </g>
-                    <g transform="translate(25, 0)" className="animate-pulse animation-delay-500">
-                      <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop)"/>
-                      <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft)"/>
-                      <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight)"/>
+                    {/* Stats */}
+                    <g>
+                      <rect x="8" y="8" width="55" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
+                      <text x="14" y="22" fill="#14B8A6" fontSize="10" fontWeight="bold">92.4%</text>
                     </g>
-                    <g transform="translate(50, 0)" className="animate-pulse animation-delay-700">
-                      <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop)"/>
-                      <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft)"/>
-                      <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight)"/>
-                    </g>
-
-                    {/* Row 2 */}
-                    <g transform="translate(25, -12)" className="animate-pulse animation-delay-400">
-                      <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop)"/>
-                      <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft)"/>
-                      <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight)"/>
-                    </g>
-                    <g transform="translate(50, -12)" className="animate-pulse animation-delay-600">
-                      <polygon points="25,58 50,70 25,82 0,70" fill="url(#boxTop)"/>
-                      <polygon points="0,70 25,82 25,100 0,88" fill="url(#boxLeft)"/>
-                      <polygon points="25,82 50,70 50,88 25,100" fill="url(#boxRight)"/>
-                    </g>
-                  </g>
-
-                  {/* Stats */}
-                  <g>
-                    <rect x="8" y="8" width="55" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
-                    <text x="14" y="22" fill="#14B8A6" fontSize="10" fontWeight="bold">92.4%</text>
-                  </g>
-                </svg>
-
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-16 bg-teal-500/20 blur-2xl" />
+                  </svg>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-16 bg-teal-500/20 blur-2xl" />
+                </div>
+                <div className="p-4 text-center">
+                  <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">{lang === 'zh' ? '貨櫃裝載視圖' : 'Container Loading View'}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '最大化貨櫃空間利用' : 'Maximize container space'}</p>
+                </div>
               </div>
-              <div className="p-4 text-center">
-                <h3 className="font-bold text-slate-900">{lang === 'zh' ? '貨櫃裝載視圖' : 'Container Loading View'}</h3>
-                <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '最大化貨櫃空間利用' : 'Maximize container space'}</p>
-              </div>
-            </div>
+            </Link>
 
             {/* FBA Size View */}
-            <div className="group bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
-              <div className="aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 p-6 relative overflow-hidden">
-                {/* FBA Size Comparison */}
-                <svg viewBox="0 0 200 150" className="w-full h-full">
-                  {/* Size tier boxes */}
-                  <g transform="translate(20, 30)">
-                    {/* Small Standard */}
-                    <g className="animate-pulse animation-delay-300">
-                      <rect x="0" y="70" width="25" height="30" fill="#10B981" rx="2"/>
-                      <text x="12" y="115" fill="#6EE7B7" fontSize="7" textAnchor="middle">Small</text>
+            <Link to="/fba" className="group">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
+                <div className="aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 p-6 relative overflow-hidden">
+                  {/* FBA Size Comparison */}
+                  <svg viewBox="0 0 200 150" className="w-full h-full">
+                    <g transform="translate(20, 30)">
+                      <g className="animate-pulse animation-delay-300">
+                        <rect x="0" y="70" width="25" height="30" fill="#10B981" rx="2"/>
+                        <text x="12" y="115" fill="#6EE7B7" fontSize="7" textAnchor="middle">Small</text>
+                      </g>
+                      <g className="animate-pulse animation-delay-500">
+                        <rect x="40" y="50" width="35" height="50" fill="#3B82F6" rx="2"/>
+                        <text x="57" y="115" fill="#93C5FD" fontSize="7" textAnchor="middle">Large</text>
+                      </g>
+                      <g className="animate-pulse animation-delay-700">
+                        <rect x="90" y="25" width="50" height="75" fill="#F59E0B" rx="2"/>
+                        <text x="115" y="115" fill="#FCD34D" fontSize="7" textAnchor="middle">Bulky</text>
+                      </g>
+                      <g className="animate-pulse animation-delay-900">
+                        <rect x="155" y="5" width="30" height="95" fill="#EF4444" rx="2"/>
+                        <text x="170" y="115" fill="#FCA5A5" fontSize="7" textAnchor="middle">XL</text>
+                      </g>
+                      <g transform="translate(40, 35)" className="animate-pulse">
+                        <polygon points="17,0 22,8 12,8" fill="#22D3EE"/>
+                      </g>
                     </g>
-                    {/* Large Standard */}
-                    <g className="animate-pulse animation-delay-500">
-                      <rect x="40" y="50" width="35" height="50" fill="#3B82F6" rx="2"/>
-                      <text x="57" y="115" fill="#93C5FD" fontSize="7" textAnchor="middle">Large</text>
+                    <g>
+                      <rect x="8" y="8" width="70" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
+                      <text x="14" y="22" fill="#60A5FA" fontSize="9" fontWeight="bold">Large Std</text>
                     </g>
-                    {/* Large Bulky */}
-                    <g className="animate-pulse animation-delay-700">
-                      <rect x="90" y="25" width="50" height="75" fill="#F59E0B" rx="2"/>
-                      <text x="115" y="115" fill="#FCD34D" fontSize="7" textAnchor="middle">Bulky</text>
+                    <g>
+                      <rect x="122" y="8" width="70" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
+                      <text x="128" y="22" fill="#FBBF24" fontSize="9" fontWeight="bold">$5.68/unit</text>
                     </g>
-                    {/* Extra Large */}
-                    <g className="animate-pulse animation-delay-900">
-                      <rect x="155" y="5" width="30" height="95" fill="#EF4444" rx="2"/>
-                      <text x="170" y="115" fill="#FCA5A5" fontSize="7" textAnchor="middle">XL</text>
-                    </g>
-
-                    {/* Arrow pointing to selected tier */}
-                    <g transform="translate(40, 35)" className="animate-pulse">
-                      <polygon points="17,0 22,8 12,8" fill="#22D3EE"/>
-                    </g>
-                  </g>
-
-                  {/* Stats */}
-                  <g>
-                    <rect x="8" y="8" width="70" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
-                    <text x="14" y="22" fill="#60A5FA" fontSize="9" fontWeight="bold">Large Std</text>
-                  </g>
-                  <g>
-                    <rect x="122" y="8" width="70" height="22" rx="4" fill="rgba(0,0,0,0.6)"/>
-                    <text x="128" y="22" fill="#FBBF24" fontSize="9" fontWeight="bold">$5.68/unit</text>
-                  </g>
-                </svg>
-
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-16 bg-amber-500/20 blur-2xl" />
+                  </svg>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-16 bg-amber-500/20 blur-2xl" />
+                </div>
+                <div className="p-4 text-center">
+                  <h3 className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">{lang === 'zh' ? 'FBA 尺寸分級' : 'FBA Size Tier'}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '即時查看費用分級' : 'Instant fee tier lookup'}</p>
+                </div>
               </div>
-              <div className="p-4 text-center">
-                <h3 className="font-bold text-slate-900">{lang === 'zh' ? 'FBA 尺寸分級' : 'FBA Size Tier'}</h3>
-                <p className="text-sm text-slate-500 mt-1">{lang === 'zh' ? '即時查看費用分級' : 'Instant fee tier lookup'}</p>
-              </div>
-            </div>
+            </Link>
           </div>
 
           {/* CTA */}
