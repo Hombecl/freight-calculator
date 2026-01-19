@@ -43,6 +43,24 @@ const guides: GuideCard[] = [
     readTime: '7 min',
     tags: ['Container', '20GP', '40GP', '40HQ'],
   },
+  {
+    slug: 'dimensional-weight-calculator',
+    title: 'Dimensional Weight Calculator: Air & Courier Shipping Guide',
+    titleZh: '體積重量計算器：空運與快遞運費指南',
+    description: 'Master dimensional weight (DIM weight) calculations for air freight and courier shipping. Learn DIM factors, formulas, and optimization strategies.',
+    descriptionZh: '掌握空運和快遞運輸的體積重量（材積重）計算。學習 DIM 係數、公式和優化策略。',
+    readTime: '6 min',
+    tags: ['DIM Weight', 'Air Freight', 'Courier', 'Shipping'],
+  },
+  {
+    slug: 'products-per-carton',
+    title: 'Products Per Carton Calculator: Optimize Packing Efficiency',
+    titleZh: '每箱裝箱數量計算器：優化裝箱效率',
+    description: 'Calculate optimal products per carton with rotation strategies. Maximize packing efficiency and reduce shipping costs.',
+    descriptionZh: '計算每箱最佳產品數量並採用旋轉策略。最大化裝箱效率，降低運輸成本。',
+    readTime: '5 min',
+    tags: ['Packing', 'Carton', 'Efficiency', 'Optimization'],
+  },
 ];
 
 export default function GuidesPage() {

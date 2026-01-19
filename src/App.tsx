@@ -7,6 +7,9 @@ import FbaPage from './pages/FbaPage';
 import GuidesPage from './pages/guides/GuidesPage';
 import FbaSizeTiersGuide from './pages/guides/FbaSizeTiersGuide';
 import CbmCalculatorGuide from './pages/guides/CbmCalculatorGuide';
+import ContainerLoadingGuide from './pages/guides/ContainerLoadingGuide';
+import DimensionalWeightGuide from './pages/guides/DimensionalWeightGuide';
+import ProductsPerCartonGuide from './pages/guides/ProductsPerCartonGuide';
 
 export default function App() {
   return (
@@ -19,6 +22,9 @@ export default function App() {
         <Route path="guides" element={<GuidesPage />} />
         <Route path="guides/fba-size-tiers-2025" element={<FbaSizeTiersGuide />} />
         <Route path="guides/cbm-calculator-shipping" element={<CbmCalculatorGuide />} />
+        <Route path="guides/container-loading-optimization" element={<ContainerLoadingGuide />} />
+        <Route path="guides/dimensional-weight-calculator" element={<DimensionalWeightGuide />} />
+        <Route path="guides/products-per-carton" element={<ProductsPerCartonGuide />} />
       </Route>
     </Routes>
   );
