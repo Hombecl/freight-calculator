@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Container, Cuboid, Languages, Settings, RotateCcw } from 'lucide-react';
+import { Package, Container, Cuboid, Languages, Settings, RotateCcw, BookOpen } from 'lucide-react';
 import Logo from './Logo';
 import { useApp } from '../../context/AppContext';
 
@@ -11,9 +11,12 @@ export default function Header() {
     { path: '/packing', label: 'Packing', labelZh: '產品裝箱', icon: Package, activeColor: 'bg-blue-600' },
     { path: '/container', label: 'Container', labelZh: '貨櫃裝載', icon: Container, activeColor: 'bg-teal-600' },
     { path: '/fba', label: 'FBA Size', labelZh: 'FBA 尺寸', icon: Cuboid, activeColor: 'bg-amber-500' },
+    { path: '/guides', label: 'Guides', labelZh: '指南', icon: BookOpen, activeColor: 'bg-purple-600' },
   ];
 
   const isHomePage = location.pathname === '/';
+  const isGuidesPage = location.pathname.startsWith('/guides');
+  const showNavigation = !isHomePage; // Show navigation on all pages except home
 
   return (
     <header className={`sticky top-0 z-40 ${isHomePage ? 'bg-transparent absolute w-full' : 'bg-white border-b border-gray-200 shadow-sm'}`}>
@@ -25,7 +28,9 @@ export default function Header() {
           {!isHomePage && (
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
+                const isActive = item.path === '/guides'
+                  ? location.pathname.startsWith('/guides')
+                  : location.pathname === item.path;
                 const Icon = item.icon;
                 return (
                   <Link
@@ -99,7 +104,9 @@ export default function Header() {
         {!isHomePage && (
           <nav className="md:hidden flex gap-1 pb-2 overflow-x-auto -mx-4 px-4">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/guides'
+                ? location.pathname.startsWith('/guides')
+                : location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link
