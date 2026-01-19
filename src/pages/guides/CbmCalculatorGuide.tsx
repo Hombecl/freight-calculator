@@ -36,6 +36,54 @@ export default function CbmCalculatorGuide() {
             "dateModified": "2025-01-15"
           })}
         </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is CBM in shipping?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "CBM stands for Cubic Meter, the most commonly used volume measurement unit in international logistics. Shipping companies calculate freight based on cargo CBM or weight, whichever is greater. The formula is: Length (cm) × Width (cm) × Height (cm) ÷ 1,000,000 = CBM."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I calculate CBM for multiple cartons?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "To calculate total CBM for multiple cartons: First calculate single carton CBM = (L × W × H) ÷ 1,000,000 (using cm). Then multiply by the number of cartons: Total CBM = Single Carton CBM × Quantity."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the capacity of a 20GP container?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "A 20GP (20-foot General Purpose) container has a total capacity of approximately 33 CBM. Internal dimensions are 5.9m × 2.35m × 2.39m. Usable capacity is typically 26-28 CBM, and maximum load weight is 28,000 kg."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the capacity of a 40GP and 40HQ container?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "A 40GP container has approximately 67 CBM capacity (usable: 54-58 CBM), with internal dimensions of 12.03m × 2.35m × 2.39m. A 40HQ (High Cube) container has approximately 76 CBM capacity (usable: 62-68 CBM), with dimensions of 12.03m × 2.35m × 2.69m. Both have a max load of 26,000 kg."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the recommended container loading rate?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The recommended loading rate is 80-85%. Avoid targeting 100% utilization as you need to leave space to prevent cargo damage and facilitate unloading. Using standardized carton sizes helps achieve more efficient stacking and higher loading rates."
+                }
+              }
+            ]
+          })}
+        </script>
       </Helmet>
 
       {/* Breadcrumb */}

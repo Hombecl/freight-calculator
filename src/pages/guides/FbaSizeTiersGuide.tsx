@@ -36,6 +36,54 @@ export default function FbaSizeTiersGuide() {
             "dateModified": "2025-01-15"
           })}
         </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What are Amazon FBA size tiers?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Amazon FBA size tiers are a classification system that categorizes products based on their dimensions and weight to determine fulfillment fees. The main tiers are: Small Standard (up to 15\" x 12\" x 0.75\", 1 lb), Large Standard (up to 18\" x 14\" x 8\", 20 lb), Large Bulky (up to 59\" x 33\" x 33\", 50 lb), and Extra Large (exceeds Large Bulky limits)."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How is FBA dimensional weight calculated?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "For standard-size items, dimensional weight = (Length x Width x Height) ÷ 139. For oversized items, the divisor is 166. Amazon uses the greater of actual weight or dimensional weight to calculate fees."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What changed in Amazon FBA fees for 2025?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "In 2025, Amazon changed how they round dimensional weight calculations for oversized items. Previously they rounded down to the nearest ounce; now they round up, which can increase fees by $0.20-$0.50 per unit for borderline products."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How can I reduce my FBA fulfillment fees?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Key strategies include: 1) Redesign packaging to reduce dimensions by 1-2 inches to potentially reach a lower tier, 2) Use lightweight packaging materials, 3) Calculate borderline products to find optimal dimensions, 4) Consider product bundling to reduce per-item fees."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What are the FBA fee ranges for each size tier?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "2025 FBA fulfillment fees by tier: Small Standard $3.06-$3.68/unit, Large Standard $3.68-$7.25/unit, Large Bulky $9.73-$26.33/unit, Extra Large $26.33+/unit. Fees vary based on weight within each tier."
+                }
+              }
+            ]
+          })}
+        </script>
       </Helmet>
 
       {/* Breadcrumb */}

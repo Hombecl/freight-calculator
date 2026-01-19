@@ -12,6 +12,38 @@ export default function FbaPage() {
         <meta property="og:url" content="https://www.dimpack3d.com/fba" />
         <meta property="og:title" content="Amazon FBA Size Tier Calculator 2025 - FBA Fee Estimator | DimPack3D" />
         <meta property="og:description" content="Calculate Amazon FBA size tiers and fulfillment fees based on 2025 standards. Optimize packaging to reduce FBA costs." />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "How do I use the FBA Size Tier Calculator?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Enter your product dimensions (length, width, height) and weight. The calculator will automatically determine which FBA size tier your product falls into and estimate the fulfillment fees based on Amazon's 2025 standards."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is this FBA calculator free to use?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes, our FBA Size Tier Calculator is 100% free with no sign-up required. You can calculate unlimited products and save your calculations locally in your browser."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this calculator use the latest Amazon FBA fee structure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes, our calculator is updated to reflect Amazon's 2025 FBA fee structure, including the latest changes to dimensional weight calculations and size tier thresholds."
+                }
+              }
+            ]
+          })}
+        </script>
       </Helmet>
       <Calculator fixedMode="fba" hideHeader={true} />
     </>
