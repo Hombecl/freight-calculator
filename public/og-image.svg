@@ -1,0 +1,76 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+
+  <!-- Grid Pattern -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- 3D Box Illustration -->
+  <g transform="translate(750, 180)">
+    <!-- Box faces -->
+    <polygon points="150,0 300,75 150,150 0,75" fill="#3B82F6" opacity="0.9"/>
+    <polygon points="0,75 150,150 150,300 0,225" fill="#2563EB"/>
+    <polygon points="150,150 300,75 300,225 150,300" fill="#1D4ED8"/>
+
+    <!-- Dimension lines -->
+    <line x1="150" y1="0" x2="150" y2="-20" stroke="#93C5FD" stroke-width="3"/>
+    <line x1="140" y1="-20" x2="160" y2="-20" stroke="#93C5FD" stroke-width="3"/>
+    <line x1="310" y1="150" x2="330" y2="140" stroke="#93C5FD" stroke-width="3"/>
+    <line x1="320" y1="135" x2="340" y2="145" stroke="#93C5FD" stroke-width="3"/>
+
+    <!-- Small floating boxes -->
+    <g transform="translate(-80, 50) scale(0.3)">
+      <polygon points="150,0 300,75 150,150 0,75" fill="#60A5FA" opacity="0.7"/>
+      <polygon points="0,75 150,150 150,300 0,225" fill="#3B82F6"/>
+      <polygon points="150,150 300,75 300,225 150,300" fill="#2563EB"/>
+    </g>
+    <g transform="translate(280, 20) scale(0.25)">
+      <polygon points="150,0 300,75 150,150 0,75" fill="#F59E0B" opacity="0.8"/>
+      <polygon points="0,75 150,150 150,300 0,225" fill="#D97706"/>
+      <polygon points="150,150 300,75 300,225 150,300" fill="#B45309"/>
+    </g>
+  </g>
+
+  <!-- Logo and Text -->
+  <g transform="translate(80, 200)">
+    <!-- Logo icon -->
+    <rect x="0" y="0" width="60" height="60" rx="12" fill="#3B82F6"/>
+    <g transform="translate(12, 12)">
+      <polygon points="18,4 32,12 18,20 4,12" fill="white" opacity="0.9"/>
+      <polygon points="4,12 18,20 18,32 4,24" fill="white" opacity="0.7"/>
+      <polygon points="18,20 32,12 32,24 18,32" fill="white" opacity="0.5"/>
+    </g>
+
+    <!-- Brand name -->
+    <text x="80" y="45" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="white">DimPack3D</text>
+
+    <!-- Tagline -->
+    <text x="0" y="120" font-family="Arial, sans-serif" font-size="48" font-weight="800" fill="white">Free 3D Packaging</text>
+    <text x="0" y="180" font-family="Arial, sans-serif" font-size="48" font-weight="800" fill="white">Calculator</text>
+
+    <!-- Features -->
+    <g transform="translate(0, 220)">
+      <circle cx="12" cy="12" r="8" fill="#22C55E"/>
+      <text x="30" y="18" font-family="Arial, sans-serif" font-size="20" fill="#94A3B8">CBM Calculator</text>
+
+      <circle cx="200" cy="12" r="8" fill="#22C55E"/>
+      <text x="218" y="18" font-family="Arial, sans-serif" font-size="20" fill="#94A3B8">FBA Size Tiers</text>
+
+      <circle cx="400" cy="12" r="8" fill="#22C55E"/>
+      <text x="418" y="18" font-family="Arial, sans-serif" font-size="20" fill="#94A3B8">Container Loading</text>
+    </g>
+  </g>
+
+  <!-- URL -->
+  <text x="80" y="580" font-family="Arial, sans-serif" font-size="24" fill="#64748B">www.dimpack3d.com</text>
+</svg>

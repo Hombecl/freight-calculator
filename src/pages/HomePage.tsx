@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -7,6 +8,15 @@ export default function HomePage() {
 
   return (
     <div className="-mt-14 md:-mt-16">
+      <Helmet>
+        <title>DimPack3D - Free 3D Packaging Calculator | CBM & FBA Size Optimizer</title>
+        <meta name="description" content="Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize FBA packaging dimensions, visualize container loading, and estimate shipping costs. Perfect for Amazon & Walmart sellers." />
+        <meta name="keywords" content="packaging calculator, CBM calculator, FBA calculator, dimensional weight calculator, 3D container loading, Amazon FBA size tiers, box packing calculator, shipping calculator, carton calculator, e-commerce logistics" />
+        <link rel="canonical" href="https://www.dimpack3d.com/" />
+        <meta property="og:url" content="https://www.dimpack3d.com/" />
+        <meta property="og:title" content="DimPack3D - Free 3D Packaging Calculator | CBM & FBA Size Optimizer" />
+        <meta property="og:description" content="Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize packaging, visualize container loading in 3D." />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white overflow-hidden">
         {/* Background Pattern */}
