@@ -1190,10 +1190,67 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, s
                     <div className="pb-2 text-xs text-blue-400 font-medium whitespace-nowrap">1 USD = {exchangeRate} RMB</div>
                 </div>
              </div>
-             <div className="grid grid-cols-2 gap-4">
-                <CompactInput label={`${t('unitPriceAir')} /kg`} value={rates.air} onChange={v => setRates({...rates, air: v})} unit={rates.airCurrency} />
-                <CompactInput label={`${t('unitPriceSea')} /${rates.seaUnit}`} value={rates.sea} onChange={v => setRates({...rates, sea: v})} unit={rates.seaCurrency} />
+
+             {/* Air Freight */}
+             <div className="bg-sky-50/50 p-3 rounded-lg border border-sky-100">
+                <div className="flex items-center gap-2 mb-2">
+                   <Plane size={14} className="text-sky-600" />
+                   <span className="text-xs font-bold text-sky-700">{t('airFreight')}</span>
+                </div>
+                <div className="flex items-end gap-2">
+                   <div className="flex-1">
+                      <CompactInput label={`${t('unitPriceAir')} /kg`} value={rates.air} onChange={v => setRates({...rates, air: v})} />
+                   </div>
+                   <div className="flex gap-1 pb-1">
+                      <button
+                        onClick={() => setRates({...rates, airCurrency: 'USD'})}
+                        className={`px-2 py-1.5 text-xs font-bold rounded transition-colors ${rates.airCurrency === 'USD' ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      >USD</button>
+                      <button
+                        onClick={() => setRates({...rates, airCurrency: 'RMB'})}
+                        className={`px-2 py-1.5 text-xs font-bold rounded transition-colors ${rates.airCurrency === 'RMB' ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      >RMB</button>
+                   </div>
+                </div>
              </div>
+
+             {/* Sea Freight */}
+             <div className="bg-teal-50/50 p-3 rounded-lg border border-teal-100">
+                <div className="flex items-center gap-2 mb-2">
+                   <Anchor size={14} className="text-teal-600" />
+                   <span className="text-xs font-bold text-teal-700">{t('seaFreight')}</span>
+                </div>
+                <div className="flex items-end gap-2">
+                   <div className="flex-1">
+                      <CompactInput label={`${t('unitPriceSea')}`} value={rates.sea} onChange={v => setRates({...rates, sea: v})} />
+                   </div>
+                   <div className="flex flex-col gap-1 pb-1">
+                      {/* Unit selection: CBM or KG */}
+                      <div className="flex gap-1">
+                         <button
+                           onClick={() => setRates({...rates, seaUnit: 'cbm'})}
+                           className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${rates.seaUnit === 'cbm' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                         >/CBM</button>
+                         <button
+                           onClick={() => setRates({...rates, seaUnit: 'kg'})}
+                           className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${rates.seaUnit === 'kg' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                         >/KG</button>
+                      </div>
+                      {/* Currency selection */}
+                      <div className="flex gap-1">
+                         <button
+                           onClick={() => setRates({...rates, seaCurrency: 'USD'})}
+                           className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${rates.seaCurrency === 'USD' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                         >USD</button>
+                         <button
+                           onClick={() => setRates({...rates, seaCurrency: 'RMB'})}
+                           className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${rates.seaCurrency === 'RMB' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                         >RMB</button>
+                      </div>
+                   </div>
+                </div>
+             </div>
+
              <CompactInput label={t('dimFactor')} value={dimFactor} onChange={setDimFactor} step="1" />
           </div>
 
@@ -2696,6 +2753,33 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
                 </div>
             </div>
           </>
+        )}
+
+        {/* Compact controls when header is hidden (for standalone pages) */}
+        {hideHeader && (
+          <div className="flex items-center justify-between bg-white px-3 md:px-4 py-2.5 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]">
+                <Languages size={14} /> <span>{lang === 'zh' ? '繁' : 'EN'}</span>
+              </button>
+              <div className="flex items-center bg-slate-100 p-0.5 md:p-1 rounded-lg border border-slate-200">
+                <button onClick={toggleLengthUnit} className="px-2 md:px-3 py-1.5 text-xs font-bold hover:bg-white rounded-md text-slate-600 w-12 md:w-14 active:scale-[0.98]">{units.length.toUpperCase()}</button>
+                <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
+                <button onClick={toggleWeightUnit} className="px-2 md:px-3 py-1.5 text-xs font-bold hover:bg-white rounded-md text-slate-600 w-12 md:w-14 active:scale-[0.98]">{units.weight.toUpperCase()}</button>
+                <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
+                <button onClick={() => setUnits(u => ({...u, currency: u.currency === 'USD' ? 'RMB' : 'USD'}))} className="px-2 md:px-3 py-1.5 text-xs font-bold text-green-700 bg-green-50 hover:bg-white rounded-md text-center w-12 md:w-14 active:scale-[0.98]">{units.currency}</button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
+                <RotateCcw size={16} />
+              </button>
+              <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">
+                <Settings size={16} className="group-hover:rotate-90 transition-transform duration-500" />
+                <span className="hidden md:inline">{t('settings')}</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {mode === 'packing' ? (
