@@ -86,6 +86,63 @@ input[type="number"] {
   animation: float 4s ease-in-out infinite;
 }
 
+/* Slow pulse animation */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.05); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+/* Slow spin animation */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-slow 30s linear infinite reverse;
+}
+
+/* Floating particle animation */
+@keyframes float-particle {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+}
+
+.animate-float-particle {
+  animation: float-particle 8s ease-in-out infinite;
+}
+
+/* Subtle Y rotation for 3D effect */
+@keyframes rotate-y-slow {
+  0% { transform: rotateY(-5deg); }
+  50% { transform: rotateY(5deg); }
+  100% { transform: rotateY(-5deg); }
+}
+
+.animate-rotate-y-slow {
+  animation: rotate-y-slow 6s ease-in-out infinite;
+}
+
+/* Animation delays */
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-500 { animation-delay: 500ms; }
+.animation-delay-600 { animation-delay: 600ms; }
+.animation-delay-700 { animation-delay: 700ms; }
+.animation-delay-900 { animation-delay: 900ms; }
+.animation-delay-1000 { animation-delay: 1000ms; }
+.animation-delay-2000 { animation-delay: 2000ms; }
+
 /* Page transition animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

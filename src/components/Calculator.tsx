@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, ZoomOut, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight, HardDrive, Lightbulb, ExternalLink, Lock, Unlock, Sliders } from 'lucide-react';
+import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, ZoomOut, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight, HardDrive, Lightbulb, ExternalLink, Lock, Unlock, Sliders, Search, Trash2, FolderOpen, Plus, Library } from 'lucide-react';
 
 // ===== Type Definitions =====
 type Language = 'zh' | 'en';
@@ -69,6 +69,21 @@ interface PackingScenario {
 interface CustomCarton extends DimensionsWithWeight {
   labelKey: string | null;
   name: string;
+}
+
+// Saved Product for Product Library
+interface SavedProduct {
+  id: string;
+  name: string;
+  sku?: string;                    // Optional SKU/Product code
+  product: DimensionsWithWeight;   // Product dimensions
+  carton: DimensionsWithWeight;    // Recommended carton
+  cartonThickness: number;
+  pcsPerCarton: number;            // Calculated pieces per carton
+  utilization: number;             // Space utilization %
+  notes?: string;                  // Optional notes
+  createdAt: number;               // Timestamp
+  updatedAt: number;
 }
 
 interface PackingCosts {
@@ -214,6 +229,23 @@ interface CartonOptimizerModalProps {
   t: (key: string) => string;
   lang: Language;
   onApply: (carton: DimensionsWithWeight) => void;
+}
+
+interface ProductLibraryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  savedProducts: SavedProduct[];
+  onSaveProduct: (product: SavedProduct) => void;
+  onDeleteProduct: (id: string) => void;
+  onLoadProduct: (product: SavedProduct) => void;
+  currentProduct: DimensionsWithWeight;
+  currentCarton: DimensionsWithWeight;
+  cartonThickness: number;
+  pcsPerCarton: number;
+  utilization: number;
+  units: Units;
+  t: (key: string) => string;
+  lang: Language;
 }
 
 // Three.js global
@@ -403,10 +435,11 @@ interface StoredData {
   shipmentCarton: DimensionsWithWeight;
   selectedContainerKey: ContainerKey;
   mode: Mode;
+  savedProducts?: SavedProduct[];  // Product Library
 }
 
 const STORAGE_KEY = 'dimpack3d-settings';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;  // Bump version for new feature
 
 // --- LocalStorage Helper Functions ---
 const loadFromStorage = (): Partial<StoredData> | null => {
@@ -414,10 +447,14 @@ const loadFromStorage = (): Partial<StoredData> | null => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
     const data = JSON.parse(stored) as StoredData;
-    // Version check for future migrations
-    if (data.version !== STORAGE_VERSION) {
-      console.log('Storage version mismatch, using defaults');
-      return null;
+    // Version migration - allow older versions, just add new fields
+    if (data.version < STORAGE_VERSION) {
+      console.log('Storage version upgrade, migrating data');
+      // Add savedProducts if missing (v1 -> v2)
+      if (!data.savedProducts) {
+        data.savedProducts = [];
+      }
+      data.version = STORAGE_VERSION;
     }
     return data;
   } catch (e) {
@@ -589,7 +626,27 @@ const TRANSLATIONS: TranslationDictionary = {
     lowestCost: "最低成本",
     preview3D: "3D 預覽",
     sortByUtil: "按利用率排序",
-    sortByCost: "按成本排序"
+    sortByCost: "按成本排序",
+    // Product Library
+    productLibrary: "產品庫",
+    productLibraryDesc: "儲存和管理常用產品設定",
+    saveProduct: "儲存產品",
+    loadProduct: "載入產品",
+    savedProducts: "已儲存產品",
+    noSavedProducts: "尚未儲存任何產品",
+    productName: "產品名稱",
+    productSku: "SKU / 編號",
+    productNotes: "備註",
+    saveToLibrary: "儲存到產品庫",
+    updateProduct: "更新產品",
+    deleteProduct: "刪除",
+    loadThisProduct: "載入此產品",
+    productSaved: "產品已儲存",
+    productLoaded: "產品已載入",
+    productDeleted: "產品已刪除",
+    confirmDelete: "確定刪除此產品？",
+    lastUpdated: "最後更新",
+    searchProducts: "搜尋產品..."
   },
   en: {
     title: "DimPack3D",
@@ -740,7 +797,27 @@ const TRANSLATIONS: TranslationDictionary = {
     lowestCost: "Lowest Cost",
     preview3D: "3D Preview",
     sortByUtil: "Sort by Utilization",
-    sortByCost: "Sort by Cost"
+    sortByCost: "Sort by Cost",
+    // Product Library
+    productLibrary: "Product Library",
+    productLibraryDesc: "Save and manage frequently used product settings",
+    saveProduct: "Save Product",
+    loadProduct: "Load Product",
+    savedProducts: "Saved Products",
+    noSavedProducts: "No products saved yet",
+    productName: "Product Name",
+    productSku: "SKU / Code",
+    productNotes: "Notes",
+    saveToLibrary: "Save to Library",
+    updateProduct: "Update Product",
+    deleteProduct: "Delete",
+    loadThisProduct: "Load This Product",
+    productSaved: "Product saved",
+    productLoaded: "Product loaded",
+    productDeleted: "Product deleted",
+    confirmDelete: "Delete this product?",
+    lastUpdated: "Last Updated",
+    searchProducts: "Search products..."
   }
 };
 
@@ -2104,6 +2181,352 @@ const CartonOptimizerModal: React.FC<CartonOptimizerModalProps> = ({
   );
 };
 
+// ===== Product Library Modal =====
+const ProductLibraryModal: React.FC<ProductLibraryModalProps> = ({
+  isOpen,
+  onClose,
+  savedProducts,
+  onSaveProduct,
+  onDeleteProduct,
+  onLoadProduct,
+  currentProduct,
+  currentCarton,
+  cartonThickness,
+  pcsPerCarton,
+  utilization,
+  units,
+  t,
+  lang
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newSku, setNewSku] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsAddMode(false);
+      setEditingId(null);
+      setNewName('');
+      setNewSku('');
+      setNewNotes('');
+      setSearchTerm('');
+      setConfirmDeleteId(null);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const filteredProducts = savedProducts.filter(p => {
+    const term = searchTerm.toLowerCase();
+    return p.name.toLowerCase().includes(term) ||
+           (p.sku && p.sku.toLowerCase().includes(term)) ||
+           (p.notes && p.notes.toLowerCase().includes(term));
+  });
+
+  const handleSave = () => {
+    if (!newName.trim()) return;
+
+    const now = Date.now();
+    const product: SavedProduct = {
+      id: editingId || `prod_${now}`,
+      name: newName.trim(),
+      sku: newSku.trim() || undefined,
+      product: { ...currentProduct },
+      carton: { ...currentCarton },
+      cartonThickness,
+      pcsPerCarton,
+      utilization,
+      notes: newNotes.trim() || undefined,
+      createdAt: editingId ? (savedProducts.find(p => p.id === editingId)?.createdAt || now) : now,
+      updatedAt: now
+    };
+
+    onSaveProduct(product);
+    setIsAddMode(false);
+    setEditingId(null);
+    setNewName('');
+    setNewSku('');
+    setNewNotes('');
+  };
+
+  const handleEdit = (product: SavedProduct) => {
+    setEditingId(product.id);
+    setNewName(product.name);
+    setNewSku(product.sku || '');
+    setNewNotes(product.notes || '');
+    setIsAddMode(true);
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString(lang === 'zh' ? 'zh-TW' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDimensions = (dims: DimensionsWithWeight) => {
+    return `${dims.l.toFixed(1)} × ${dims.w.toFixed(1)} × ${dims.h.toFixed(1)} ${units.length}`;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-4 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Library size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">{t('productLibrary')}</h2>
+                <p className="text-xs text-white/70">{t('productLibraryDesc')}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Add/Edit Mode */}
+          {isAddMode ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-700">
+                  {editingId ? t('updateProduct') : t('saveToLibrary')}
+                </h3>
+                <button
+                  onClick={() => { setIsAddMode(false); setEditingId(null); setNewName(''); setNewSku(''); setNewNotes(''); }}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  {t('close')}
+                </button>
+              </div>
+
+              {/* Current Product Summary */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="text-xs text-slate-500 mb-2">{lang === 'zh' ? '當前產品設定' : 'Current Product Settings'}</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">{lang === 'zh' ? '產品尺寸：' : 'Product: '}</span>
+                    <span className="font-mono font-bold text-slate-700">{formatDimensions(currentProduct)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">{lang === 'zh' ? '紙箱尺寸：' : 'Carton: '}</span>
+                    <span className="font-mono font-bold text-slate-700">{formatDimensions(currentCarton)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">{t('pcsPerCarton')}: </span>
+                    <span className="font-bold text-indigo-600">{pcsPerCarton}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">{t('utilization')}: </span>
+                    <span className={`font-bold ${utilization > 80 ? 'text-green-600' : utilization > 65 ? 'text-blue-600' : 'text-orange-500'}`}>
+                      {utilization.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">{t('productName')} *</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    placeholder={lang === 'zh' ? '例：藍牙耳機 A200' : 'e.g. Wireless Earbuds A200'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">{t('productSku')}</label>
+                  <input
+                    type="text"
+                    value={newSku}
+                    onChange={e => setNewSku(e.target.value)}
+                    placeholder={lang === 'zh' ? '例：SKU-BT-A200' : 'e.g. SKU-BT-A200'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">{t('productNotes')}</label>
+                  <textarea
+                    value={newNotes}
+                    onChange={e => setNewNotes(e.target.value)}
+                    placeholder={lang === 'zh' ? '可選備註...' : 'Optional notes...'}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <button
+                onClick={handleSave}
+                disabled={!newName.trim()}
+                className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                <Save size={16} />
+                {editingId ? t('updateProduct') : t('saveToLibrary')}
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Search & Add */}
+              <div className="flex gap-2 mb-4">
+                <div className="flex-1 relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder={t('searchProducts')}
+                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <button
+                  onClick={() => setIsAddMode(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus size={16} />
+                  {t('saveProduct')}
+                </button>
+              </div>
+
+              {/* Product List */}
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <FolderOpen size={48} className="mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500">{savedProducts.length === 0 ? t('noSavedProducts') : (lang === 'zh' ? '沒有找到匹配的產品' : 'No matching products found')}</p>
+                  {savedProducts.length === 0 && (
+                    <button
+                      onClick={() => setIsAddMode(true)}
+                      className="mt-4 px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition-colors text-sm"
+                    >
+                      {t('saveProduct')}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredProducts.map(product => (
+                    <div
+                      key={product.id}
+                      className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-bold text-slate-800">{product.name}</h4>
+                          {product.sku && (
+                            <span className="text-xs text-slate-500 font-mono">{product.sku}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title={lang === 'zh' ? '編輯' : 'Edit'}
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          {confirmDeleteId === product.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { onDeleteProduct(product.id); setConfirmDeleteId(null); }}
+                                className="px-2 py-1 text-xs bg-red-500 text-white rounded font-bold"
+                              >
+                                {lang === 'zh' ? '確認' : 'Confirm'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="px-2 py-1 text-xs bg-slate-200 text-slate-600 rounded font-bold"
+                              >
+                                {lang === 'zh' ? '取消' : 'Cancel'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(product.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title={t('deleteProduct')}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                        <div className="bg-slate-50 rounded-lg p-2">
+                          <span className="text-slate-500">{lang === 'zh' ? '產品' : 'Product'}: </span>
+                          <span className="font-mono font-bold text-slate-700">{formatDimensions(product.product)}</span>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-2">
+                          <span className="text-slate-500">{lang === 'zh' ? '紙箱' : 'Carton'}: </span>
+                          <span className="font-mono font-bold text-slate-700">{formatDimensions(product.carton)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="text-indigo-600 font-bold">{product.pcsPerCarton} pcs</span>
+                          <span className={`font-bold ${product.utilization > 80 ? 'text-green-600' : product.utilization > 65 ? 'text-blue-600' : 'text-orange-500'}`}>
+                            {product.utilization.toFixed(1)}%
+                          </span>
+                          <span className="text-slate-400">{t('lastUpdated')}: {formatDate(product.updatedAt)}</span>
+                        </div>
+                        <button
+                          onClick={() => { onLoadProduct(product); onClose(); }}
+                          className="px-3 py-1.5 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition-colors text-xs flex items-center gap-1"
+                        >
+                          <ArrowRight size={12} />
+                          {t('loadThisProduct')}
+                        </button>
+                      </div>
+
+                      {product.notes && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                          {product.notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-slate-50 px-4 md:px-6 py-3 border-t flex items-center justify-between">
+          <span className="text-xs text-slate-500">
+            {savedProducts.length} {lang === 'zh' ? '個產品已儲存' : 'products saved'}
+          </span>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition-colors text-sm"
+          >
+            {t('close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item, outer, units, onApply, customCartons, rates, dimFactor, exchangeRate, t, cartonThickness, isContainerMode = false }) => {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [simOuter, setSimOuter] = useState<DimensionsWithWeight>(outer);
@@ -2359,9 +2782,13 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const groupRef = useRef<THREE.Group | null>(null);
+  const productMeshRef = useRef<THREE.Mesh | null>(null);
+  const productLineRef = useRef<THREE.LineSegments | null>(null);
+  const tierMeshesRef = useRef<{ mesh: THREE.Mesh; line: THREE.LineSegments; tierIdx: number }[]>([]);
   const initialCameraPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const requestRef = useRef<number | null>(null);
   const lockVerticalRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   const [selectedTierIdx, setSelectedTierIdx] = useState(0);
   const [isLegendExpanded, setIsLegendExpanded] = useState(false); // Default collapsed on mobile
@@ -2443,8 +2870,16 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
     setSelectedTierIdx(idx >= 0 ? idx : 0);
   }, [isOpen, currentTier, displayTiers]);
 
+  // Reset initialization flag when modal closes
   useEffect(() => {
-    if (!threeLoaded || !containerRef.current || !isOpen) return;
+    if (!isOpen) {
+      isInitializedRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Initialize 3D scene (only once when modal opens)
+  useEffect(() => {
+    if (!threeLoaded || !containerRef.current || !isOpen || isInitializedRef.current) return;
 
     const THREE = window.THREE;
     const width = containerRef.current.clientWidth;
@@ -2487,6 +2922,7 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
 
     // Draw tier boundary boxes (from largest to smallest for proper layering)
     const tiersToDraw = [...displayTiers].reverse();
+    tierMeshesRef.current = [];
     tiersToDraw.forEach((tier, idx) => {
       const reversedIdx = displayTiers.length - 1 - idx;
       const dims = tier.maxDims;
@@ -2499,7 +2935,7 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
       const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color(tier.color),
         transparent: true,
-        opacity: selectedTierIdx === reversedIdx ? 0.25 : 0.08,
+        opacity: 0.08,
         depthWrite: false,
       });
       const mesh = new THREE.Mesh(geometry, material);
@@ -2511,15 +2947,18 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
       const lineMaterial = new THREE.LineBasicMaterial({
         color: new THREE.Color(tier.color),
         transparent: true,
-        opacity: selectedTierIdx === reversedIdx ? 1 : 0.4,
+        opacity: 0.4,
         linewidth: 2,
       });
       const line = new THREE.LineSegments(edges, lineMaterial);
       line.position.copy(mesh.position);
       group.add(line);
+
+      // Store reference for later updates
+      tierMeshesRef.current.push({ mesh, line, tierIdx: reversedIdx });
     });
 
-    // Draw user's product (solid colored box)
+    // Draw user's product (solid colored box) - initial size
     const [pL, pM, pS] = sortedDims; // longest, median, shortest
     const productGeometry = new THREE.BoxGeometry(pL, pS, pM);
     const productMaterial = new THREE.MeshLambertMaterial({
@@ -2529,6 +2968,7 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
     const productMesh = new THREE.Mesh(productGeometry, productMaterial);
     productMesh.position.set(0, pS / 2, 0); // Sit on ground plane
     group.add(productMesh);
+    productMeshRef.current = productMesh;
 
     // Product edges
     const productEdges = new THREE.EdgesGeometry(productGeometry);
@@ -2538,6 +2978,7 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
     );
     productLine.position.copy(productMesh.position);
     group.add(productLine);
+    productLineRef.current = productLine;
 
     // Ground plane (grid)
     const gridHelper = new THREE.GridHelper(80, 20, 0x475569, 0x334155);
@@ -2601,6 +3042,9 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
     };
     animate();
 
+    // Mark as initialized
+    isInitializedRef.current = true;
+
     return () => {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -2611,8 +3055,52 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
         } catch (e) { /* ignore */ }
       }
       window.removeEventListener('mouseup', onMouseUp);
+      isInitializedRef.current = false;
     };
-  }, [threeLoaded, isOpen, sortedDims, displayTiers, currentTier, selectedTierIdx]);
+  }, [threeLoaded, isOpen, displayTiers]); // Removed sortedDims, selectedTierIdx from deps
+
+  // Update product mesh when dimensions change (without rebuilding scene)
+  useEffect(() => {
+    if (!isOpen || !productMeshRef.current || !productLineRef.current || !groupRef.current) return;
+
+    const THREE = window.THREE;
+    const [pL, pM, pS] = sortedDims;
+
+    // Remove old product mesh and line
+    groupRef.current.remove(productMeshRef.current);
+    groupRef.current.remove(productLineRef.current);
+
+    // Create new product geometry
+    const productGeometry = new THREE.BoxGeometry(pL, pS, pM);
+    const productMaterial = new THREE.MeshLambertMaterial({
+      color: 0xfbbf24,
+      transparent: false,
+    });
+    const productMesh = new THREE.Mesh(productGeometry, productMaterial);
+    productMesh.position.set(0, pS / 2, 0);
+    groupRef.current.add(productMesh);
+    productMeshRef.current = productMesh;
+
+    // Create new edges
+    const productEdges = new THREE.EdgesGeometry(productGeometry);
+    const productLine = new THREE.LineSegments(
+      productEdges,
+      new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
+    );
+    productLine.position.copy(productMesh.position);
+    groupRef.current.add(productLine);
+    productLineRef.current = productLine;
+  }, [isOpen, sortedDims]);
+
+  // Update tier opacity when selectedTierIdx changes
+  useEffect(() => {
+    if (!isOpen) return;
+    tierMeshesRef.current.forEach(({ mesh, line, tierIdx }) => {
+      const isSelected = tierIdx === selectedTierIdx;
+      (mesh.material as THREE.MeshBasicMaterial).opacity = isSelected ? 0.25 : 0.08;
+      (line.material as THREE.LineBasicMaterial).opacity = isSelected ? 1 : 0.4;
+    });
+  }, [isOpen, selectedTierIdx]);
 
   if (!isOpen) return null;
 
@@ -2724,28 +3212,28 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
             </div>
 
             {/* Side Panel */}
-            <div className="w-full md:w-80 bg-slate-800 border-t md:border-t-0 md:border-l border-slate-700 flex flex-col md:overflow-y-auto">
+            <div className="w-full md:w-96 lg:w-[420px] bg-slate-800 border-t md:border-t-0 md:border-l border-slate-700 flex flex-col md:overflow-y-auto">
 
               {/* Your Product Info */}
               <div className="p-4 border-b border-slate-700">
-                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <Package size={14} />
+                <h4 className="text-sm md:text-base font-bold text-amber-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Package size={16} />
                   {lang === 'zh' ? '你的產品' : 'Your Product'}
                 </h4>
-                <div className="bg-slate-900 rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="bg-slate-900 rounded-lg p-3 md:p-4 space-y-2.5">
+                  <div className="flex justify-between text-sm md:text-base">
                     <span className="text-slate-400">{lang === 'zh' ? '尺寸 (已排序)' : 'Dimensions (sorted)'}</span>
-                    <span className="font-mono font-bold text-white">
+                    <span className="font-mono font-bold text-white text-base md:text-lg">
                       {sortedDims[0].toFixed(1)}" × {sortedDims[1].toFixed(1)}" × {sortedDims[2].toFixed(1)}"
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm md:text-base">
                     <span className="text-slate-400">{lang === 'zh' ? '計費重量' : 'Billable Weight'}</span>
-                    <span className="font-mono font-bold text-white">{billableWeight.toFixed(2)} lb</span>
+                    <span className="font-mono font-bold text-white text-base md:text-lg">{billableWeight.toFixed(2)} lb</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm md:text-base">
                     <span className="text-slate-400">{lang === 'zh' ? '當前等級' : 'Current Tier'}</span>
-                    <span className="font-bold" style={{ color: currentTier.color }}>
+                    <span className="font-bold text-base md:text-lg" style={{ color: currentTier.color }}>
                       {lang === 'zh' ? currentTier.nameZh : currentTier.name}
                     </span>
                   </div>
@@ -2758,19 +3246,19 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                   className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer hover:bg-slate-700/30 transition-colors active:bg-slate-700/50"
                   onClick={() => setIsSlidersExpanded(!isSlidersExpanded)}
                 >
-                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2">
-                    <Sliders size={14} />
+                  <h4 className="text-sm md:text-base font-bold text-blue-400 uppercase tracking-wide flex items-center gap-2">
+                    <Sliders size={16} />
                     {lang === 'zh' ? '即時調整尺寸' : 'Adjust Dimensions'}
                   </h4>
-                  {isSlidersExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                  {isSlidersExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                 </div>
                 {isSlidersExpanded && (
-                  <div className="px-4 pb-4 space-y-3">
+                  <div className="px-4 pb-4 space-y-4">
                     {/* Length Slider */}
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
+                      <div className="flex justify-between text-sm md:text-base mb-1.5">
                         <span className="text-slate-400">{lang === 'zh' ? '長度' : 'Length'}</span>
-                        <span className="font-mono text-white">{localDims.l.toFixed(1)}"</span>
+                        <span className="font-mono font-bold text-white">{localDims.l.toFixed(1)}"</span>
                       </div>
                       <input
                         type="range"
@@ -2779,14 +3267,14 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                         step="0.1"
                         value={localDims.l}
                         onChange={(e) => handleSliderChange('l', parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="w-full h-2.5 md:h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                       />
                     </div>
                     {/* Width Slider */}
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
+                      <div className="flex justify-between text-sm md:text-base mb-1.5">
                         <span className="text-slate-400">{lang === 'zh' ? '闊度' : 'Width'}</span>
-                        <span className="font-mono text-white">{localDims.w.toFixed(1)}"</span>
+                        <span className="font-mono font-bold text-white">{localDims.w.toFixed(1)}"</span>
                       </div>
                       <input
                         type="range"
@@ -2795,14 +3283,14 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                         step="0.1"
                         value={localDims.w}
                         onChange={(e) => handleSliderChange('w', parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="w-full h-2.5 md:h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                       />
                     </div>
                     {/* Height Slider */}
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
+                      <div className="flex justify-between text-sm md:text-base mb-1.5">
                         <span className="text-slate-400">{lang === 'zh' ? '高度' : 'Height'}</span>
-                        <span className="font-mono text-white">{localDims.h.toFixed(1)}"</span>
+                        <span className="font-mono font-bold text-white">{localDims.h.toFixed(1)}"</span>
                       </div>
                       <input
                         type="range"
@@ -2811,14 +3299,14 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                         step="0.1"
                         value={localDims.h}
                         onChange={(e) => handleSliderChange('h', parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="w-full h-2.5 md:h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                       />
                     </div>
                     {/* Weight Slider */}
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
+                      <div className="flex justify-between text-sm md:text-base mb-1.5">
                         <span className="text-slate-400">{lang === 'zh' ? '重量' : 'Weight'}</span>
-                        <span className="font-mono text-white">{localDims.weight.toFixed(2)} lb</span>
+                        <span className="font-mono font-bold text-white">{localDims.weight.toFixed(2)} lb</span>
                       </div>
                       <input
                         type="range"
@@ -2827,18 +3315,18 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                         step="0.1"
                         value={localDims.weight}
                         onChange={(e) => handleSliderChange('weight', parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                        className="w-full h-2.5 md:h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
                       />
                     </div>
                     {/* Quick Set to Tier Buttons */}
-                    <div className="pt-2 border-t border-slate-700/50">
-                      <div className="text-[10px] text-slate-500 uppercase mb-2">{lang === 'zh' ? '快速設定至 Tier 邊界' : 'Quick Set to Tier'}</div>
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="pt-3 border-t border-slate-700/50">
+                      <div className="text-xs md:text-sm text-slate-500 uppercase mb-2">{lang === 'zh' ? '快速設定至 Tier 邊界' : 'Quick Set to Tier'}</div>
+                      <div className="flex flex-wrap gap-2">
                         {displayTiers.map((tier, idx) => (
                           <button
                             key={tier.tier}
                             onClick={() => handleSetToTier(idx)}
-                            className="text-[10px] px-2 py-1 rounded border transition-colors"
+                            className="text-xs md:text-sm px-2.5 py-1.5 rounded border transition-colors font-medium"
                             style={{
                               borderColor: tier.color,
                               color: tier.color,
@@ -2882,11 +3370,11 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
 
                 return (
                   <div className="p-4 border-b border-slate-700 bg-gradient-to-r from-green-900/20 to-slate-800">
-                    <h4 className="text-xs font-bold text-green-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                      <Lightbulb size={14} />
+                    <h4 className="text-sm md:text-base font-bold text-green-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                      <Lightbulb size={16} />
                       {lang === 'zh' ? '降級優化建議' : 'Tier Down Tips'}
                     </h4>
-                    <div className="text-xs text-slate-300 mb-3">
+                    <div className="text-sm md:text-base text-slate-300 mb-3">
                       {lang === 'zh'
                         ? `調整以下尺寸可降至 ${lowerTier.nameZh}，節省約 $${feeSaving.toFixed(2)}/件`
                         : `Adjust to reach ${lowerTier.name} and save ~$${feeSaving.toFixed(2)}/unit`
@@ -2894,14 +3382,14 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                     </div>
                     <div className="space-y-2">
                       {blockers.map((b, i) => (
-                        <div key={i} className="bg-slate-900/80 rounded p-2 flex items-center justify-between">
+                        <div key={i} className="bg-slate-900/80 rounded p-2.5 md:p-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <ArrowRight size={12} className="text-green-400" />
-                            <span className="text-slate-400 text-xs">{b.dim}</span>
+                            <ArrowRight size={14} className="text-green-400" />
+                            <span className="text-slate-400 text-sm md:text-base">{b.dim}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-red-400 font-mono text-xs">-{b.diff.toFixed(1)}{b.isWeight ? ' lb' : '"'}</span>
-                            <span className="text-slate-500 text-[10px] ml-1">
+                            <span className="text-red-400 font-mono text-sm md:text-base font-bold">-{b.diff.toFixed(1)}{b.isWeight ? ' lb' : '"'}</span>
+                            <span className="text-slate-500 text-xs md:text-sm ml-1.5">
                               → {b.limit}{b.isWeight ? ' lb' : '"'}
                             </span>
                           </div>
@@ -2912,13 +3400,13 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                 );
               })()}
 
-              {/* Tier Selector */}
+              {/* Tier Selector with Prices */}
               <div className="p-4 border-b border-slate-700">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <Ruler size={14} />
-                  {lang === 'zh' ? '選擇查看等級' : 'Select Tier to View'}
+                <h4 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Ruler size={16} />
+                  {lang === 'zh' ? 'Size Tier 比較' : 'Size Tier Comparison'}
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {displayTiers.map((tier, idx) => {
                     const isCurrentTier = tier.tier === currentTier.tier;
                     const [pL, pM, pS] = sortedDims;
@@ -2931,35 +3419,46 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
                       <button
                         key={tier.tier}
                         onClick={() => setSelectedTierIdx(idx)}
-                        className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                        className={`w-full text-left p-3 md:p-4 rounded-lg border-2 transition-all ${
                           selectedTierIdx === idx
                             ? 'border-amber-400 bg-slate-700'
                             : 'border-slate-600 bg-slate-900 hover:border-slate-500'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <div
-                              className="w-3 h-3 rounded-full"
+                              className="w-4 h-4 md:w-5 md:h-5 rounded-full"
                               style={{ backgroundColor: tier.color }}
                             />
-                            <span className="font-bold text-white text-sm">
+                            <span className="font-bold text-white text-base md:text-lg">
                               {lang === 'zh' ? tier.nameZh : tier.name}
                             </span>
                           </div>
-                          {fitsAll ? (
-                            <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">
-                              {lang === 'zh' ? '符合' : 'FITS'}
+                          <div className="flex items-center gap-2">
+                            {/* Price badge */}
+                            <span className="text-sm md:text-base font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded" style={{ color: tier.color, backgroundColor: `${tier.color}20` }}>
+                              ${tier.baseFee.toFixed(2)}
                             </span>
-                          ) : (
-                            <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded font-bold">
-                              {lang === 'zh' ? '超出' : 'EXCEEDS'}
-                            </span>
-                          )}
+                            {fitsAll ? (
+                              <span className="text-xs md:text-sm bg-green-500/20 text-green-400 px-2 py-0.5 md:py-1 rounded font-bold">
+                                {lang === 'zh' ? '符合' : 'FITS'}
+                              </span>
+                            ) : (
+                              <span className="text-xs md:text-sm bg-red-500/20 text-red-400 px-2 py-0.5 md:py-1 rounded font-bold">
+                                {lang === 'zh' ? '超出' : 'EXCEEDS'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Size limits preview */}
+                        <div className="text-xs md:text-sm text-slate-400 font-mono">
+                          {tier.maxDims.longest}" × {tier.maxDims.median}" × {tier.maxDims.shortest}" / {tier.maxWeight} lb
                         </div>
                         {isCurrentTier && (
-                          <div className="mt-1 text-[10px] text-amber-400">
-                            ← {lang === 'zh' ? '你的產品在此等級' : 'Your product is here'}
+                          <div className="mt-1.5 text-xs md:text-sm text-amber-400 font-bold flex items-center gap-1.5">
+                            <CheckCircle size={14} />
+                            {lang === 'zh' ? '你的產品在此等級' : 'Your product is here'}
                           </div>
                         )}
                       </button>
@@ -2970,45 +3469,45 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
 
               {/* Selected Tier Details */}
               <div className="p-4 flex-1">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <Info size={14} />
+                <h4 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <Info size={16} />
                   {lang === 'zh' ? '等級限制' : 'Tier Limits'}
                 </h4>
                 {displayTiers[selectedTierIdx] && (
-                  <div className="bg-slate-900 rounded-lg p-3 space-y-3">
+                  <div className="bg-slate-900 rounded-lg p-3 md:p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-slate-800 rounded p-2">
-                        <div className="text-[10px] text-slate-500 uppercase">Longest</div>
-                        <div className="font-mono font-bold text-white">{displayTiers[selectedTierIdx].maxDims.longest}"</div>
-                        <div className={`text-[10px] mt-1 ${sortedDims[0] <= displayTiers[selectedTierIdx].maxDims.longest ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="bg-slate-800 rounded p-2 md:p-3">
+                        <div className="text-[10px] md:text-xs text-slate-500 uppercase">Longest</div>
+                        <div className="font-mono font-bold text-white text-sm md:text-lg">{displayTiers[selectedTierIdx].maxDims.longest}"</div>
+                        <div className={`text-[10px] md:text-xs mt-1 ${sortedDims[0] <= displayTiers[selectedTierIdx].maxDims.longest ? 'text-green-400' : 'text-red-400'}`}>
                           ({sortedDims[0] <= displayTiers[selectedTierIdx].maxDims.longest ? '✓' : '✗'} {sortedDims[0].toFixed(1)}")
                         </div>
                       </div>
-                      <div className="bg-slate-800 rounded p-2">
-                        <div className="text-[10px] text-slate-500 uppercase">Median</div>
-                        <div className="font-mono font-bold text-white">{displayTiers[selectedTierIdx].maxDims.median}"</div>
-                        <div className={`text-[10px] mt-1 ${sortedDims[1] <= displayTiers[selectedTierIdx].maxDims.median ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="bg-slate-800 rounded p-2 md:p-3">
+                        <div className="text-[10px] md:text-xs text-slate-500 uppercase">Median</div>
+                        <div className="font-mono font-bold text-white text-sm md:text-lg">{displayTiers[selectedTierIdx].maxDims.median}"</div>
+                        <div className={`text-[10px] md:text-xs mt-1 ${sortedDims[1] <= displayTiers[selectedTierIdx].maxDims.median ? 'text-green-400' : 'text-red-400'}`}>
                           ({sortedDims[1] <= displayTiers[selectedTierIdx].maxDims.median ? '✓' : '✗'} {sortedDims[1].toFixed(1)}")
                         </div>
                       </div>
-                      <div className="bg-slate-800 rounded p-2">
-                        <div className="text-[10px] text-slate-500 uppercase">Shortest</div>
-                        <div className="font-mono font-bold text-white">{displayTiers[selectedTierIdx].maxDims.shortest}"</div>
-                        <div className={`text-[10px] mt-1 ${sortedDims[2] <= displayTiers[selectedTierIdx].maxDims.shortest ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="bg-slate-800 rounded p-2 md:p-3">
+                        <div className="text-[10px] md:text-xs text-slate-500 uppercase">Shortest</div>
+                        <div className="font-mono font-bold text-white text-sm md:text-lg">{displayTiers[selectedTierIdx].maxDims.shortest}"</div>
+                        <div className={`text-[10px] md:text-xs mt-1 ${sortedDims[2] <= displayTiers[selectedTierIdx].maxDims.shortest ? 'text-green-400' : 'text-red-400'}`}>
                           ({sortedDims[2] <= displayTiers[selectedTierIdx].maxDims.shortest ? '✓' : '✗'} {sortedDims[2].toFixed(1)}")
                         </div>
                       </div>
                     </div>
-                    <div className="bg-slate-800 rounded p-2 text-center">
-                      <div className="text-[10px] text-slate-500 uppercase">Max Weight</div>
-                      <div className="font-mono font-bold text-white">{displayTiers[selectedTierIdx].maxWeight} lb</div>
-                      <div className={`text-[10px] mt-1 ${billableWeight <= displayTiers[selectedTierIdx].maxWeight ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className="bg-slate-800 rounded p-2 md:p-3 text-center">
+                      <div className="text-[10px] md:text-xs text-slate-500 uppercase">Max Weight</div>
+                      <div className="font-mono font-bold text-white text-sm md:text-lg">{displayTiers[selectedTierIdx].maxWeight} lb</div>
+                      <div className={`text-[10px] md:text-xs mt-1 ${billableWeight <= displayTiers[selectedTierIdx].maxWeight ? 'text-green-400' : 'text-red-400'}`}>
                         ({billableWeight <= displayTiers[selectedTierIdx].maxWeight ? '✓' : '✗'} {billableWeight.toFixed(2)} lb)
                       </div>
                     </div>
-                    <div className="pt-2 border-t border-slate-700 flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">{lang === 'zh' ? '基礎費用' : 'Base Fee'}</span>
-                      <span className="font-bold text-lg" style={{ color: displayTiers[selectedTierIdx].color }}>
+                    <div className="pt-3 border-t border-slate-700 flex justify-between items-center">
+                      <span className="text-slate-400 text-sm md:text-base">{lang === 'zh' ? '基礎費用' : 'Base Fee'}</span>
+                      <span className="font-bold text-lg md:text-xl" style={{ color: displayTiers[selectedTierIdx].color }}>
                         ${displayTiers[selectedTierIdx].baseFee.toFixed(2)}
                       </span>
                     </div>
@@ -3099,6 +3598,10 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
   // Carton Optimizer Modal
   const [isCartonOptimizerOpen, setIsCartonOptimizerOpen] = useState(false);
 
+  // Product Library
+  const [savedProducts, setSavedProducts] = useState<SavedProduct[]>(() => getInitialState('savedProducts', []));
+  const [isProductLibraryOpen, setIsProductLibraryOpen] = useState(false);
+
   // --- Save to LocalStorage whenever state changes ---
   useEffect(() => {
     // Skip initial render to avoid overwriting with defaults before loading
@@ -3121,9 +3624,10 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
       shipmentCarton,
       selectedContainerKey,
       mode,
+      savedProducts,
     };
     saveToStorage(dataToSave);
-  }, [lang, units, rates, dimFactor, exchangeRate, cartonThickness, customCartons, product, carton, shipmentCarton, selectedContainerKey, mode, isDataLoaded]);
+  }, [lang, units, rates, dimFactor, exchangeRate, cartonThickness, customCartons, product, carton, shipmentCarton, selectedContainerKey, mode, savedProducts, isDataLoaded]);
 
   // --- Helper Functions ---
   const handleReset = () => {
@@ -3151,7 +3655,34 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
     setSelectedContainerKey('20gp');
     setMode('packing');
     setIsSettingsOpen(false);
+    setSavedProducts([]);
   }, []);
+
+  // --- Product Library Handlers ---
+  const handleSaveProduct = useCallback((newProduct: SavedProduct) => {
+    setSavedProducts(prev => {
+      const existing = prev.findIndex(p => p.id === newProduct.id);
+      if (existing >= 0) {
+        // Update existing product
+        const updated = [...prev];
+        updated[existing] = newProduct;
+        return updated;
+      }
+      // Add new product
+      return [...prev, newProduct];
+    });
+  }, []);
+
+  const handleDeleteProduct = useCallback((id: string) => {
+    setSavedProducts(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const handleLoadProduct = useCallback((savedProduct: SavedProduct) => {
+    setProduct(savedProduct.product);
+    setCarton(savedProduct.carton);
+    setCartonThickness(savedProduct.cartonThickness);
+  }, []);
+
   const toMetricL = (val: number): number => units.length === 'inch' ? val * 2.54 : val;
   const toMetricW = (val: number): number => units.weight === 'lb' ? val * 0.453592 : val;
   const fromMetricL = (val: number): number => units.length === 'inch' ? val / 2.54 : val;
@@ -3446,6 +3977,23 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
         onApply={(newCarton) => setCarton(newCarton)}
       />
 
+      <ProductLibraryModal
+        isOpen={isProductLibraryOpen}
+        onClose={() => setIsProductLibraryOpen(false)}
+        savedProducts={savedProducts}
+        onSaveProduct={handleSaveProduct}
+        onDeleteProduct={handleDeleteProduct}
+        onLoadProduct={handleLoadProduct}
+        currentProduct={product}
+        currentCarton={carton}
+        cartonThickness={cartonThickness}
+        pcsPerCarton={bestPacking?.count || 0}
+        utilization={packingCosts?.stats.utilization || 0}
+        units={units}
+        t={t}
+        lang={lang}
+      />
+
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-4">
 
         {!hideHeader && (
@@ -3511,6 +4059,20 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Product Library Button */}
+                    <button
+                      onClick={() => setIsProductLibraryOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]"
+                    >
+                      <Library size={16} />
+                      <span className="hidden md:inline">{t('productLibrary')}</span>
+                      {savedProducts.length > 0 && (
+                        <span className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+                          {savedProducts.length}
+                        </span>
+                      )}
+                    </button>
+
                     <button onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
                       <RotateCcw size={16} />
                     </button>
@@ -3541,6 +4103,18 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Product Library Button (standalone pages) */}
+              <button
+                onClick={() => setIsProductLibraryOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]"
+              >
+                <Library size={16} />
+                {savedProducts.length > 0 && (
+                  <span className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+                    {savedProducts.length}
+                  </span>
+                )}
+              </button>
               <button onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
                 <RotateCcw size={16} />
               </button>
