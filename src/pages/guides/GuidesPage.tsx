@@ -61,6 +61,33 @@ const guides: GuideCard[] = [
     readTime: '5 min',
     tags: ['Packing', 'Carton', 'Efficiency', 'Optimization'],
   },
+  {
+    slug: 'amazon-dimensional-weight',
+    title: 'Amazon Dimensional Weight Calculator 2025: Complete FBA Guide',
+    titleZh: 'Amazon 體積重量計算器 2025：完整 FBA 指南',
+    description: 'Master Amazon dimensional weight calculations for FBA. Learn the 139 cubic inch divisor and optimize packaging to reduce fulfillment fees.',
+    descriptionZh: '掌握 Amazon FBA 體積重量計算方法。了解 139 立方英寸除數的運作原理，優化包裝以降低配送費用。',
+    readTime: '10 min',
+    tags: ['Amazon', 'DIM Weight', 'FBA', '139 Divisor'],
+  },
+  {
+    slug: 'fba-fee-calculator',
+    title: 'Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs',
+    titleZh: 'Amazon FBA 費用計算器 2025：完整成本指南',
+    description: 'Learn how to calculate all Amazon FBA fees including fulfillment, storage, and referral fees. Maximize your profit margins.',
+    descriptionZh: '了解如何計算所有 Amazon FBA 費用，包括配送費、倉儲費和推薦費。最大化您的利潤率。',
+    readTime: '12 min',
+    tags: ['FBA Fees', 'Amazon', 'Profit', 'Storage'],
+  },
+  {
+    slug: 'pallet-calculator',
+    title: 'Pallet Calculator Guide: Optimize Pallet Loading & Shipping',
+    titleZh: '棧板計算器指南：優化棧板裝載與運輸',
+    description: 'Learn standard pallet sizes, calculate cartons per pallet, optimize loading patterns, and reduce LTL/FTL shipping costs.',
+    descriptionZh: '學習標準棧板尺寸、計算每棧板紙箱數量、優化裝載方式，以降低 LTL 和 FTL 運輸成本。',
+    readTime: '8 min',
+    tags: ['Pallet', 'LTL', 'FTL', 'Logistics'],
+  },
 ];
 
 export default function GuidesPage() {
