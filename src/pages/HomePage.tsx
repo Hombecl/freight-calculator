@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles, X, Check, TrendingDown, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useState, useEffect, useMemo } from 'react';
 import Packing3DPreview from '../components/Packing3DPreview';
@@ -285,6 +285,108 @@ export default function HomePage() {
         <meta property="og:url" content="https://www.dimpack3d.com/" />
         <meta property="og:title" content="DimPack3D - Free 3D Packaging Calculator | CBM & FBA Size Optimizer" />
         <meta property="og:description" content="Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize packaging, visualize container loading in 3D." />
+
+        {/* HowTo Schema - How to use the calculator */}
+        <script type="application/ld+json">{`
+          {
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": "How to Calculate Optimal Product Packing with DimPack3D",
+            "description": "Learn how to use DimPack3D to calculate the optimal way to pack products into cartons, estimate shipping costs, and visualize in 3D.",
+            "totalTime": "PT2M",
+            "estimatedCost": {
+              "@type": "MonetaryAmount",
+              "currency": "USD",
+              "value": "0"
+            },
+            "tool": [
+              {
+                "@type": "HowToTool",
+                "name": "Web browser with JavaScript enabled"
+              }
+            ],
+            "step": [
+              {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Enter Product Dimensions",
+                "text": "Input your product's length, width, height (in cm or inches) and weight (in kg or lbs). You can also add multiple products to your library.",
+                "url": "https://www.dimpack3d.com/packing"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Enter Carton Dimensions",
+                "text": "Input your carton (box) dimensions. DimPack3D will automatically calculate how many products fit using the optimal orientation.",
+                "url": "https://www.dimpack3d.com/packing"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "View 3D Visualization",
+                "text": "See exactly how products are arranged inside the carton with interactive 3D view. Rotate and zoom to inspect the packing arrangement.",
+                "url": "https://www.dimpack3d.com/packing"
+              },
+              {
+                "@type": "HowToStep",
+                "position": 4,
+                "name": "Review Results",
+                "text": "Check the calculated CBM, utilization rate, units per box, and estimated shipping costs for air and sea freight.",
+                "url": "https://www.dimpack3d.com/packing"
+              }
+            ]
+          }
+        `}</script>
+
+        {/* BreadcrumbList Schema */}
+        <script type="application/ld+json">{`
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://www.dimpack3d.com/"
+              }
+            ]
+          }
+        `}</script>
+
+        {/* ItemList Schema - Featured Tools */}
+        <script type="application/ld+json">{`
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "DimPack3D Packaging Tools",
+            "description": "Three powerful packaging and logistics calculators for e-commerce sellers",
+            "numberOfItems": 3,
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Product Packing Calculator",
+                "description": "Calculate optimal product-to-carton packing with 3D visualization and shipping cost estimates",
+                "url": "https://www.dimpack3d.com/packing"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Container Loading Calculator",
+                "description": "Calculate carton-to-container loading for 20GP, 40GP, 40HQ with maximum space utilization",
+                "url": "https://www.dimpack3d.com/container"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Amazon FBA Size Tier Calculator",
+                "description": "Calculate Amazon FBA size tiers and estimate fulfillment fees based on 2025 standards",
+                "url": "https://www.dimpack3d.com/fba"
+              }
+            ]
+          }
+        `}</script>
       </Helmet>
 
       {/* Hero Section */}
@@ -872,8 +974,214 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Before/After Comparison Section - Real 3D Case Study */}
+      <section className="py-16 md:py-24 bg-white overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-100 to-green-100 border border-slate-200 rounded-full px-4 py-1.5 text-sm mb-4">
+              <TrendingUp size={14} className="text-green-600" />
+              <span className="text-slate-700 font-medium">{lang === 'zh' ? '真實案例' : 'Real Case Study'}</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
+              {lang === 'zh' ? '3D 視覺化優化對比' : '3D Visualization: Before vs After'}
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              {lang === 'zh'
+                ? '產品尺寸 20×15×8 cm，看看不同箱子和擺放方式的差異'
+                : 'Product: 20×15×8 cm - See how box choice and orientation affects efficiency'}
+            </p>
+          </div>
+
+          {/* 3-Stage Comparison */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Stage 1: Original - Wrong orientation */}
+            <div className="relative">
+              <div className="absolute -top-3 left-4 z-10">
+                <span className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  {lang === 'zh' ? '隨便買箱' : 'Random Box'}
+                </span>
+              </div>
+              <div className="bg-gradient-to-br from-red-50 to-slate-50 border-2 border-red-200 rounded-2xl overflow-hidden h-full">
+                {/* 3D Preview - Bad orientation */}
+                <div className="aspect-square relative">
+                  <Packing3DPreview
+                    product={{ l: 20, w: 15, h: 8 }}
+                    carton={{ l: 50, w: 50, h: 50 }}
+                    forceOrientation={{ l: 20, w: 15, h: 8 }} // Force upright position
+                    cartonColor={0xef4444}
+                    autoRotate={true}
+                  />
+                  {/* Utilization badge */}
+                  <div className="absolute top-3 left-3 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                    {lang === 'zh' ? '利用率' : 'Util'}: 58%
+                  </div>
+                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                    8 {lang === 'zh' ? '件/箱' : 'pcs'}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="p-4 bg-white border-t border-red-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <X size={16} className="text-red-500" />
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '50×50×50 cm 箱子' : '50×50×50 cm box'}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">
+                    {lang === 'zh' ? '買了個正方形箱，產品直接放入，大量空間浪費' : 'Square box, products placed randomly - wasted space'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
+                    <span className="font-bold text-red-600">125 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stage 2: Optimized orientation, same box */}
+            <div className="relative">
+              <div className="absolute -top-3 left-4 z-10">
+                <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  {lang === 'zh' ? '優化擺放' : 'Optimized Layout'}
+                </span>
+              </div>
+              <div className="bg-gradient-to-br from-amber-50 to-slate-50 border-2 border-amber-300 rounded-2xl overflow-hidden h-full">
+                {/* 3D Preview - Optimized orientation, same box */}
+                <div className="aspect-square relative">
+                  <Packing3DPreview
+                    product={{ l: 20, w: 15, h: 8 }}
+                    carton={{ l: 50, w: 50, h: 50 }}
+                    // No forceOrientation = auto-optimize
+                    cartonColor={0xf59e0b}
+                    autoRotate={true}
+                  />
+                  {/* Utilization badge */}
+                  <div className="absolute top-3 left-3 bg-amber-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                    {lang === 'zh' ? '利用率' : 'Util'}: 77%
+                  </div>
+                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                    12 {lang === 'zh' ? '件/箱' : 'pcs'}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="p-4 bg-white border-t border-amber-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check size={16} className="text-amber-500" />
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '同樣箱子，優化擺放' : 'Same box, optimized layout'}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">
+                    {lang === 'zh' ? '用 DimPack3D 計算最佳旋轉方向，多放 50%' : 'DimPack3D finds best rotation - 50% more fits'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 line-through text-xs">125</span>
+                      <span className="font-bold text-amber-600">84 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stage 3: Recommended box size */}
+            <div className="relative">
+              <div className="absolute -top-3 left-4 z-10">
+                <span className="bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                  <Star size={12} />
+                  {lang === 'zh' ? '最佳方案' : 'Best Solution'}
+                </span>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-2xl overflow-hidden h-full shadow-lg shadow-green-100">
+                {/* 3D Preview - Recommended box */}
+                <div className="aspect-square relative">
+                  <Packing3DPreview
+                    product={{ l: 20, w: 15, h: 8 }}
+                    carton={{ l: 60, w: 45, h: 32 }} // Optimized box size
+                    cartonColor={0x22c55e}
+                    autoRotate={true}
+                  />
+                  {/* Utilization badge */}
+                  <div className="absolute top-3 left-3 bg-green-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                    {lang === 'zh' ? '利用率' : 'Util'}: 92%
+                  </div>
+                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                    24 {lang === 'zh' ? '件/箱' : 'pcs'}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="p-4 bg-white border-t border-green-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle size={16} className="text-green-500" />
+                    <span className="font-bold text-slate-800 text-sm">{lang === 'zh' ? '60×45×32 cm 建議箱' : '60×45×32 cm recommended'}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-3">
+                    {lang === 'zh' ? '選擇最適合產品尺寸的紙箱，達到最高效率' : 'Box sized perfectly for product - maximum efficiency'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">{lang === 'zh' ? '每1000件需要' : '1000 units need'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 line-through text-xs">125</span>
+                      <span className="font-bold text-green-600">42 {lang === 'zh' ? '箱' : 'boxes'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Savings summary */}
+          <div className="mt-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+            <div className="relative">
+              {/* Comparison summary */}
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+                  <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '紙箱減少' : 'Fewer Boxes'}</div>
+                  <div className="text-3xl font-black">66%</div>
+                  <div className="text-green-200 text-xs">125 → 42</div>
+                </div>
+                <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+                  <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '利用率提升' : 'Utilization Up'}</div>
+                  <div className="text-3xl font-black">+34%</div>
+                  <div className="text-green-200 text-xs">58% → 92%</div>
+                </div>
+                <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+                  <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '每箱裝載量' : 'Units/Box'}</div>
+                  <div className="text-3xl font-black">3×</div>
+                  <div className="text-green-200 text-xs">8 → 24</div>
+                </div>
+                <div className="text-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+                  <div className="text-green-200 text-xs mb-1">{lang === 'zh' ? '運費節省' : 'Shipping Saved'}</div>
+                  <div className="text-3xl font-black">~$800</div>
+                  <div className="text-green-200 text-xs">{lang === 'zh' ? '每1000件' : 'per 1000 units'}</div>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-green-100 text-sm text-center sm:text-left">
+                  {lang === 'zh'
+                    ? '以上是真實計算結果。輸入你的產品尺寸，即時查看最佳方案！'
+                    : 'Real calculations above. Enter your product dimensions to see your optimal solution!'}
+                </p>
+                <Link
+                  to="/packing"
+                  className="group inline-flex items-center gap-2 bg-white text-green-600 px-6 py-3 rounded-xl font-bold text-lg hover:bg-green-50 transition-all shadow-lg hover:shadow-xl flex-shrink-0"
+                >
+                  {lang === 'zh' ? '計算我的產品' : 'Calculate My Product'}
+                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Interactive Demo Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-16 md:py-24 bg-slate-50">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200 rounded-full px-4 py-1.5 text-sm mb-4">
@@ -901,7 +1209,7 @@ export default function HomePage() {
       </section>
 
       {/* Who It's For Section */}
-      <section className="py-16 md:py-24 bg-slate-50">
+      <section className="py-16 md:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">

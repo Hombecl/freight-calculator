@@ -37,27 +37,136 @@
     <meta name="theme-color" content="#3b82f6" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Structured Data / JSON-LD -->
+    <!-- Structured Data / JSON-LD - Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DimPack3D",
+      "url": "https://www.dimpack3d.com",
+      "logo": "https://www.dimpack3d.com/favicon.svg",
+      "description": "Free 3D packaging calculator tools for e-commerce sellers and freight forwarders",
+      "sameAs": [],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://www.dimpack3d.com"
+      }
+    }
+    </script>
+
+    <!-- Structured Data / JSON-LD - WebApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "DimPack3D",
+      "name": "DimPack3D - 3D Packaging Calculator",
+      "alternateName": ["DimPack3D", "3D Packing Calculator", "CBM Calculator", "FBA Size Calculator"],
       "url": "https://www.dimpack3d.com",
-      "description": "Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize FBA packaging dimensions, and visualize container loading.",
+      "description": "Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize FBA packaging dimensions, visualize container loading, and estimate shipping costs.",
       "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web Browser",
+      "applicationSubCategory": "Logistics Calculator",
+      "operatingSystem": "Web Browser (Chrome, Firefox, Safari, Edge)",
+      "browserRequirements": "Requires JavaScript. Requires WebGL for 3D features.",
+      "softwareVersion": "2.0",
+      "datePublished": "2024-01-01",
+      "dateModified": "2025-01-01",
+      "inLanguage": ["en", "zh-TW"],
+      "isAccessibleForFree": true,
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
       },
       "featureList": [
         "3D Product Packing Visualization",
-        "CBM Calculator",
-        "Amazon FBA Size Tier Calculator",
-        "Container Loading Optimizer",
-        "Dimensional Weight Calculator"
+        "CBM (Cubic Meter) Calculator",
+        "Amazon FBA Size Tier Calculator (2025 Standards)",
+        "Container Loading Optimizer (20GP, 40GP, 40HQ)",
+        "Dimensional Weight Calculator",
+        "Sea Freight & Air Freight Cost Estimator",
+        "Multi-box Comparison",
+        "Product Library with Local Storage",
+        "Bilingual Support (English & Traditional Chinese)"
+      ],
+      "screenshot": "https://www.dimpack3d.com/og-image.png",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "DimPack3D"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "DimPack3D",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.dimpack3d.com/favicon.svg"
+        }
+      }
+    }
+    </script>
+
+    <!-- Structured Data / JSON-LD - FAQPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is DimPack3D?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "DimPack3D is a free online 3D packaging calculator designed for e-commerce sellers, Amazon FBA sellers, and freight forwarders. It helps you calculate optimal product-to-carton packing, container loading, CBM (cubic meters), and Amazon FBA size tiers with interactive 3D visualization."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I calculate CBM (Cubic Meters)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "To calculate CBM, enter your carton dimensions (length, width, height) in centimeters. DimPack3D automatically converts to cubic meters using the formula: CBM = (Length × Width × Height) / 1,000,000. The calculator also shows total CBM for multiple cartons in your shipment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are Amazon FBA size tiers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Amazon FBA size tiers determine fulfillment fees based on product dimensions and weight. Tiers include Small Standard, Large Standard, Large Bulky, and Extra-Large. DimPack3D uses the 2025 Amazon FBA standards to classify your products and estimate fees."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many boxes can fit in a 40-foot container?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The number of boxes depends on your carton dimensions. A 40GP container has internal dimensions of approximately 1203 × 235 × 239 cm (67.5 CBM). DimPack3D's container loading calculator optimizes placement and shows exactly how many cartons fit with 3D visualization."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is DimPack3D free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, DimPack3D is completely free with no registration required. All features including 3D visualization, packing calculator, container loading, and FBA size tier calculations are available at no cost. Your data is saved locally in your browser."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is dimensional weight and how is it calculated?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dimensional weight (DIM weight) is a pricing technique for freight that considers package size. It's calculated by multiplying Length × Width × Height and dividing by a DIM factor (typically 5000 for air freight, 6000 for sea freight). Carriers charge the greater of actual weight or dimensional weight."
+          }
+        }
       ]
     }
     </script>

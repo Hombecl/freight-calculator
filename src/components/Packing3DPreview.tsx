@@ -11,6 +11,8 @@ interface Packing3DPreviewProps {
   product?: { l: number; w: number; h: number };
   carton?: { l: number; w: number; h: number };
   autoRotate?: boolean;
+  forceOrientation?: { l: number; w: number; h: number }; // Force specific product orientation (for demo)
+  cartonColor?: number; // Custom carton edge color
 }
 
 // Hook to check if THREE.js is loaded
@@ -34,15 +36,22 @@ const useThree = (): boolean => {
 };
 
 // Calculate packing layout
-function calculatePacking(product: { l: number; w: number; h: number }, carton: { l: number; w: number; h: number }) {
-  const orientations = [
-    { l: product.l, w: product.w, h: product.h },
-    { l: product.l, w: product.h, h: product.w },
-    { l: product.w, w: product.l, h: product.h },
-    { l: product.w, w: product.h, h: product.l },
-    { l: product.h, w: product.l, h: product.w },
-    { l: product.h, w: product.w, h: product.l },
-  ];
+function calculatePacking(
+  product: { l: number; w: number; h: number },
+  carton: { l: number; w: number; h: number },
+  forceOrientation?: { l: number; w: number; h: number }
+) {
+  // If forcing a specific orientation, only use that one
+  const orientations = forceOrientation
+    ? [forceOrientation]
+    : [
+        { l: product.l, w: product.w, h: product.h },
+        { l: product.l, w: product.h, h: product.w },
+        { l: product.w, w: product.l, h: product.h },
+        { l: product.w, w: product.h, h: product.l },
+        { l: product.h, w: product.l, h: product.w },
+        { l: product.h, w: product.w, h: product.l },
+      ];
 
   let bestFit = 0;
   let bestOrientation = orientations[0];
@@ -59,6 +68,11 @@ function calculatePacking(product: { l: number; w: number; h: number }, carton: 
       bestCounts = { l: countL, w: countW, h: countH };
     }
   });
+
+  // Calculate utilization
+  const productVolume = bestOrientation.l * bestOrientation.w * bestOrientation.h * bestFit;
+  const cartonVolume = carton.l * carton.w * carton.h;
+  const utilization = cartonVolume > 0 ? (productVolume / cartonVolume) * 100 : 0;
 
   // Generate item positions
   const items: { x: number; y: number; z: number; l: number; w: number; h: number }[] = [];
@@ -77,7 +91,7 @@ function calculatePacking(product: { l: number; w: number; h: number }, carton: 
     }
   }
 
-  return { items, count: bestFit, orientation: bestOrientation };
+  return { items, count: bestFit, orientation: bestOrientation, utilization };
 }
 
 export default function Packing3DPreview({
@@ -85,6 +99,8 @@ export default function Packing3DPreview({
   product = { l: 15, w: 10, h: 5 },
   carton = { l: 60, w: 40, h: 40 },
   autoRotate = true,
+  forceOrientation,
+  cartonColor = 0x60a5fa,
 }: Packing3DPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
@@ -132,7 +148,7 @@ export default function Packing3DPreview({
     // Draw carton boundary (semi-transparent)
     const cartonGeometry = new THREE.BoxGeometry(carton.l, carton.h, carton.w);
     const cartonMaterial = new THREE.MeshBasicMaterial({
-      color: 0x3b82f6,
+      color: cartonColor,
       transparent: true,
       opacity: 0.1,
       depthWrite: false,
@@ -141,13 +157,13 @@ export default function Packing3DPreview({
     const cartonEdges = new THREE.EdgesGeometry(cartonGeometry);
     const cartonLine = new THREE.LineSegments(
       cartonEdges,
-      new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 })
+      new THREE.LineBasicMaterial({ color: cartonColor, transparent: true, opacity: 0.5 })
     );
     group.add(cartonMesh);
     group.add(cartonLine);
 
     // Calculate packing
-    const packing = calculatePacking(product, carton);
+    const packing = calculatePacking(product, carton, forceOrientation);
 
     // Draw products
     const productColors = [0xfbbf24, 0xf59e0b, 0xd97706]; // Amber shades
@@ -242,7 +258,7 @@ export default function Packing3DPreview({
       renderer.dispose();
       container.innerHTML = '';
     };
-  }, [threeLoaded, product, carton, autoRotate]);
+  }, [threeLoaded, product, carton, autoRotate, forceOrientation, cartonColor]);
 
   return (
     <div ref={containerRef} className={`w-full h-full cursor-move ${className}`}>
