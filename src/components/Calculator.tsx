@@ -172,6 +172,48 @@ interface StatRowProps {
   isSuccess?: boolean;
 }
 
+// Carton Optimizer Types
+interface BufferSettings {
+  perSide: number;     // Buffer per side in current units (e.g., 0.5cm each side)
+  totalLW: number;     // Total buffer for L/W direction (e.g., 1cm total)
+  totalH: number;      // Total buffer for height direction
+}
+
+interface FactoryConstraints {
+  maxWeight: number;   // Max total carton weight (products + box) in current units
+}
+
+interface CartonOption {
+  name: string;
+  nameKey: string;
+  outer: DimensionsWithWeight;    // Outer dimensions
+  inner: Dimensions;              // Inner dimensions (after wall thickness)
+  pcsPerCarton: number;
+  utilization: number;
+  grossWeight: number;            // Total weight (products + carton)
+  airCostPerUnit: number;
+  seaCostPerUnit: number;
+  exceedsWeight: boolean;
+  isOptimal: boolean;
+  improvement: number;            // % improvement over current
+}
+
+interface CartonOptimizerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  product: DimensionsWithWeight;
+  currentCarton: DimensionsWithWeight;
+  cartonThickness: number;
+  customCartons: CustomCarton[];
+  units: Units;
+  rates: Rates;
+  dimFactor: number;
+  exchangeRate: number;
+  t: (key: string) => string;
+  lang: Language;
+  onApply: (carton: DimensionsWithWeight) => void;
+}
+
 // Three.js global
 declare global {
   interface Window {
@@ -508,7 +550,36 @@ const TRANSLATIONS: TranslationDictionary = {
     fbaOpen3D: "查看 3D 視覺化",
     fbaDistanceToNext: "距離下一級",
     fbaYourProduct: "你的產品",
-    fbaTierComparison: "尺寸等級對照"
+    fbaTierComparison: "尺寸等級對照",
+    // Carton Optimizer
+    cartonOptimizer: "訂製紙箱建議",
+    cartonOptimizerDesc: "根據產品尺寸計算最佳紙箱尺寸",
+    factorySettings: "工廠限制設定",
+    maxCartonWeight: "紙箱重量上限",
+    bufferSettings: "緩衝空隙設定",
+    bufferPerSide: "每邊預留空隙",
+    bufferLW: "長闊方向總緩衝",
+    bufferH: "高度方向總緩衝",
+    optimizedCarton: "最優紙箱 (訂製)",
+    currentCartonCompare: "當前紙箱",
+    factoryDefault: "工廠標準",
+    improvement: "改善",
+    savingsPerUnit: "每件節省",
+    applyOptimized: "應用此尺寸",
+    optimizeNow: "計算最佳尺寸",
+    cartonOptions: "紙箱方案比較",
+    optionCustom: "訂製紙箱",
+    optionCurrent: "當前設定",
+    optionFactory: "工廠標準",
+    pcsPerCarton: "每箱數量",
+    estCost: "預估運費/件",
+    recommendation: "建議",
+    bestChoice: "最佳選擇",
+    noImprovement: "當前設定已最優",
+    exceedsWeight: "超出重量限制",
+    cartonDims: "紙箱尺寸 (外徑)",
+    innerSpace: "內部空間",
+    productFit: "產品擺放"
   },
   en: {
     title: "DimPack3D",
@@ -622,7 +693,36 @@ const TRANSLATIONS: TranslationDictionary = {
     fbaOpen3D: "Open 3D View",
     fbaDistanceToNext: "Distance to Next Tier",
     fbaYourProduct: "Your Product",
-    fbaTierComparison: "Size Tier Comparison"
+    fbaTierComparison: "Size Tier Comparison",
+    // Carton Optimizer
+    cartonOptimizer: "Custom Carton Advisor",
+    cartonOptimizerDesc: "Calculate optimal carton size for your product",
+    factorySettings: "Factory Constraints",
+    maxCartonWeight: "Max Carton Weight",
+    bufferSettings: "Buffer/Clearance Settings",
+    bufferPerSide: "Buffer Per Side",
+    bufferLW: "L/W Total Buffer",
+    bufferH: "Height Total Buffer",
+    optimizedCarton: "Optimized (Custom)",
+    currentCartonCompare: "Current Carton",
+    factoryDefault: "Factory Standard",
+    improvement: "Improvement",
+    savingsPerUnit: "Savings Per Unit",
+    applyOptimized: "Apply This Size",
+    optimizeNow: "Calculate Optimal",
+    cartonOptions: "Carton Options Comparison",
+    optionCustom: "Custom Carton",
+    optionCurrent: "Current Setting",
+    optionFactory: "Factory Standard",
+    pcsPerCarton: "PCS / Carton",
+    estCost: "Est. Cost / Unit",
+    recommendation: "Recommendation",
+    bestChoice: "Best Choice",
+    noImprovement: "Current setting is optimal",
+    exceedsWeight: "Exceeds weight limit",
+    cartonDims: "Carton Dims (Outer)",
+    innerSpace: "Inner Space",
+    productFit: "Product Fit"
   }
 };
 
@@ -1347,6 +1447,518 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, s
             <Save size={16} />
             {t('saveSettings')}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== Carton Optimizer Modal =====
+const CartonOptimizerModal: React.FC<CartonOptimizerModalProps> = ({
+  isOpen,
+  onClose,
+  product,
+  currentCarton,
+  cartonThickness,
+  customCartons,
+  units,
+  rates,
+  dimFactor,
+  exchangeRate,
+  t,
+  lang,
+  onApply
+}) => {
+  // Factory constraints state
+  const [maxWeight, setMaxWeight] = useState<number>(units.weight === 'kg' ? 20 : 44);
+  const [bufferPerSide, setBufferPerSide] = useState<number>(units.length === 'cm' ? 0.5 : 0.2);
+  const [bufferMode, setBufferMode] = useState<'perSide' | 'total'>('perSide');
+  const [totalBufferLW, setTotalBufferLW] = useState<number>(units.length === 'cm' ? 1 : 0.4);
+  const [totalBufferH, setTotalBufferH] = useState<number>(units.length === 'cm' ? 1 : 0.4);
+  const [selectedOption, setSelectedOption] = useState<number>(0);
+
+  // Unit conversion helpers
+  const toMetricL = (val: number): number => units.length === 'inch' ? val * 2.54 : val;
+  const toMetricW = (val: number): number => units.weight === 'lb' ? val * 0.453592 : val;
+  const fromMetricL = (val: number): number => units.length === 'inch' ? val / 2.54 : val;
+  const fromMetricW = (val: number): number => units.weight === 'lb' ? val / 0.453592 : val;
+
+  const convertCurrency = (amount: number, fromCurr: Currency, toCurr: Currency): number => {
+    if (fromCurr === toCurr) return amount;
+    if (fromCurr === 'USD' && toCurr === 'RMB') return amount * exchangeRate;
+    if (fromCurr === 'RMB' && toCurr === 'USD') return amount / exchangeRate;
+    return amount;
+  };
+
+  // Calculate optimal carton size based on product + buffer
+  const calculateOptimalCarton = useCallback((): DimensionsWithWeight => {
+    const productMetric = {
+      l: toMetricL(product.l),
+      w: toMetricL(product.w),
+      h: toMetricL(product.h),
+      weight: toMetricW(product.weight)
+    };
+
+    const bufferMetric = bufferMode === 'perSide'
+      ? toMetricL(bufferPerSide) * 2
+      : { lw: toMetricL(totalBufferLW), h: toMetricL(totalBufferH) };
+
+    const thicknessMetric = toMetricL(cartonThickness) * 2;
+
+    // Try different multipliers to find optimal carton
+    const candidates: { dims: Dimensions; count: number; utilization: number }[] = [];
+
+    // Product orientations: [l, w, h]
+    const orientations = [
+      [productMetric.l, productMetric.w, productMetric.h],
+      [productMetric.l, productMetric.h, productMetric.w],
+      [productMetric.w, productMetric.l, productMetric.h],
+      [productMetric.w, productMetric.h, productMetric.l],
+      [productMetric.h, productMetric.l, productMetric.w],
+      [productMetric.h, productMetric.w, productMetric.l]
+    ];
+
+    // Try different grid sizes (1-6 per dimension)
+    for (let nl = 1; nl <= 6; nl++) {
+      for (let nw = 1; nw <= 6; nw++) {
+        for (let nh = 1; nh <= 6; nh++) {
+          const count = nl * nw * nh;
+          if (count < 1 || count > 100) continue;
+
+          for (const [pL, pW, pH] of orientations) {
+            const buffer = typeof bufferMetric === 'number'
+              ? { lw: bufferMetric, h: bufferMetric }
+              : bufferMetric;
+
+            const innerL = nl * pL + buffer.lw;
+            const innerW = nw * pW + buffer.lw;
+            const innerH = nh * pH + buffer.h;
+
+            const outerL = innerL + thicknessMetric;
+            const outerW = innerW + thicknessMetric;
+            const outerH = innerH + thicknessMetric;
+
+            const productVol = productMetric.l * productMetric.w * productMetric.h;
+            const innerVol = innerL * innerW * innerH;
+            const utilization = (count * productVol / innerVol) * 100;
+
+            // Check weight limit
+            const grossWeight = count * productMetric.weight + toMetricW(currentCarton.weight);
+            if (grossWeight > toMetricW(maxWeight)) continue;
+
+            candidates.push({
+              dims: { l: outerL, w: outerW, h: outerH },
+              count,
+              utilization
+            });
+          }
+        }
+      }
+    }
+
+    // Sort by utilization descending, then by count descending
+    candidates.sort((a, b) => {
+      if (Math.abs(b.utilization - a.utilization) > 5) return b.utilization - a.utilization;
+      return b.count - a.count;
+    });
+
+    // Return best candidate or fallback to a reasonable default
+    if (candidates.length > 0) {
+      const best = candidates[0];
+      return {
+        l: fromMetricL(best.dims.l),
+        w: fromMetricL(best.dims.w),
+        h: fromMetricL(best.dims.h),
+        weight: currentCarton.weight
+      };
+    }
+
+    // Fallback: single product with buffer
+    const buffer = bufferMode === 'perSide'
+      ? bufferPerSide * 2
+      : Math.max(totalBufferLW, totalBufferH);
+    return {
+      l: product.l + buffer + cartonThickness * 2,
+      w: product.w + buffer + cartonThickness * 2,
+      h: product.h + buffer + cartonThickness * 2,
+      weight: currentCarton.weight
+    };
+  }, [product, bufferMode, bufferPerSide, totalBufferLW, totalBufferH, cartonThickness, currentCarton, maxWeight, units]);
+
+  // Calculate costs for a carton option
+  const calculateCartonMetrics = useCallback((carton: DimensionsWithWeight): CartonOption | null => {
+    const productMetric = {
+      l: toMetricL(product.l),
+      w: toMetricL(product.w),
+      h: toMetricL(product.h),
+      weight: toMetricW(product.weight)
+    };
+
+    const cartonMetric = {
+      l: toMetricL(carton.l),
+      w: toMetricL(carton.w),
+      h: toMetricL(carton.h),
+      weight: toMetricW(carton.weight)
+    };
+
+    const thicknessMetric = toMetricL(cartonThickness);
+    const innerDims: Dimensions = {
+      l: Math.max(0, cartonMetric.l - thicknessMetric * 2),
+      w: Math.max(0, cartonMetric.w - thicknessMetric * 2),
+      h: Math.max(0, cartonMetric.h - thicknessMetric * 2)
+    };
+
+    const scenarios = calculatePackingScenarios(productMetric, innerDims);
+    if (scenarios.length === 0) return null;
+
+    const best = scenarios[0];
+    const count = best.count;
+    const utilization = best.utilization;
+
+    const grossWeight = count * productMetric.weight + cartonMetric.weight;
+    const exceedsWeight = grossWeight > toMetricW(maxWeight);
+
+    // Calculate costs
+    const vol = cartonMetric.l * cartonMetric.w * cartonMetric.h;
+    const cbm = vol / 1000000;
+    const dimWeightAir = vol / dimFactor;
+    const chargeableAir = Math.max(grossWeight, dimWeightAir);
+
+    const airRate = convertCurrency(rates.air, rates.airCurrency, units.currency);
+    const seaRate = convertCurrency(rates.sea, rates.seaCurrency, units.currency);
+
+    const totalAir = chargeableAir * airRate;
+    const totalSea = rates.seaUnit === 'cbm'
+      ? Math.max(cbm, 0.001) * seaRate
+      : grossWeight * seaRate;
+
+    return {
+      name: '',
+      nameKey: '',
+      outer: carton,
+      inner: { l: fromMetricL(innerDims.l), w: fromMetricL(innerDims.w), h: fromMetricL(innerDims.h) },
+      pcsPerCarton: count,
+      utilization,
+      grossWeight: fromMetricW(grossWeight),
+      airCostPerUnit: count > 0 ? totalAir / count : 0,
+      seaCostPerUnit: count > 0 ? totalSea / count : 0,
+      exceedsWeight,
+      isOptimal: false,
+      improvement: 0
+    };
+  }, [product, cartonThickness, maxWeight, rates, dimFactor, exchangeRate, units]);
+
+  // Generate all carton options
+  const cartonOptions = useMemo((): CartonOption[] => {
+    const options: CartonOption[] = [];
+
+    // 1. Current carton
+    const currentMetrics = calculateCartonMetrics(currentCarton);
+    if (currentMetrics) {
+      options.push({
+        ...currentMetrics,
+        name: lang === 'zh' ? '當前設定' : 'Current Setting',
+        nameKey: 'optionCurrent'
+      });
+    }
+
+    // 2. Optimized custom carton
+    const optimizedCarton = calculateOptimalCarton();
+    const optimizedMetrics = calculateCartonMetrics(optimizedCarton);
+    if (optimizedMetrics) {
+      options.push({
+        ...optimizedMetrics,
+        name: lang === 'zh' ? '訂製紙箱 (最優)' : 'Custom Carton (Optimal)',
+        nameKey: 'optionCustom'
+      });
+    }
+
+    // 3. Factory standard cartons from library
+    customCartons.slice(0, 3).forEach((c, idx) => {
+      let cartonDims: DimensionsWithWeight = { l: c.l, w: c.w, h: c.h, weight: c.weight };
+      const metrics = calculateCartonMetrics(cartonDims);
+      if (metrics && metrics.pcsPerCarton > 0) {
+        options.push({
+          ...metrics,
+          name: c.labelKey ? t(c.labelKey) : c.name,
+          nameKey: `carton${idx + 1}`
+        });
+      }
+    });
+
+    // Calculate improvements and find optimal
+    if (options.length > 1 && currentMetrics) {
+      const baseCost = currentMetrics.airCostPerUnit;
+      let bestIdx = 0;
+      let bestCost = Infinity;
+
+      options.forEach((opt, idx) => {
+        if (!opt.exceedsWeight) {
+          opt.improvement = baseCost > 0 ? ((baseCost - opt.airCostPerUnit) / baseCost) * 100 : 0;
+          if (opt.airCostPerUnit < bestCost) {
+            bestCost = opt.airCostPerUnit;
+            bestIdx = idx;
+          }
+        }
+      });
+
+      if (bestIdx < options.length) {
+        options[bestIdx].isOptimal = true;
+      }
+    }
+
+    return options;
+  }, [currentCarton, calculateOptimalCarton, calculateCartonMetrics, customCartons, lang, t]);
+
+  const selectedCartonOption = cartonOptions[selectedOption] || null;
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+      <div className="min-h-full flex items-start md:items-center justify-center p-2 md:p-6">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl animate-in fade-in zoom-in duration-200 my-2 md:my-0">
+
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 md:px-6 py-4 rounded-t-xl">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-white flex items-center gap-2 text-lg md:text-xl">
+                  <Lightbulb className="w-5 h-5 md:w-6 md:h-6" /> {t('cartonOptimizer')}
+                </h3>
+                <p className="text-purple-200 text-xs mt-1">{t('cartonOptimizerDesc')}</p>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                <X className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 md:p-6 space-y-6">
+            {/* Factory Constraints Section */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <Sliders size={16} className="text-purple-600" />
+                {t('factorySettings')}
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Weight Limit */}
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                    {t('maxCartonWeight')} ({units.weight})
+                  </label>
+                  <input
+                    type="number"
+                    value={maxWeight}
+                    onChange={(e) => setMaxWeight(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2 border border-slate-300 rounded-md text-sm font-bold"
+                    step="0.5"
+                  />
+                </div>
+
+                {/* Buffer Settings */}
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                    {t('bufferSettings')}
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => setBufferMode('perSide')}
+                      className={`flex-1 py-1.5 px-2 rounded text-xs font-bold transition-colors ${
+                        bufferMode === 'perSide'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {t('bufferPerSide')}
+                    </button>
+                    <button
+                      onClick={() => setBufferMode('total')}
+                      className={`flex-1 py-1.5 px-2 rounded text-xs font-bold transition-colors ${
+                        bufferMode === 'total'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {lang === 'zh' ? '總緩衝' : 'Total Buffer'}
+                    </button>
+                  </div>
+
+                  {bufferMode === 'perSide' ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={bufferPerSide}
+                        onChange={(e) => setBufferPerSide(parseFloat(e.target.value) || 0)}
+                        className="flex-1 p-2 border border-slate-300 rounded-md text-sm font-bold"
+                        step="0.1"
+                      />
+                      <span className="text-xs text-slate-500">{units.length} / {lang === 'zh' ? '每邊' : 'side'}</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">{t('bufferLW')}</label>
+                        <input
+                          type="number"
+                          value={totalBufferLW}
+                          onChange={(e) => setTotalBufferLW(parseFloat(e.target.value) || 0)}
+                          className="w-full p-2 border border-slate-300 rounded-md text-sm font-bold"
+                          step="0.1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">{t('bufferH')}</label>
+                        <input
+                          type="number"
+                          value={totalBufferH}
+                          onChange={(e) => setTotalBufferH(parseFloat(e.target.value) || 0)}
+                          className="w-full p-2 border border-slate-300 rounded-md text-sm font-bold"
+                          step="0.1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Carton Options Comparison */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <Layers size={16} className="text-blue-600" />
+                {t('cartonOptions')}
+              </h4>
+
+              <div className="space-y-3">
+                {cartonOptions.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedOption(idx)}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedOption === idx
+                        ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                        : option.exceedsWeight
+                        ? 'border-red-200 bg-red-50/50 opacity-60'
+                        : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50/30'
+                    }`}
+                    disabled={option.exceedsWeight}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`font-bold ${option.exceedsWeight ? 'text-red-600' : 'text-slate-800'}`}>
+                            {option.name}
+                          </span>
+                          {option.isOptimal && !option.exceedsWeight && (
+                            <span className="bg-green-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">
+                              {t('bestChoice')}
+                            </span>
+                          )}
+                          {option.exceedsWeight && (
+                            <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">
+                              {t('exceedsWeight')}
+                            </span>
+                          )}
+                          {idx === 1 && !option.exceedsWeight && option.improvement > 0 && (
+                            <span className="bg-purple-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">
+                              +{option.improvement.toFixed(1)}% {t('improvement')}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <span className="text-slate-400 block">{t('cartonDims')}</span>
+                            <span className="font-mono font-bold text-slate-700">
+                              {option.outer.l.toFixed(1)} x {option.outer.w.toFixed(1)} x {option.outer.h.toFixed(1)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block">{t('pcsPerCarton')}</span>
+                            <span className="font-bold text-slate-700 text-lg">{option.pcsPerCarton}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block">{t('utilization')}</span>
+                            <span className={`font-bold ${option.utilization > 80 ? 'text-green-600' : option.utilization > 65 ? 'text-blue-600' : 'text-orange-500'}`}>
+                              {option.utilization.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block">{t('grossWeight')}</span>
+                            <span className={`font-bold ${option.exceedsWeight ? 'text-red-600' : 'text-slate-700'}`}>
+                              {option.grossWeight.toFixed(2)} {units.weight}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right ml-4 pl-4 border-l border-slate-200">
+                        <div className="text-[10px] text-slate-400 uppercase mb-1">{t('estCost')}</div>
+                        <div className="flex items-center gap-1 text-blue-600 text-sm font-bold">
+                          <Plane size={12} />
+                          {units.currency} {option.airCostPerUnit.toFixed(2)}
+                        </div>
+                        <div className="flex items-center gap-1 text-teal-600 text-sm font-bold">
+                          <Anchor size={12} />
+                          {units.currency} {option.seaCostPerUnit.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Selected Option Details */}
+            {selectedCartonOption && !selectedCartonOption.exceedsWeight && (
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-purple-800">{t('recommendation')}</h4>
+                  <div className="text-xs text-purple-600">
+                    {selectedCartonOption.name}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-white/80 rounded-lg p-3">
+                    <div className="text-2xl font-black text-purple-700">{selectedCartonOption.pcsPerCarton}</div>
+                    <div className="text-[10px] text-purple-500 uppercase font-bold">{t('pcsPerCarton')}</div>
+                  </div>
+                  <div className="bg-white/80 rounded-lg p-3">
+                    <div className="text-2xl font-black text-green-600">{selectedCartonOption.utilization.toFixed(0)}%</div>
+                    <div className="text-[10px] text-green-500 uppercase font-bold">{t('utilization')}</div>
+                  </div>
+                  <div className="bg-white/80 rounded-lg p-3">
+                    <div className="text-lg font-black text-blue-600">{units.currency} {selectedCartonOption.airCostPerUnit.toFixed(2)}</div>
+                    <div className="text-[10px] text-blue-500 uppercase font-bold">{lang === 'zh' ? '空運/件' : 'Air/Unit'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="bg-slate-50 px-4 md:px-6 py-4 border-t rounded-b-xl flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {t('close')}
+            </button>
+            {selectedCartonOption && !selectedCartonOption.exceedsWeight && (
+              <button
+                onClick={() => {
+                  onApply(selectedCartonOption.outer);
+                  onClose();
+                }}
+                className="flex-1 py-2.5 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={16} />
+                {t('applyOptimized')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -2345,6 +2957,9 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
   const [fbaProduct, setFbaProduct] = useState<DimensionsWithWeight>(() => getInitialState('fbaProduct', defaultFbaProduct));
   const [isFbaSimOpen, setIsFbaSimOpen] = useState(false);
 
+  // Carton Optimizer Modal
+  const [isCartonOptimizerOpen, setIsCartonOptimizerOpen] = useState(false);
+
   // --- Save to LocalStorage whenever state changes ---
   useEffect(() => {
     // Skip initial render to avoid overwriting with defaults before loading
@@ -2676,6 +3291,22 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
         />
       )}
 
+      <CartonOptimizerModal
+        isOpen={isCartonOptimizerOpen}
+        onClose={() => setIsCartonOptimizerOpen(false)}
+        product={product}
+        currentCarton={carton}
+        cartonThickness={cartonThickness}
+        customCartons={customCartons}
+        units={units}
+        rates={rates}
+        dimFactor={dimFactor}
+        exchangeRate={exchangeRate}
+        t={t}
+        lang={lang}
+        onApply={(newCarton) => setCarton(newCarton)}
+      />
+
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-4">
 
         {!hideHeader && (
@@ -2808,6 +3439,15 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
                   <span className="font-bold text-blue-700 flex items-center gap-1"><ScanLine size={12}/> {t('innerDims')}</span>
                   <span className="font-mono font-bold text-gray-700">{displayLength(fromMetricL(innerCartonMetric.l))} x {displayLength(fromMetricL(innerCartonMetric.w))} x {displayLength(fromMetricL(innerCartonMetric.h))}</span>
                 </div>
+                {/* Carton Optimizer Button */}
+                <button
+                  onClick={() => setIsCartonOptimizerOpen(true)}
+                  disabled={!product.l || !product.w || !product.h}
+                  className="mt-3 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-2.5 rounded-lg font-bold hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <Lightbulb size={16} />
+                  {t('cartonOptimizer')}
+                </button>
               </CompactCard>
             </div>
 
