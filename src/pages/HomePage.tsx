@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play } from 'lucide-react';
+import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 // Animated counter component
 function AnimatedNumber({ value, suffix = '', prefix = '' }: { value: number; suffix?: string; prefix?: string }) {
@@ -46,6 +46,212 @@ function Particles() {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+// Interactive Demo Component
+function InteractiveDemo({ lang }: { lang: 'en' | 'zh' }) {
+  const [product, setProduct] = useState({ l: 15, w: 10, h: 5 });
+  const [carton, setCarton] = useState({ l: 60, w: 40, h: 40 });
+  const [showResult, setShowResult] = useState(true);
+
+  // Calculate packing results
+  const results = useMemo(() => {
+    const orientations = [
+      { l: product.l, w: product.w, h: product.h },
+      { l: product.l, w: product.h, h: product.w },
+      { l: product.w, w: product.l, h: product.h },
+      { l: product.w, w: product.h, h: product.l },
+      { l: product.h, w: product.l, h: product.w },
+      { l: product.h, w: product.w, h: product.l },
+    ];
+
+    let bestFit = 0;
+    let bestOrientation = orientations[0];
+
+    orientations.forEach((orient) => {
+      const countL = Math.floor(carton.l / orient.l);
+      const countW = Math.floor(carton.w / orient.w);
+      const countH = Math.floor(carton.h / orient.h);
+      const total = countL * countW * countH;
+      if (total > bestFit) {
+        bestFit = total;
+        bestOrientation = orient;
+      }
+    });
+
+    const productVolume = (product.l * product.w * product.h) / 1000000; // m³
+    const cartonVolume = (carton.l * carton.w * carton.h) / 1000000; // m³
+    const cbm = cartonVolume;
+    const utilization = cartonVolume > 0 ? ((productVolume * bestFit) / cartonVolume) * 100 : 0;
+
+    return {
+      unitsPerBox: bestFit,
+      cbm: cbm,
+      utilization: Math.min(utilization, 100),
+      orientation: bestOrientation,
+    };
+  }, [product, carton]);
+
+  const resetDemo = () => {
+    setProduct({ l: 15, w: 10, h: 5 });
+    setCarton({ l: 60, w: 40, h: 40 });
+    setShowResult(false);
+    setTimeout(() => setShowResult(true), 100);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+      <div className="grid md:grid-cols-2">
+        {/* Input Section */}
+        <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles size={20} className="text-blue-500" />
+              {lang === 'zh' ? '即時試用' : 'Try It Now'}
+            </h3>
+            <button
+              onClick={resetDemo}
+              className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              title={lang === 'zh' ? '重置' : 'Reset'}
+            >
+              <RotateCcw size={16} />
+            </button>
+          </div>
+
+          {/* Product Dimensions */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 rounded-full bg-amber-400" />
+              <span className="text-sm font-semibold text-slate-700">
+                {lang === 'zh' ? '產品尺寸 (cm)' : 'Product Size (cm)'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {(['l', 'w', 'h'] as const).map((dim) => (
+                <div key={dim} className="relative">
+                  <label className="absolute -top-2 left-2 px-1 bg-white text-xs text-slate-400 font-medium">
+                    {dim === 'l' ? (lang === 'zh' ? '長' : 'L') : dim === 'w' ? (lang === 'zh' ? '寬' : 'W') : (lang === 'zh' ? '高' : 'H')}
+                  </label>
+                  <input
+                    type="number"
+                    value={product[dim]}
+                    onChange={(e) => setProduct({ ...product, [dim]: Number(e.target.value) || 0 })}
+                    className="w-full px-3 py-2.5 border-2 border-amber-200 rounded-lg text-center font-mono font-bold text-slate-800 focus:border-amber-400 focus:ring-0 focus:outline-none transition-colors bg-amber-50/50"
+                    min="1"
+                    max="500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Carton Dimensions */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <span className="text-sm font-semibold text-slate-700">
+                {lang === 'zh' ? '紙箱尺寸 (cm)' : 'Carton Size (cm)'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {(['l', 'w', 'h'] as const).map((dim) => (
+                <div key={dim} className="relative">
+                  <label className="absolute -top-2 left-2 px-1 bg-white text-xs text-slate-400 font-medium">
+                    {dim === 'l' ? (lang === 'zh' ? '長' : 'L') : dim === 'w' ? (lang === 'zh' ? '寬' : 'W') : (lang === 'zh' ? '高' : 'H')}
+                  </label>
+                  <input
+                    type="number"
+                    value={carton[dim]}
+                    onChange={(e) => setCarton({ ...carton, [dim]: Number(e.target.value) || 0 })}
+                    className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-lg text-center font-mono font-bold text-slate-800 focus:border-blue-400 focus:ring-0 focus:outline-none transition-colors bg-blue-50/50"
+                    min="1"
+                    max="500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Tips */}
+          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <p className="text-xs text-blue-700">
+              💡 {lang === 'zh'
+                ? '提示：調整尺寸即時查看結果，完整功能請使用計算器'
+                : 'Tip: Adjust dimensions to see instant results. Use full calculator for more features.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Results Section */}
+        <div className="p-6 md:p-8 bg-gradient-to-br from-slate-800 to-slate-900 text-white relative overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl" />
+
+          <div className="relative">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <Calculator size={20} className="text-blue-400" />
+              {lang === 'zh' ? '計算結果' : 'Results'}
+            </h3>
+
+            <div className={`space-y-4 transition-all duration-300 ${showResult ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              {/* Units per Box */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-200 text-sm">{lang === 'zh' ? '每箱數量' : 'Units per Box'}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{results.unitsPerBox}</span>
+                    <span className="text-blue-300 text-sm">{lang === 'zh' ? '件' : 'pcs'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CBM */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-green-200 text-sm">CBM</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{results.cbm.toFixed(3)}</span>
+                    <span className="text-green-300 text-sm">m³</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Utilization */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-amber-200 text-sm">{lang === 'zh' ? '空間利用率' : 'Space Utilization'}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{results.utilization.toFixed(1)}</span>
+                    <span className="text-amber-300 text-sm">%</span>
+                  </div>
+                </div>
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      results.utilization >= 70 ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                      results.utilization >= 50 ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                      'bg-gradient-to-r from-red-400 to-red-500'
+                    }`}
+                    style={{ width: `${results.utilization}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <Link
+              to="/packing"
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 group"
+            >
+              {lang === 'zh' ? '使用完整計算器' : 'Use Full Calculator'}
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -494,6 +700,34 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Interactive Demo Section */}
+      <section className="py-16 md:py-24 bg-white">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 border border-blue-200 rounded-full px-4 py-1.5 text-sm mb-4">
+              <Play size={14} className="text-blue-600" />
+              <span className="text-blue-700 font-medium">{lang === 'zh' ? '互動示範' : 'Interactive Demo'}</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
+              {lang === 'zh' ? '即時體驗計算功能' : 'Try It Yourself'}
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              {lang === 'zh'
+                ? '輸入您的產品和紙箱尺寸，即時查看計算結果。不需要註冊，馬上開始！'
+                : "Enter your product and carton dimensions to see instant results. No signup required - start now!"}
+            </p>
+          </div>
+
+          <InteractiveDemo lang={lang} />
+
+          <p className="text-center text-sm text-slate-500 mt-6">
+            {lang === 'zh'
+              ? '完整版本包含：3D 視覺化、運費計算、產品庫、多箱比較等功能'
+              : 'Full version includes: 3D visualization, shipping costs, product library, multi-box comparison, and more'}
+          </p>
         </div>
       </section>
 
