@@ -34,6 +34,8 @@ export interface PlannerBox {
   pz: number; // min-corner Z in [0, W-w]
   color: number;
   weight?: number; // per-unit weight (optional; carried through for stats)
+  group?: string; // keep-together group (carried through for export)
+  unloadOrder?: number; // LIFO unload order (carried through for export)
 }
 
 interface Props {
@@ -44,6 +46,7 @@ interface Props {
   unitLabel?: string; // 'cm' | 'inch' — display only
   showDoor?: boolean; // draw a door marker on the +X face (default true)
   onChange?: (boxes: PlannerBox[]) => void;
+  registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
 }
 
 const EPS = 1e-6;
@@ -97,6 +100,7 @@ export default function InteractiveLoadPlanner({
   unitLabel = 'cm',
   showDoor = true,
   onChange,
+  registerSnapshot,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
@@ -158,7 +162,7 @@ export default function InteractiveLoadPlanner({
     };
     applyCamera();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mount.innerHTML = '';
@@ -360,6 +364,16 @@ export default function InteractiveLoadPlanner({
     };
     loop();
 
+    // expose a snapshot fn (renders once then reads the buffer)
+    registerSnapshot?.(() => {
+      try {
+        renderer.render(scene, camera);
+        return renderer.domElement.toDataURL('image/png');
+      } catch {
+        return null;
+      }
+    });
+
     const onResize = () => {
       width = mount.clientWidth || width;
       height = mount.clientHeight || height;
@@ -376,6 +390,7 @@ export default function InteractiveLoadPlanner({
       dom.removeEventListener('pointermove', onMove);
       dom.removeEventListener('pointerup', onUp);
       dom.removeEventListener('wheel', onWheel);
+      registerSnapshot?.(null);
       renderer.dispose();
       mount.innerHTML = '';
       sceneApi.current = null;

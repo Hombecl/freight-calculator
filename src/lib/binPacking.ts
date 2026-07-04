@@ -218,6 +218,8 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
       px: best.x, py: best.y, pz: best.z,
       color: spec.color,
       weight: spec.weight,
+      group: spec.group,
+      unloadOrder: spec.unloadOrder,
     };
     const node: Node = {
       box, supporters: best.supporters, loadAbove: 0,

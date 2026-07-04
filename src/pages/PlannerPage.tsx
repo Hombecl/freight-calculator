@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Download, FileText } from 'lucide-react';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
+import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -68,6 +70,29 @@ export default function PlannerPage() {
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
   const regen = () => { setLiveBoxes(null); setSeed((n) => n + 1); };
+
+  // export
+  const snapshotFn = useRef<(() => string | null) | null>(null);
+  const currentBoxes = liveBoxes ?? result.boxes;
+  const meta = (): PlanMeta => ({
+    title: 'Container Load Plan',
+    containerLabel: container.label,
+    container,
+    unit: 'cm',
+    weightUnit: 'kg',
+    date: new Date().toLocaleDateString(),
+  });
+  const exportCsv = () =>
+    downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
+  const exportPdf = () =>
+    openPrintablePlan({
+      meta: meta(),
+      stats,
+      zones: result.zones,
+      boxes: currentBoxes,
+      totalRequested: totalQty,
+      imageDataUrl: snapshotFn.current?.() ?? null,
+    });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -191,6 +216,21 @@ export default function PlannerPage() {
             Optimise pack
           </button>
 
+          <div className="flex gap-2">
+            <button
+              onClick={exportCsv}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200"
+            >
+              <Download size={15} /> CSV
+            </button>
+            <button
+              onClick={exportPdf}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900"
+            >
+              <FileText size={15} /> PDF plan
+            </button>
+          </div>
+
           <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
             <div className="flex justify-between"><span>Packed</span><span className="font-semibold">{result.boxes.length} / {totalQty}</span></div>
             <div className="flex justify-between"><span>Volume utilization</span><span className="font-semibold">{stats.volumeUtil.toFixed(1)}%</span></div>
@@ -242,6 +282,7 @@ export default function PlannerPage() {
             grid={1}
             unitLabel="cm"
             onChange={setLiveBoxes}
+            registerSnapshot={(fn) => { snapshotFn.current = fn; }}
           />
         </div>
       </div>
