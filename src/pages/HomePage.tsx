@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   ArrowRight, Check, Package, Container, Cuboid, Move3d,
-  FileText, ShieldCheck,
+  FileText, ShieldCheck, Warehouse,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
+import { captureLead } from '../lib/entitlement';
 
 /**
  * Homepage v4 — less text, more product.
@@ -19,19 +20,42 @@ import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
  * remaining block is either interactive, an image, or a table.
  */
 
-// A realistically FULL 20'GP — the hero must demonstrate high utilization.
-const DEMO_CONTAINER = { l: 589, w: 235, h: 239, maxWeight: 28200 }; // 20' GP
-const DEMO_SPECS: PackItemSpec[] = [
-  { id: 'd1', label: 'Master carton', l: 58, w: 46, h: 47, weight: 18, qty: 160, color: 0xfbbf24 },
-  { id: 'd2', label: 'Half carton', l: 48, w: 39, h: 39, weight: 12, qty: 90, color: 0x60a5fa },
-  { id: 'd3', label: 'Fragile', l: 45, w: 38, h: 29, weight: 6, qty: 30, color: 0x34d399, maxStack: 0 },
-];
+// Two hero scenes, one per level of the packing problem — the tabs above the
+// demo make it obvious WHICH problem is being shown. Both must look FULL.
+const CONTAINER_SCENE = {
+  container: { l: 589, w: 235, h: 239, maxWeight: 28200 }, // 20' GP
+  specs: [
+    { id: 'd1', label: 'Master carton', l: 58, w: 46, h: 47, weight: 18, qty: 160, color: 0xfbbf24 },
+    { id: 'd2', label: 'Half carton', l: 48, w: 39, h: 39, weight: 12, qty: 90, color: 0x60a5fa },
+    { id: 'd3', label: 'Fragile', l: 45, w: 38, h: 29, weight: 6, qty: 30, color: 0x34d399, maxStack: 0 },
+  ] as PackItemSpec[],
+};
+const CARTON_SCENE = {
+  container: { l: 60, w: 40, h: 40 }, // a single master carton
+  specs: [
+    { id: 'u1', label: 'Product unit', l: 14, w: 9, h: 8, weight: 0.4, qty: 100, color: 0xfbbf24 },
+    { id: 'u2', label: 'Accessory box', l: 12, w: 8, h: 6, weight: 0.2, qty: 40, color: 0x60a5fa },
+  ] as PackItemSpec[],
+};
 
 export default function HomePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
-  const demo = useMemo(() => packWithConstraints(DEMO_CONTAINER, DEMO_SPECS), []);
+  const [heroMode, setHeroMode] = useState<'container' | 'carton'>('container');
+  const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
+  const cartonDemo = useMemo(() => packWithConstraints(CARTON_SCENE.container, CARTON_SCENE.specs), []);
+  const demo = heroMode === 'container' ? containerDemo : cartonDemo;
+  const scene = heroMode === 'container' ? CONTAINER_SCENE : CARTON_SCENE;
+
+  // warehouse demand test
+  const [whEmail, setWhEmail] = useState('');
+  const [whState, setWhState] = useState<'idle' | 'open' | 'done'>('idle');
+  const submitWaitlist = () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(whEmail)) return;
+    captureLead(whEmail.trim(), { proWaitlist: true, source: 'warehouse-waitlist' });
+    setWhState('done');
+  };
 
   const tasks = [
     {
@@ -118,16 +142,16 @@ export default function HomePage() {
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed mb-8">
                 {T(
-                  'Pack more into every container — auto-optimize, drag to fine-tune, export a plan your warehouse can follow.',
-                  '每個貨櫃裝得更盡 — 自動優化、拖動微調、導出倉庫照住做嘅方案。',
+                  'Products into cartons. Cartons into containers. Optimized in 3D, exported as a plan your warehouse can follow.',
+                  '產品入箱、紙箱入櫃 — 3D 優化,導出倉庫照住做嘅方案。',
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-4">
                 <Link
-                  to="/planner"
+                  to={heroMode === 'container' ? '/planner' : '/packing'}
                   className="group inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white px-7 py-3.5 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-500/25"
                 >
-                  {T('Plan a container — free', '免費規劃一個貨櫃')}
+                  {heroMode === 'container' ? T('Plan a container — free', '免費規劃一個貨櫃') : T('Pack a carton — free', '免費計一個紙箱')}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -136,33 +160,58 @@ export default function HomePage() {
                   {demo.stats.volumeUtil.toFixed(1)}% {T('utilization', '利用率')}
                 </span>
                 <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                  {demo.boxes.length} {T('cartons', '箱')}
+                  {demo.boxes.length} {heroMode === 'container' ? T('cartons', '箱') : T('units', '件')}
                 </span>
-                <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                  {(demo.stats.totalWeight / 1000).toFixed(1)}t / 28.2t
-                </span>
+                {heroMode === 'container' && (
+                  <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
+                    {(demo.stats.totalWeight / 1000).toFixed(1)}t / 28.2t
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 {T('Live numbers — computed by the optimizer in your browser right now.', '實時數據 — 由優化引擎喺你瀏覽器即刻計出。')}
               </p>
             </div>
 
-            {/* the actual product, live + motion affordance */}
+            {/* the actual product, live + motion affordance + explicit mode tabs */}
             <div>
+              <div className="flex gap-1.5 mb-3">
+                <button
+                  onClick={() => setHeroMode('container')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    heroMode === 'container' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                  }`}
+                >
+                  <Container size={15} /> {T('Cartons → container', '紙箱 → 貨櫃')}
+                </button>
+                <button
+                  onClick={() => setHeroMode('carton')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    heroMode === 'carton' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                  }`}
+                >
+                  <Package size={15} /> {T('Products → carton', '產品 → 紙箱')}
+                </button>
+              </div>
               <div className="rounded-2xl border border-slate-700/80 bg-slate-900 shadow-2xl shadow-black/40 overflow-hidden">
                 <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
-                  <span className="ml-3 text-xs text-slate-500 font-mono">dimpack3d.com/planner — 20&#39;GP</span>
+                  <span className="ml-3 text-xs text-slate-500 font-mono">
+                    {heroMode === 'container'
+                      ? T("20' GP shipping container · 589×235×239 cm", "20' GP 貨櫃 · 589×235×239 cm")
+                      : T('Master carton · 60×40×40 cm', '外箱 · 60×40×40 cm')}
+                  </span>
                 </div>
                 <div className="p-3 [&_p]:text-slate-500 [&_.bg-slate-100]:bg-slate-800 [&_.bg-slate-100]:text-slate-300 [&_.text-slate-700]:text-slate-300 [&_.bg-slate-200]:bg-slate-700 [&_.bg-slate-200]:text-slate-200">
                   <InteractiveLoadPlanner
-                    container={DEMO_CONTAINER}
+                    key={heroMode}
+                    container={scene.container}
                     boxes={demo.boxes}
                     grid={1}
                     unitLabel="cm"
-                    showDoor
+                    showDoor={heroMode === 'container'}
                     autoSpin
                     hintOverlay
                   />
@@ -194,6 +243,48 @@ export default function HomePage() {
               </span>
             </Link>
           ))}
+        </div>
+
+        {/* demand test: which market wants warehouse floor planning? */}
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5">
+          {whState === 'done' ? (
+            <p className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
+              <Check size={16} /> {T("Thanks — you're on the list. We'll email you when warehouse planning ships.", '多謝 — 已記低。倉庫規劃推出時會 email 通知你。')}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center"><Warehouse size={20} /></span>
+                <div>
+                  <p className="font-bold text-slate-800 text-sm">
+                    {T('Arrange a warehouse floor', '規劃倉庫地面擺位')}
+                    <span className="ml-2 text-[10px] font-black uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{T('Coming soon', '即將推出')}</span>
+                  </p>
+                  <p className="text-xs text-slate-500">{T('Racking, aisles, pallet positions — want it? Tell us where to reach you.', '貨架、通道、卡板位 — 想要?留低 email 話我哋知。')}</p>
+                </div>
+              </div>
+              {whState === 'open' ? (
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    autoFocus
+                    value={whEmail}
+                    onChange={(e) => setWhEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitWaitlist()}
+                    placeholder="you@company.com"
+                    className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-56 outline-none focus:border-blue-500"
+                  />
+                  <button onClick={submitWaitlist} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold">
+                    {T('Notify me', '通知我')}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setWhState('open')} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:border-slate-400">
+                  {T('I need this →', '我需要呢個 →')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
