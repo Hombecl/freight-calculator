@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Download, FileText, Share2, Check, Save } from 'lucide-react';
 import { IS_ZH } from '../lib/locale';
 import { savePlan, getPlan } from '../lib/plans';
+import ImportModal from '../components/ImportModal';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
@@ -109,6 +110,14 @@ export default function PlannerPage() {
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
   const regen = () => { setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); };
+
+  // ---- Excel/CSV import (Tier 2 switching-cost killer — ENTERPRISE.md §4) ----
+  const [importOpen, setImportOpen] = useState(false);
+  const onImport = (imported: Spec[]) => {
+    setSpecs(imported);
+    track('import_cartons', String(imported.length));
+    regen();
+  };
 
   // ---- share links (free, no gate — sharing is the viral loop) ----
   const [shareState, setShareState] = useState<'idle' | 'busy' | 'copied' | 'error'>('idle');
@@ -285,7 +294,12 @@ export default function PlannerPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Carton types (cm / kg)</span>
-              <button onClick={addSpec} className="text-xs text-blue-600 font-medium">+ Add</button>
+              <div className="flex gap-3">
+                <button onClick={() => { setImportOpen(true); track('import_open'); }} className="text-xs text-emerald-700 font-semibold">
+                  ⬆ Import Excel/CSV
+                </button>
+                <button onClick={addSpec} className="text-xs text-blue-600 font-medium">+ Add</button>
+              </div>
             </div>
             {specs.map((s) => (
               <div key={s.id} className="p-2 rounded-lg border border-slate-200 space-y-2">
@@ -477,6 +491,8 @@ export default function PlannerPage() {
           />
         </div>
       </div>
+
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={onImport} />
 
       <PaywallModal
         open={paywallOpen}
