@@ -19,8 +19,11 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
 
   let plan: any;
   try { plan = JSON.parse(raw); } catch { return new Response('bad json', { status: 400 }); }
-  // minimal shape check — a plan must have a container and cartons
-  if (!plan || typeof plan !== 'object' || !plan.container || !Array.isArray(plan.specs)) {
+  // minimal shape check — container plan (container+specs) or warehouse
+  // layout (type:'warehouse' + floor + items)
+  const isContainerPlan = plan && typeof plan === 'object' && plan.container && Array.isArray(plan.specs);
+  const isWarehousePlan = plan && typeof plan === 'object' && plan.type === 'warehouse' && plan.floor && Array.isArray(plan.items);
+  if (!isContainerPlan && !isWarehousePlan) {
     return new Response('bad plan', { status: 400 });
   }
 

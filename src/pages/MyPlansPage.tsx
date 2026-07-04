@@ -171,7 +171,7 @@ export default function MyPlansPage() {
                       {copiedId === p.id ? (<><Check size={14} /> {T('Link copied', '已複製')}</>) : (<><UserCheck size={14} /> {T('Review', '批核')}</>)}
                     </button>
                     <Link
-                      to={`/planner?saved=${p.id}`}
+                      to={p.container_key === 'warehouse' ? `/warehouse?saved=${p.id}` : `/planner?saved=${p.id}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-semibold"
                     >
                       <FolderOpen size={14} /> {T('Open', '打開')}
