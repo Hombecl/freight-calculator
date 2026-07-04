@@ -45,6 +45,8 @@ interface Props {
   grid?: number; // snap step in same unit as dims (default 1)
   unitLabel?: string; // 'cm' | 'inch' — display only
   showDoor?: boolean; // draw a door marker on the +X face (default true)
+  autoSpin?: boolean; // slowly orbit the camera until the user first interacts
+  hintOverlay?: boolean; // show a "drag to explore" hint until first interaction
   onChange?: (boxes: PlannerBox[]) => void;
   registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
 }
@@ -99,12 +101,16 @@ export default function InteractiveLoadPlanner({
   grid = 1,
   unitLabel = 'cm',
   showDoor = true,
+  autoSpin = false,
+  hintOverlay = false,
   onChange,
   registerSnapshot,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
   const [webglFailed, setWebglFailed] = useState(false);
+  const [interacted, setInteracted] = useState(false);
+  const interactedRef = useRef(false);
 
   // The live source of truth for box positions. We keep it in a ref so the
   // three.js pointer handlers always see the latest without re-running effect.
@@ -296,6 +302,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const onDown = (e: PointerEvent) => {
+      if (!interactedRef.current) { interactedRef.current = true; setInteracted(true); }
       setNdc(e);
       last = { x: e.clientX, y: e.clientY };
       const id = pickBox();
@@ -369,6 +376,11 @@ export default function InteractiveLoadPlanner({
     let raf = 0;
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      // gentle idle orbit so visitors can SEE it is a live 3D scene
+      if (autoSpin && !interactedRef.current && mode === 'idle') {
+        theta -= 0.0022;
+        applyCamera();
+      }
       renderer.render(scene, camera);
     };
     loop();
@@ -461,19 +473,36 @@ export default function InteractiveLoadPlanner({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <div
-        ref={mountRef}
-        className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-        style={{ cursor: selectedId ? 'grab' : 'move' }}
-      >
-        {webglFailed ? (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-sm px-6 text-center">
-            <span className="font-semibold text-slate-300">3D view unavailable</span>
-            <span>This device/browser has WebGL disabled. The optimizer still works — utilization and stats are shown below.</span>
-          </div>
-        ) : !threeLoaded && (
-          <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
-            Loading 3D…
+      <div className="relative">
+        <div
+          ref={mountRef}
+          className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
+          style={{ cursor: selectedId ? 'grab' : 'move' }}
+        >
+          {webglFailed ? (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-sm px-6 text-center">
+              <span className="font-semibold text-slate-300">3D view unavailable</span>
+              <span>This device/browser has WebGL disabled. The optimizer still works — utilization and stats are shown below.</span>
+            </div>
+          ) : !threeLoaded && (
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+              Loading 3D…
+            </div>
+          )}
+        </div>
+        {/* interaction affordance — fades away on first pointer-down */}
+        {hintOverlay && threeLoaded && !webglFailed && (
+          <div
+            className={`pointer-events-none absolute inset-x-0 bottom-4 flex justify-center transition-opacity duration-700 ${
+              interacted ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 bg-slate-950/85 backdrop-blur border border-slate-600/60 text-slate-100 text-sm font-medium rounded-full px-4 py-2 shadow-xl animate-bounce-subtle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-300">
+                <path d="M9 11.5V5a1.5 1.5 0 0 1 3 0v5" /><path d="M12 10V4.5a1.5 1.5 0 0 1 3 0V10" /><path d="M15 10.5v-3a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-2-3.5a1.6 1.6 0 0 1 2.6-1.8L8 13V6.5a1.5 1.5 0 0 1 1-1.4" />
+              </svg>
+              Drag to explore · click a carton
+            </div>
           </div>
         )}
       </div>
