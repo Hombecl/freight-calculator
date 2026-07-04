@@ -12,7 +12,6 @@ export default function CbmCalculatorGuide() {
         <title>CBM Calculator Guide: Master Shipping Volume Calculations | DimPack3D</title>
         <meta name="description" content="Complete guide to CBM (Cubic Meter) calculations for international shipping. Learn formulas, container capacities for 20GP, 40GP, 40HQ, and how to optimize cargo loading." />
         <meta name="keywords" content="CBM calculator, cubic meter calculation, shipping volume, container capacity, 20GP capacity, 40GP capacity, 40HQ capacity, freight calculation, cargo volume" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/cbm-calculator-shipping" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/cbm-calculator-shipping" />
         <meta property="og:title" content="CBM Calculator Guide: Master Shipping Volume Calculations" />
         <meta property="og:description" content="Learn CBM calculations, container capacities, and cargo optimization strategies for international shipping." />

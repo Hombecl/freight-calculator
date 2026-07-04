@@ -2,10 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Package, Container, Cuboid, Move3d, Languages, Settings, RotateCcw, BookOpen } from 'lucide-react';
 import Logo from './Logo';
 import { useApp } from '../../context/AppContext';
+import { localeSwitchHref } from '../../lib/locale';
 
 export default function Header() {
   const location = useLocation();
-  const { lang, setLang, units, toggleLengthUnit, toggleWeightUnit, toggleCurrency, setIsSettingsOpen, handleClearData, t } = useApp();
+  const { lang, units, toggleLengthUnit, toggleWeightUnit, toggleCurrency, setIsSettingsOpen, handleClearData, t } = useApp();
 
   const navItems = [
     { path: '/planner', label: 'Load Planner', labelZh: '裝載規劃', icon: Move3d, activeColor: 'bg-indigo-600' },
@@ -52,7 +53,7 @@ export default function Header() {
           {/* Controls */}
           <div className="flex items-center gap-1.5 md:gap-2">
             <button
-              onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+              onClick={() => { window.location.href = localeSwitchHref(); }}
               className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 isHomePage
                   ? 'bg-white/10 text-white hover:bg-white/20'

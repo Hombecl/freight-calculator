@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { URL_LANG } from '../lib/locale';
 import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, ZoomOut, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight, HardDrive, Lightbulb, ExternalLink, Lock, Unlock, Sliders, Search, Trash2, FolderOpen, Plus, Library } from 'lucide-react';
 
 // ===== Type Definitions =====
@@ -3562,7 +3563,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
   };
 
   // --- Global Settings ---
-  const [lang, setLang] = useState<Language>(() => getInitialState('lang', 'zh'));
+  const [lang, setLang] = useState<Language>(URL_LANG);
   const [units, setUnits] = useState<Units>(() => getInitialState('units', defaultUnits));
   const [rates, setRates] = useState<Rates>(() => getInitialState('rates', defaultRates));
   const [dimFactor, setDimFactor] = useState(() => getInitialState('dimFactor', 5000));

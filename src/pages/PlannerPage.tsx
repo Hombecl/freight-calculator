@@ -161,7 +161,6 @@ export default function PlannerPage() {
           name="description"
           content="Real 3D bin-packing with weight & stacking limits, then drag, rotate and stack cartons by hand in an interactive editor. Free load planning from DimPack3D."
         />
-        <link rel="canonical" href="https://www.dimpack3d.com/planner" />
       </Helmet>
 
       <div className="mb-5">

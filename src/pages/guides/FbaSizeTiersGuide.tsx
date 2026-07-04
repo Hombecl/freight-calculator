@@ -12,7 +12,6 @@ export default function FbaSizeTiersGuide() {
         <title>Amazon FBA Size Tiers 2025: Complete Guide to Reduce Fulfillment Fees | DimPack3D</title>
         <meta name="description" content="Complete 2025 guide to Amazon FBA size tiers. Learn dimensional weight calculations, size tier thresholds, and proven strategies to reduce FBA fulfillment fees by optimizing packaging." />
         <meta name="keywords" content="Amazon FBA size tiers 2025, FBA dimensional weight, FBA fulfillment fees, FBA size tier calculator, reduce FBA fees, Amazon seller guide, FBA packaging optimization" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/fba-size-tiers-2025" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/fba-size-tiers-2025" />
         <meta property="og:title" content="Amazon FBA Size Tiers 2025: Complete Guide to Reduce Fulfillment Fees" />
         <meta property="og:description" content="Learn how Amazon FBA size tiers work in 2025 and discover strategies to optimize packaging and reduce fulfillment fees." />

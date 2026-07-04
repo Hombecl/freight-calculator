@@ -12,7 +12,6 @@ export default function ProductsPerCartonGuide() {
         <title>Products Per Carton Calculator: Optimize Box Packing | DimPack3D</title>
         <meta name="description" content="Learn how to calculate the optimal number of products per carton. Master packing algorithms, rotation strategies, and space optimization techniques to reduce shipping costs." />
         <meta name="keywords" content="products per carton calculator, box packing calculator, carton optimization, packing efficiency, products per box, packaging calculator, carton capacity" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/products-per-carton" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/products-per-carton" />
         <meta property="og:title" content="Products Per Carton Calculator: Optimize Box Packing" />
         <meta property="og:description" content="Learn how to maximize products per carton with smart packing strategies." />

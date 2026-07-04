@@ -99,7 +99,6 @@ export default function GuidesPage() {
         <title>Shipping & FBA Guides - Free Calculator Tutorials | DimPack3D</title>
         <meta name="description" content="Free guides on Amazon FBA size tiers, CBM calculations, container loading optimization, and shipping cost reduction. Expert tutorials for e-commerce sellers." />
         <meta name="keywords" content="FBA guide, CBM calculator tutorial, container loading guide, shipping optimization, Amazon seller guide, e-commerce logistics" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides" />
         <meta property="og:title" content="Shipping & FBA Guides - Free Calculator Tutorials | DimPack3D" />
         <meta property="og:description" content="Free guides on Amazon FBA size tiers, CBM calculations, and container loading optimization for e-commerce sellers." />

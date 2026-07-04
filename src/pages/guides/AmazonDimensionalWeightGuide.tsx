@@ -12,7 +12,6 @@ export default function AmazonDimensionalWeightGuide() {
         <title>Amazon Dimensional Weight Calculator 2025: Complete FBA Guide | DimPack3D</title>
         <meta name="description" content="Master Amazon dimensional weight calculations for FBA. Learn how Amazon calculates DIM weight, understand the 139 cubic inch divisor, and optimize packaging to reduce fees." />
         <meta name="keywords" content="amazon dimensional weight, amazon dim weight calculator, FBA dimensional weight, amazon 139 divisor, amazon shipping weight, FBA weight calculation, amazon volumetric weight" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/amazon-dimensional-weight" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/amazon-dimensional-weight" />
         <meta property="og:title" content="Amazon Dimensional Weight Calculator 2025: Complete FBA Guide" />
         <meta property="og:description" content="Learn how Amazon calculates dimensional weight for FBA and optimize your packaging to reduce fulfillment fees." />

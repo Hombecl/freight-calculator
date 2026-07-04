@@ -13,6 +13,7 @@ export default function Footer() {
   ];
 
   const guides = [
+    { to: '/answers', label: T('Quick answers: cartons per container', '快速答案:每櫃裝幾多箱') },
     { to: '/guides/container-loading-optimization', label: T('Container Loading Guide', '貨櫃裝載指南') },
     { to: '/guides/cbm-calculator-shipping', label: T('CBM & Shipping Costs', 'CBM 與運費') },
     { to: '/guides/pallet-calculator', label: T('Pallet Calculator Guide', '卡板計算指南') },

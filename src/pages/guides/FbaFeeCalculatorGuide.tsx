@@ -12,7 +12,6 @@ export default function FbaFeeCalculatorGuide() {
         <title>Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs | DimPack3D</title>
         <meta name="description" content="Free guide to Amazon FBA fees and costs. Learn how to calculate fulfillment fees, storage fees, referral fees, and maximize your FBA profit margins in 2025." />
         <meta name="keywords" content="FBA fee calculator, amazon FBA fees, FBA fulfillment fees, FBA cost calculator, amazon seller fees, FBA profit calculator, FBA revenue calculator, amazon profit margin" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/fba-fee-calculator" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/fba-fee-calculator" />
         <meta property="og:title" content="Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs" />
         <meta property="og:description" content="Learn how to calculate all Amazon FBA fees and maximize your profit margins with our comprehensive guide." />

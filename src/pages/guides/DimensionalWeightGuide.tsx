@@ -12,7 +12,6 @@ export default function DimensionalWeightGuide() {
         <title>Dimensional Weight Calculator Guide: DIM Weight Formula Explained | DimPack3D</title>
         <meta name="description" content="Complete guide to dimensional weight (DIM weight) calculations. Learn the formula, divisors for air and sea freight, and strategies to reduce shipping costs by optimizing packaging." />
         <meta name="keywords" content="dimensional weight calculator, DIM weight, volumetric weight, shipping weight calculation, DIM factor, air freight weight, sea freight weight, package optimization" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/dimensional-weight-calculator" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/dimensional-weight-calculator" />
         <meta property="og:title" content="Dimensional Weight Calculator Guide: DIM Weight Formula Explained" />
         <meta property="og:description" content="Learn how dimensional weight affects shipping costs and how to optimize your packaging." />

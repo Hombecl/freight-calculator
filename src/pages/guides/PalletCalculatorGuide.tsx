@@ -12,7 +12,6 @@ export default function PalletCalculatorGuide() {
         <title>Pallet Calculator Guide: Optimize Pallet Loading & Shipping | DimPack3D</title>
         <meta name="description" content="Free pallet calculator guide. Learn standard pallet sizes, calculate cartons per pallet, optimize pallet loading patterns, and reduce LTL and FTL shipping costs." />
         <meta name="keywords" content="pallet calculator, pallet loading calculator, cartons per pallet, pallet size, pallet weight calculator, LTL shipping, FTL shipping, pallet optimization, 48x40 pallet" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/pallet-calculator" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/pallet-calculator" />
         <meta property="og:title" content="Pallet Calculator Guide: Optimize Pallet Loading & Shipping" />
         <meta property="og:description" content="Learn standard pallet sizes, calculate cartons per pallet, and optimize your pallet loading for cost-effective shipping." />

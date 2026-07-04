@@ -12,7 +12,6 @@ export default function ContainerLoadingGuide() {
         <title>Container Loading Optimization: Maximize Space Utilization | DimPack3D</title>
         <meta name="description" content="Expert guide to container loading optimization. Learn how to maximize space utilization in 20GP, 40GP, 40HQ containers. Includes loading patterns, weight distribution, and cost-saving strategies." />
         <meta name="keywords" content="container loading optimization, container space utilization, 20GP loading, 40GP loading, 40HQ loading, cargo loading plan, container stacking, shipping container optimization" />
-        <link rel="canonical" href="https://www.dimpack3d.com/guides/container-loading-optimization" />
         <meta property="og:url" content="https://www.dimpack3d.com/guides/container-loading-optimization" />
         <meta property="og:title" content="Container Loading Optimization: Maximize Space Utilization" />
         <meta property="og:description" content="Expert strategies for optimizing container loading to achieve 90%+ space utilization." />

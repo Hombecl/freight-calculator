@@ -112,7 +112,6 @@ export default function HomePage() {
         <title>DimPack3D - Free 3D Container Load Planner | Pack, Edit & Export Load Plans</title>
         <meta name="description" content="Plan container loads in interactive 3D — auto-optimize with real bin-packing, drag cartons by hand, respect weight & stacking limits, then export a PDF load plan and packing list. Plus free CBM, carton packing and Amazon FBA calculators." />
         <meta name="keywords" content="container load planner, load planning software, 3D bin packing, container loading calculator, packing list PDF, CBM calculator, FBA calculator, freight forwarder tools" />
-        <link rel="canonical" href="https://www.dimpack3d.com/" />
         <meta property="og:url" content="https://www.dimpack3d.com/" />
         <meta property="og:title" content="DimPack3D - Free 3D Container Load Planner" />
         <meta property="og:description" content="Auto-optimize container loads with real bin-packing, fine-tune in interactive 3D, export PDF load plans — free." />

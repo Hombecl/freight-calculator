@@ -1,0 +1,15 @@
+{
+  "containers": [
+    { "key": "20gp", "slug": "20ft-container", "labelEn": "20ft container (20' GP)", "labelZh": "20 呎標準櫃 (20' GP)", "l": 589, "w": 235, "h": 239, "maxWeight": 28200 },
+    { "key": "40gp", "slug": "40ft-container", "labelEn": "40ft container (40' GP)", "labelZh": "40 呎標準櫃 (40' GP)", "l": 1203, "w": 235, "h": 239, "maxWeight": 26700 },
+    { "key": "40hq", "slug": "40ft-hc-container", "labelEn": "40ft high-cube container (40' HQ)", "labelZh": "40 呎高櫃 (40' HQ)", "l": 1203, "w": 235, "h": 269, "maxWeight": 26500 }
+  ],
+  "cartons": [
+    { "l": 60, "w": 40, "h": 40 },
+    { "l": 60, "w": 50, "h": 45 },
+    { "l": 55, "w": 45, "h": 40 },
+    { "l": 50, "w": 40, "h": 30 },
+    { "l": 45, "w": 40, "h": 30 },
+    { "l": 40, "w": 30, "h": 30 }
+  ]
+}

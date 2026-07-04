@@ -16,15 +16,17 @@
  */
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, mkdtempSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 
-const ROUTES = [
+const BASE_ROUTES = [
   '/',
   '/planner',
   '/packing',
   '/container',
   '/fba',
+  '/answers',
   '/guides',
   '/guides/fba-size-tiers-2025',
   '/guides/cbm-calculator-shipping',
@@ -35,6 +37,47 @@ const ROUTES = [
   '/guides/fba-fee-calculator',
   '/guides/pallet-calculator',
 ];
+
+// programmatic answer pages — same single source as src/lib/answers.ts
+const answersData = JSON.parse(readFileSync('src/data/answers.json', 'utf8'));
+const ANSWER_ROUTES = [];
+for (const ct of answersData.containers) {
+  ANSWER_ROUTES.push(`/answers/cartons-in-${ct.slug}`);
+  for (const c of answersData.cartons) {
+    ANSWER_ROUTES.push(`/answers/how-many-${c.l}x${c.w}x${c.h}-cartons-fit-in-a-${ct.slug}`);
+  }
+}
+
+const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES];
+// every page exists in both locales; /zh/* serves Traditional Chinese
+const ROUTES = [...EN_ROUTES, ...EN_ROUTES.map((r) => (r === '/' ? '/zh' : `/zh${r}`))];
+
+// sitemap.xml with hreflang alternates — single source of truth is ROUTES
+function writeSitemap() {
+  const site = 'https://www.dimpack3d.com';
+  const today = new Date().toISOString().slice(0, 10);
+  const urls = EN_ROUTES.map((r) => {
+    const clean = r === '/' ? '' : r;
+    const en = `${site}${clean || '/'}`;
+    const zh = `${site}/zh${clean}`;
+    const alt = (u, l) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${u}"/>`;
+    const block = (loc) => `  <url>
+    <loc>${loc}</loc>
+    <lastmod>${today}</lastmod>
+${alt(en, 'en')}
+${alt(zh, 'zh-Hant')}
+${alt(en, 'x-default')}
+  </url>`;
+    return block(en) + '\n' + block(zh);
+  }).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${urls}
+</urlset>
+`;
+  writeFileSync(join('dist', 'sitemap.xml'), xml);
+  console.log(`[prerender] sitemap.xml written (${EN_ROUTES.length * 2} URLs)`);
+}
 
 const CHROME_PATHS = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -48,9 +91,14 @@ if (!chrome) {
 }
 
 const PORT = 4173;
+
+// a zombie preview from an earlier run would serve a STALE dist to our
+// snapshots — clear the port before starting
+try { execFileSync('bash', ['-c', `lsof -ti :${PORT} | xargs kill -9`], { stdio: 'ignore' }); } catch { /* none */ }
+
 const preview = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore',
-  detached: false,
+  detached: true, // own process group so we can kill vite itself, not just npx
 });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -67,25 +115,37 @@ try {
   }
   if (!up) throw new Error('vite preview did not start');
 
+  // hang-proof renderer: own profile dir (no lock contention with the user's
+  // running Chrome), process-group SIGKILL on a hard 45s timer (execFileSync's
+  // timeout can block forever on a pipe held open by an orphaned Chrome helper)
+  const profile = mkdtempSync(join(tmpdir(), 'prerender-profile-'));
+  const renderRoute = (url) => new Promise((resolve) => {
+    const child = spawn(chrome, [
+      '--headless=new',
+      '--disable-gpu',
+      '--hide-scrollbars',
+      '--no-first-run',
+      '--disable-extensions',
+      `--user-data-dir=${profile}`,
+      '--virtual-time-budget=15000',
+      '--dump-dom',
+      url,
+    ], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    let out = '';
+    const timer = setTimeout(() => {
+      try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ }
+    }, 45_000);
+    child.stdout.on('data', (d) => { out += d; });
+    child.on('close', () => { clearTimeout(timer); resolve(out); });
+    child.on('error', () => { clearTimeout(timer); resolve(''); });
+  });
+
   let ok = 0;
   for (const route of ROUTES) {
     const url = `http://localhost:${PORT}${route}`;
-    let html = '';
-    try {
-      html = execFileSync(
-        chrome,
-        [
-          '--headless=new',
-          '--disable-gpu',
-          '--hide-scrollbars',
-          '--virtual-time-budget=15000',
-          '--dump-dom',
-          url,
-        ],
-        { maxBuffer: 32 * 1024 * 1024, timeout: 60_000 },
-      ).toString();
-    } catch (e) {
-      console.warn(`[prerender] FAILED ${route}: ${e.message}`);
+    const html = await renderRoute(url);
+    if (!html) {
+      console.warn(`[prerender] FAILED ${route}: no output (timeout or crash)`);
       continue;
     }
     // sanity: only keep snapshots that actually contain rendered content
@@ -103,8 +163,9 @@ try {
     ok++;
     console.log(`[prerender] ${route} → ${outPath} (${(html.length / 1024).toFixed(0)} KB)`);
   }
+  writeSitemap();
   console.log(`[prerender] done: ${ok}/${ROUTES.length} routes snapshotted`);
   if (ok === 0) process.exit(1);
 } finally {
-  preview.kill('SIGTERM');
+  try { process.kill(-preview.pid, 'SIGTERM'); } catch { preview.kill('SIGTERM'); }
 }
