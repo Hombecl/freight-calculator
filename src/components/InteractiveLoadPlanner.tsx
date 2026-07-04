@@ -33,6 +33,7 @@ export interface PlannerBox {
   py: number; // min-corner Y (layer base) in [0, H-h]
   pz: number; // min-corner Z in [0, W-w]
   color: number;
+  weight?: number; // per-unit weight (optional; carried through for stats)
 }
 
 interface Props {
