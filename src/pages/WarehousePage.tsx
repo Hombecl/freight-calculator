@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Route } from 'lucide-react';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
-import { autoArrangeFloor, checkReachability, type FloorItemSpec } from '../lib/warehouse';
+import { autoArrangeFloor, checkReachability, forkliftPath, placeNearDock, type FloorItemSpec } from '../lib/warehouse';
 import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
 
@@ -42,11 +42,74 @@ export default function WarehousePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [seed, floorL, floorW],
   );
-  const boxes = liveBoxes ?? arranged;
+  // baseline = what the 3D editor is seeded with (auto layout, or auto layout
+  // + hand-placed items); liveBoxes = positions after manual drags
+  const [baseline, setBaseline] = useState<PlannerBox[] | null>(null);
+  const base = baseline ?? arranged;
+  const boxes = liveBoxes ?? base;
   const reach = useMemo(() => checkReachability(floor, boxes, aisle), [floor, boxes, aisle]);
 
   const totalQty = items.reduce((s, x) => s + x.qty, 0);
-  const regen = () => { setLiveBoxes(null); setSeed((n) => n + 1); track('warehouse_arrange'); };
+  const regen = () => { setBaseline(null); setLiveBoxes(null); setSelectedId(null); setSeed((n) => n + 1); track('warehouse_arrange'); };
+
+  // forklift route to the selected pallet — the "we compute how the truck
+  // actually gets there" pitch moment
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const path = useMemo(
+    () => (selectedId ? forkliftPath(floor, boxes, aisle, selectedId) : null),
+    [floor, boxes, aisle, selectedId],
+  );
+  const pathLen = useMemo(() => {
+    if (!path || path.length < 2) return 0;
+    let len = 0;
+    for (let i = 1; i < path.length; i++) len += Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].z - path[i - 1].z);
+    return len / 100; // m
+  }, [path]);
+  const selectedBox = selectedId ? boxes.find((b) => b.id === selectedId) : null;
+  useEffect(() => { if (selectedId) track('warehouse_route'); }, [selectedId]);
+
+  // rotating coach tips
+  const TIPS = [
+    'Click any pallet — the forklift\'s route from the dock appears.',
+    'Drag a pallet across an aisle. Anything cut off turns red instantly.',
+    'Try the reach-truck aisle width (2.7 m) — watch how much floor you win back.',
+  ];
+  const [tip, setTip] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTip((n) => (n + 1) % TIPS.length), 7000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "+ Place one": drop a single item near the dock, selected and ready to drag —
+  // this is how users discover that things can be added and moved
+  const placeOne = (spec: FloorItemSpec) => {
+    const spot = placeNearDock(floor, boxes, spec);
+    if (!spot) return;
+    const nb: PlannerBox = {
+      id: `${spec.id}-m${Date.now() % 100000}`,
+      label: spec.label,
+      l: spec.l, w: spec.w, h: spec.h,
+      px: spot.px, py: 0, pz: spot.pz,
+      color: spec.color,
+    };
+    // new baseline = current layout (incl. any manual edits) + the new item,
+    // so the 3D editor re-seeds without losing the user's work
+    setBaseline([...boxes, nb]);
+    setLiveBoxes(null);
+    setSelectedId(nb.id);
+    track('warehouse_place_one');
+  };
+
+  // first-visit tutorial overlay
+  const [showTutorial, setShowTutorial] = useState(() => {
+    try { return !localStorage.getItem('dp_wh_tutorial_seen'); } catch { return true; }
+  });
+  const dismissTutorial = () => {
+    try { localStorage.setItem('dp_wh_tutorial_seen', '1'); } catch { /* ignore */ }
+    setShowTutorial(false);
+    track('warehouse_tutorial_done');
+  };
 
   const updateItem = (id: string, patch: Partial<FloorItemSpec>) =>
     setItems((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -89,10 +152,10 @@ export default function WarehousePage() {
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Floor (cm)</label>
             <div className="flex gap-2">
-              <input type="number" min={500} value={floorL} onChange={(e) => { setFloorL(Math.max(500, +e.target.value || 0)); setLiveBoxes(null); }}
+              <input type="number" min={500} value={floorL} onChange={(e) => { setFloorL(Math.max(500, +e.target.value || 0)); setBaseline(null); setLiveBoxes(null); }}
                 className="w-full text-sm px-2 py-1.5 rounded border border-slate-200" />
               <span className="text-slate-400 self-center">×</span>
-              <input type="number" min={500} value={floorW} onChange={(e) => { setFloorW(Math.max(500, +e.target.value || 0)); setLiveBoxes(null); }}
+              <input type="number" min={500} value={floorW} onChange={(e) => { setFloorW(Math.max(500, +e.target.value || 0)); setBaseline(null); setLiveBoxes(null); }}
                 className="w-full text-sm px-2 py-1.5 rounded border border-slate-200" />
             </div>
             <p className="text-xs text-slate-400 mt-1">{(floorL / 100).toFixed(0)} m × {(floorW / 100).toFixed(0)} m · dock on the green edge</p>
@@ -126,6 +189,12 @@ export default function WarehousePage() {
                     </div>
                   ))}
                 </div>
+                <button
+                  onClick={() => placeOne(s)}
+                  className="w-full py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors"
+                >
+                  ⤓ Place one near the dock
+                </button>
               </div>
             ))}
           </div>
@@ -168,19 +237,62 @@ export default function WarehousePage() {
         </div>
 
         {/* right: 3D floor */}
-        <div>
+        <div className="relative">
+          {showTutorial && (
+            <div className="absolute inset-0 z-20 rounded-lg bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="max-w-sm text-center">
+                <h2 className="text-white font-black text-xl mb-5">How this works</h2>
+                <ol className="text-left space-y-4 mb-6">
+                  <li className="flex gap-3 text-slate-200 text-sm">
+                    <span className="shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white font-black flex items-center justify-center">1</span>
+                    <span><b>Auto-arrange</b> lays your pallets in rows with forklift aisles — or hit <b>“Place one”</b> on any item to drop it near the dock.</span>
+                  </li>
+                  <li className="flex gap-3 text-slate-200 text-sm">
+                    <span className="shrink-0 w-7 h-7 rounded-full bg-blue-500 text-white font-black flex items-center justify-center">2</span>
+                    <span><b>Drag any pallet</b> to move it (it glows when your mouse is over it). Drag empty floor to rotate the view.</span>
+                  </li>
+                  <li className="flex gap-3 text-slate-200 text-sm">
+                    <span className="shrink-0 w-7 h-7 rounded-full bg-red-500 text-white font-black flex items-center justify-center">3</span>
+                    <span>Block an aisle and cut-off pallets turn <b className="text-red-400">red</b>. <b>Click a pallet</b> to watch the forklift’s actual route from the dock.</span>
+                  </li>
+                </ol>
+                <button onClick={dismissTutorial} className="px-6 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold">
+                  Got it — let me try
+                </button>
+              </div>
+            </div>
+          )}
           <InteractiveLoadPlanner
             key={`${floorL}-${floorW}-${seed}`}
             container={{ l: floorL, w: floorW, h: 350 }}
-            boxes={arranged}
+            boxes={base}
             grid={10}
             unitLabel="cm"
             showDoor
+            hintOverlay
+            hintText="Drag a pallet to move it · click one to see the forklift route"
             flagIds={reach.unreachable}
+            path={path}
+            onSelect={setSelectedId}
             onChange={setLiveBoxes}
           />
-          <p className="text-xs text-slate-400 mt-2">
-            Green face = dock. Drag any pallet — reachability re-checks live. Grid snap: 10 cm.
+          {/* live route readout for the selected pallet */}
+          {selectedBox && (
+            <div className={`mt-2 flex items-center gap-2 text-sm font-medium rounded-lg px-3 py-2 ${
+              path ? 'bg-cyan-50 text-cyan-800 border border-cyan-200' : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              <Route size={16} />
+              {path
+                ? <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m from the dock — shown in the 3D view.</>
+                : <>No route exists — <b>{selectedBox.label}</b> is cut off from the dock at this aisle width.</>}
+            </div>
+          )}
+          <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            {TIPS[tip]}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Green face = dock. Grid snap: 10 cm.
           </p>
         </div>
       </div>

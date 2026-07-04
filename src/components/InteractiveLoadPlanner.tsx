@@ -47,7 +47,10 @@ interface Props {
   showDoor?: boolean; // draw a door marker on the +X face (default true)
   autoSpin?: boolean; // slowly orbit the camera until the user first interacts
   hintOverlay?: boolean; // show a "drag to explore" hint until first interaction
+  hintText?: string; // custom hint chip text (defaults to the explore hint)
   flagIds?: string[]; // boxes tinted red (e.g. forklift-unreachable in warehouse mode)
+  path?: { x: number; z: number }[] | null; // animated route drawn on the floor (e.g. forklift dock→pallet)
+  onSelect?: (id: string | null) => void; // selection change (click a box)
   onChange?: (boxes: PlannerBox[]) => void;
   registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
 }
@@ -104,7 +107,10 @@ export default function InteractiveLoadPlanner({
   showDoor = true,
   autoSpin = false,
   hintOverlay = false,
+  hintText,
   flagIds,
+  path,
+  onSelect,
   onChange,
   registerSnapshot,
 }: Props) {
@@ -126,6 +132,8 @@ export default function InteractiveLoadPlanner({
     meshById: Map<string, any>;
     refresh: () => void;
     THREE: any;
+    scene: any;
+    offset: { x: number; y: number; z: number };
   } | null>(null);
 
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
@@ -274,9 +282,22 @@ export default function InteractiveLoadPlanner({
 
     rebuild();
 
+    // drag "shadow": a floor rectangle projected under the box being dragged
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.visible = false;
+    scene.add(shadow);
+    const syncShadow = (b: PlannerBox) => {
+      shadow.scale.set(b.l, b.w, 1);
+      shadow.position.set(off.x + b.px + b.l / 2, off.y + 0.8, off.z + b.pz + b.w / 2);
+    };
+
     sceneApi.current = {
       meshById,
       THREE,
+      scene,
+      offset: off,
       refresh: () => { rebuild(); },
     };
 
@@ -287,6 +308,7 @@ export default function InteractiveLoadPlanner({
 
     let mode: 'idle' | 'orbit' | 'drag' = 'idle';
     let dragId: string | null = null;
+    let hoveredId: string | null = null;
     let dragPlane: any = null;
     let dragGrab = new THREE.Vector3(); // offset between hit point and box min-corner
     let last = { x: 0, y: 0 };
@@ -311,10 +333,13 @@ export default function InteractiveLoadPlanner({
       if (id) {
         const b = boxesRef.current.find((x) => x.id === id)!;
         setSelectedId(id);
+        if (selectedIdRef.current !== id) onSelect?.(id);
         selectedIdRef.current = id;
         applyHighlight();
         mode = 'drag';
         dragId = id;
+        syncShadow(b);
+        shadow.visible = true;
         // horizontal drag plane at the box base height
         const planeY = off.y + b.py;
         dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -planeY);
@@ -353,7 +378,20 @@ export default function InteractiveLoadPlanner({
         if (!collidesAny(trial, boxesRef.current)) {
           b.px = nx; b.pz = nz;
           syncMesh(b);
+          syncShadow(b);
         }
+        return;
+      }
+      // idle: hover affordance — glow + grab cursor so boxes read as movable
+      setNdc(e);
+      const hid = pickBox();
+      if (hid !== hoveredId) {
+        hoveredId = hid;
+        meshById.forEach((m: any, id: string) => {
+          if (id === selectedIdRef.current) return; // selection highlight wins
+          m.material.emissive?.setHex(id === hoveredId ? 0x334477 : 0x000000);
+        });
+        dom.style.cursor = hoveredId ? 'grab' : 'move';
       }
     };
 
@@ -361,6 +399,7 @@ export default function InteractiveLoadPlanner({
       if (mode === 'drag') commit();
       mode = 'idle';
       dragId = null;
+      shadow.visible = false;
       try { dom.releasePointerCapture(e.pointerId); } catch { /* noop */ }
     };
 
@@ -382,6 +421,18 @@ export default function InteractiveLoadPlanner({
       if (autoSpin && !interactedRef.current && mode === 'idle') {
         theta -= 0.0022;
         applyCamera();
+      }
+      // animate the route marker (forklift) along the current path
+      const pa = pathAnimRef.current;
+      if (pa && pa.total > 0 && pa.marker) {
+        pa.t = (pa.t + Math.min(2.5, pa.total * 0.004) / pa.total) % 1;
+        const d = pa.t * pa.total;
+        let i = 1;
+        while (i < pa.cum.length - 1 && pa.cum[i] < d) i++;
+        const seg = pa.cum[i] - pa.cum[i - 1] || 1;
+        const f = (d - pa.cum[i - 1]) / seg;
+        const a = pa.pts[i - 1], b = pa.pts[i];
+        pa.marker.position.set(a.x + (b.x - a.x) * f, a.y, a.z + (b.z - a.z) * f);
       }
       renderer.render(scene, camera);
     };
@@ -440,6 +491,63 @@ export default function InteractiveLoadPlanner({
       m.material.color?.setHex(flagged.has(id) ? 0xef4444 : original);
     });
   }, [flagIds, boxes]);
+
+  // animated route (e.g. forklift dock→pallet): dashed line + travelling marker
+  const pathAnimRef = useRef<{
+    pts: any[]; cum: number[]; total: number; t: number;
+    line: any; marker: any;
+  } | null>(null);
+  useEffect(() => {
+    const api = sceneApi.current;
+    if (!api) return;
+    const { THREE, scene, offset } = api;
+    // clear previous
+    if (pathAnimRef.current) {
+      scene.remove(pathAnimRef.current.line);
+      scene.remove(pathAnimRef.current.marker);
+      pathAnimRef.current = null;
+    }
+    if (!path || path.length < 2) return;
+
+    const pts = path.map((p) => new THREE.Vector3(offset.x + p.x, offset.y + 6, offset.z + p.z));
+    const cum: number[] = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    const total = cum[cum.length - 1];
+
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(geo, new THREE.LineDashedMaterial({
+      color: 0x22d3ee, dashSize: 22, gapSize: 14, transparent: true, opacity: 0.95,
+    }));
+    line.computeLineDistances();
+    scene.add(line);
+
+    // the "forklift": a small emissive carrier travelling dock→pallet on loop
+    const marker = new THREE.Group();
+    const bodyScale = Math.max(1, total / 900);
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(34 * bodyScale, 20 * bodyScale, 24 * bodyScale),
+      new THREE.MeshLambertMaterial({ color: 0xfbbf24, emissive: 0x664400 }),
+    );
+    body.position.y = 10 * bodyScale;
+    const mast = new THREE.Mesh(
+      new THREE.BoxGeometry(4 * bodyScale, 34 * bodyScale, 24 * bodyScale),
+      new THREE.MeshLambertMaterial({ color: 0x64748b }),
+    );
+    mast.position.set(17 * bodyScale, 17 * bodyScale, 0);
+    marker.add(body); marker.add(mast);
+    marker.position.copy(pts[0]);
+    scene.add(marker);
+
+    pathAnimRef.current = { pts, cum, total, t: 0, line, marker };
+    return () => {
+      if (pathAnimRef.current) {
+        scene.remove(pathAnimRef.current.line);
+        scene.remove(pathAnimRef.current.marker);
+        pathAnimRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, threeLoaded]);
 
   // ---- React-side actions on the selected box ----
   const rotateSelected = () => {
@@ -514,7 +622,7 @@ export default function InteractiveLoadPlanner({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-300">
                 <path d="M9 11.5V5a1.5 1.5 0 0 1 3 0v5" /><path d="M12 10V4.5a1.5 1.5 0 0 1 3 0V10" /><path d="M15 10.5v-3a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-2-3.5a1.6 1.6 0 0 1 2.6-1.8L8 13V6.5a1.5 1.5 0 0 1 1-1.4" />
               </svg>
-              Drag to explore · click a carton
+              {hintText ?? 'Drag to explore · click a carton'}
             </div>
           </div>
         )}

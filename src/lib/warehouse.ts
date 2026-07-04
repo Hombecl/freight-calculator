@@ -163,3 +163,116 @@ export function checkReachability(
     floorUtil: (covered / (floor.l * floor.w)) * 100,
   };
 }
+
+/**
+ * The actual forklift route from the dock to a pallet, along the aisle
+ * network — the visual proof that the reachability check is real physics,
+ * not a heuristic. BFS with parent pointers over the same eroded free-space
+ * grid; returns waypoints in cm (or null if the pallet is cut off).
+ */
+export function forkliftPath(
+  floor: Floor,
+  boxes: PlannerBox[],
+  aisle: number,
+  targetId: string,
+  cell = 10,
+): { x: number; z: number }[] | null {
+  const target = boxes.find((b) => b.id === targetId);
+  if (!target) return null;
+
+  const nx = Math.max(1, Math.ceil(floor.l / cell));
+  const nz = Math.max(1, Math.ceil(floor.w / cell));
+  const occ = new Uint8Array(nx * nz);
+  for (const b of boxes) {
+    const x0 = Math.max(0, Math.floor(b.px / cell));
+    const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1);
+    const z0 = Math.max(0, Math.floor(b.pz / cell));
+    const z1 = Math.min(nz - 1, Math.ceil((b.pz + b.w) / cell) - 1);
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) occ[z * nx + x] = 1;
+  }
+  const P = new Int32Array((nx + 1) * (nz + 1));
+  for (let z = 0; z < nz; z++) {
+    for (let x = 0; x < nx; x++) {
+      P[(z + 1) * (nx + 1) + (x + 1)] =
+        occ[z * nx + x] + P[z * (nx + 1) + (x + 1)] + P[(z + 1) * (nx + 1) + x] - P[z * (nx + 1) + x];
+    }
+  }
+  const r = Math.max(1, Math.floor((aisle / cell - 1) / 2));
+  const windowFree = (x: number, z: number) => {
+    const x0 = Math.max(0, x - r), x1 = Math.min(nx - 1, x + r);
+    const z0 = Math.max(0, z - r), z1 = Math.min(nz - 1, z + r);
+    const sum = P[(z1 + 1) * (nx + 1) + (x1 + 1)] - P[z0 * (nx + 1) + (x1 + 1)]
+      - P[(z1 + 1) * (nx + 1) + x0] + P[z0 * (nx + 1) + x0];
+    return sum === 0;
+  };
+
+  // goal zone: traversable cells within one forklift radius of the pallet
+  const margin = r + 1;
+  const gx0 = Math.max(0, Math.floor(target.px / cell) - margin);
+  const gx1 = Math.min(nx - 1, Math.ceil((target.px + target.l) / cell) - 1 + margin);
+  const gz0 = Math.max(0, Math.floor(target.pz / cell) - margin);
+  const gz1 = Math.min(nz - 1, Math.ceil((target.pz + target.w) / cell) - 1 + margin);
+  const isGoal = (x: number, z: number) => x >= gx0 && x <= gx1 && z >= gz0 && z <= gz1;
+
+  // BFS (queue — we want the SHORTEST route) with parent pointers
+  const parent = new Int32Array(nx * nz).fill(-2); // -2 unvisited, -1 root
+  const queue: number[] = [];
+  const dockX = nx - 1;
+  for (let z = 0; z < nz; z++) {
+    if (windowFree(dockX, z)) { parent[z * nx + dockX] = -1; queue.push(z * nx + dockX); }
+  }
+  let goal = -1;
+  let head = 0;
+  while (head < queue.length) {
+    const i = queue[head++];
+    const x = i % nx, z = (i / nx) | 0;
+    if (isGoal(x, z)) { goal = i; break; }
+    const steps: [number, number][] = [[x - 1, z], [x + 1, z], [x, z - 1], [x, z + 1]];
+    for (const [xx, zz] of steps) {
+      if (xx < 0 || xx >= nx || zz < 0 || zz >= nz) continue;
+      const j = zz * nx + xx;
+      if (parent[j] !== -2 || !windowFree(xx, zz)) continue;
+      parent[j] = i;
+      queue.push(j);
+    }
+  }
+  if (goal < 0) return null;
+
+  // reconstruct dock → pallet, convert to cm, drop collinear points
+  const cells: { x: number; z: number }[] = [];
+  for (let i = goal; i !== -1; i = parent[i]) {
+    cells.push({ x: (i % nx) * cell + cell / 2, z: ((i / nx) | 0) * cell + cell / 2 });
+  }
+  cells.reverse();
+  const pts: { x: number; z: number }[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (i === 0 || i === cells.length - 1) { pts.push(cells[i]); continue; }
+    const a = cells[i - 1], b = cells[i], c = cells[i + 1];
+    const collinear = (b.x - a.x) * (c.z - b.z) === (b.z - a.z) * (c.x - b.x);
+    if (!collinear) pts.push(b);
+  }
+  return pts;
+}
+
+/**
+ * First free spot for a new item, searched from the dock (+X) backwards so a
+ * freshly placed item appears right where the user is looking. Returns null
+ * if nothing fits.
+ */
+export function placeNearDock(
+  floor: Floor,
+  boxes: PlannerBox[],
+  item: { l: number; w: number },
+  step = 10,
+): { px: number; pz: number } | null {
+  const collides = (px: number, pz: number) =>
+    boxes.some((b) =>
+      px < b.px + b.l && px + item.l > b.px &&
+      pz < b.pz + b.w && pz + item.w > b.pz);
+  for (let x = floor.l - item.l; x >= 0; x -= step) {
+    for (let z = 0; z + item.w <= floor.w; z += step) {
+      if (!collides(x, z)) return { px: x, pz: z };
+    }
+  }
+  return null;
+}
