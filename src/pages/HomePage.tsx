@@ -257,8 +257,20 @@ export default function HomePage() {
                   />
                 </div>
               </div>
-              <p className="text-center text-xs text-slate-500 mt-3">
-                {T('↑ This is live — drag a carton, orbit the camera.', '↑ 呢個係真嘅 — 試下拖動紙箱、旋轉鏡頭。')}
+              {/* live numbers straight from the optimizer — proof it works */}
+              <div className="flex flex-wrap justify-center gap-2 mt-3">
+                <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-emerald-300 rounded-full px-3 py-1">
+                  {demo.stats.volumeUtil.toFixed(1)}% {T('utilization', '利用率')}
+                </span>
+                <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
+                  {demo.boxes.length} {T('cartons placed', '箱已排位')}
+                </span>
+                <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
+                  {demo.stats.totalWeight.toFixed(0)} kg / 28,200 kg
+                </span>
+              </div>
+              <p className="text-center text-xs text-slate-500 mt-2">
+                {T('↑ Live — computed by the actual optimizer in your browser. Drag a carton, orbit the camera.', '↑ 真實運算 — 由優化引擎喺你瀏覽器即時計出。試下拖動紙箱、旋轉鏡頭。')}
               </p>
             </div>
           </div>
@@ -342,6 +354,143 @@ export default function HomePage() {
                 <p className="text-sm text-slate-400 leading-relaxed">{f.body}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ EXAMPLE PLANS ============ */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+        <div className="max-w-2xl mb-8">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('See it work on a real scenario', '用真實場景試佢一次')}
+          </h2>
+          <p className="text-slate-600">
+            {T('One click loads a full example into the planner — cartons, constraints, everything.', '一鍵將完整示範載入規劃器 — 箱單、約束、全套。')}
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {[
+            { demo: 'retail', title: T('Mixed retail import', '混裝零售進口'), body: T("20'GP · 3 carton sizes · fragile display units that nothing may stack on", "20'GP · 3 種箱型 · 易碎陳列品唔可以壓"), tag: T('Fragile handling', '易碎處理') },
+            { demo: 'furniture', title: T('Flat-pack furniture', '平板傢俬'), body: T("40'HQ · heavy flat-packs kept this-way-up · chairs and hardware fill the gaps", "40'HQ · 重型平板箱不可倒置 · 椅同五金填空隙"), tag: T('This-way-up', '不可倒置') },
+            { demo: 'multistop', title: T('Multi-stop delivery', '多站卸貨'), body: T("40'GP · three drop-offs · first stop's cartons load nearest the door automatically", "40'GP · 三個卸貨點 · 第一站嘅貨自動排最近櫃門"), tag: T('Unload order', '落貨順序') },
+          ].map((s, i) => (
+            <Link key={i} to={`/planner?demo=${s.demo}`} className="group rounded-2xl border border-slate-200 p-6 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-50 transition-all">
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 rounded-full px-2.5 py-1 mb-3">{s.tag}</span>
+              <h3 className="font-bold text-slate-900 mb-2">{s.title}</h3>
+              <p className="text-sm text-slate-600 leading-relaxed mb-4">{s.body}</p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 group-hover:gap-2.5 transition-all">
+                {T('Load this example', '載入呢個示範')} <ArrowRight size={14} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ COMPARISON ============ */}
+      <section className="bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-8 max-w-2xl">
+            {T('How it compares', '同其他做法點比')}
+          </h2>
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="border-b border-slate-200 text-left">
+                  <th className="p-4 font-semibold text-slate-500"></th>
+                  <th className="p-4 font-bold text-slate-700">{T('Spreadsheet / CBM math', 'Excel / 淨計 CBM')}</th>
+                  <th className="p-4 font-black text-blue-700 bg-blue-50/60">DimPack3D</th>
+                  <th className="p-4 font-bold text-slate-700">{T('Commercial software', '商業裝櫃軟件')}</th>
+                </tr>
+              </thead>
+              <tbody className="[&_td]:p-4 [&_tr]:border-b [&_tr]:border-slate-100">
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('Real 3D bin-packing', '真實 3D 裝箱')}</td>
+                  <td className="text-slate-400">✗ {T('volume math only', '只計體積')}</td>
+                  <td className="bg-blue-50/40 font-semibold text-emerald-600">✓</td>
+                  <td className="text-emerald-600">✓</td>
+                </tr>
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('Weight & stacking limits', '重量與堆疊限制')}</td>
+                  <td className="text-slate-400">✗</td>
+                  <td className="bg-blue-50/40 font-semibold text-emerald-600">✓</td>
+                  <td className="text-emerald-600">✓</td>
+                </tr>
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('Drag-edit the plan in 3D', '3D 拖放編輯方案')}</td>
+                  <td className="text-slate-400">✗</td>
+                  <td className="bg-blue-50/40 font-semibold text-emerald-600">✓</td>
+                  <td className="text-slate-500">{T('some tools', '部分工具')}</td>
+                </tr>
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('PDF load plan + packing list', 'PDF 方案 + 裝箱單')}</td>
+                  <td className="text-slate-400">✗</td>
+                  <td className="bg-blue-50/40 font-semibold text-emerald-600">✓</td>
+                  <td className="text-emerald-600">✓</td>
+                </tr>
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('Install / training needed', '需要安裝 / 培訓')}</td>
+                  <td className="text-slate-500">{T('none', '唔使')}</td>
+                  <td className="bg-blue-50/40 font-semibold text-emerald-600">{T('none — browser', '唔使 — 瀏覽器')}</td>
+                  <td className="text-slate-500">{T('often desktop + training', '多數要裝機 + 培訓')}</td>
+                </tr>
+                <tr>
+                  <td className="font-semibold text-slate-600">{T('Price', '價錢')}</td>
+                  <td className="text-slate-500">{T('free', '免費')}</td>
+                  <td className="bg-blue-50/40 font-black text-emerald-600">{T('Free', '免費')}</td>
+                  <td className="text-slate-500">$350–$5,000+/{T('yr', '年')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ ENGINE SPEC ============ */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+        <div className="grid lg:grid-cols-2 gap-10">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">
+              {T('What the engine actually enforces', '引擎實際執行嘅規則')}
+            </h2>
+            <p className="text-slate-600 mb-6">
+              {T('Every placement is validated against physical rules before it is accepted — the same checks a load master would make.', '每一個擺位都要通過物理規則驗證先會被接受 — 同裝櫃師傅檢查嘅嘢一樣。')}
+            </p>
+            <ul className="space-y-3">
+              {[
+                T('No two cartons can overlap — full 3D collision detection', '任何兩箱不可重疊 — 完整 3D 碰撞檢測'),
+                T('Every carton needs ≥60% of its base supported — nothing floats', '每箱底部須有 ≥60% 支撐 — 冇箱會浮空'),
+                T('Stack loads propagate down the support chain and respect per-carton limits', '堆疊重量沿支撐鏈向下傳遞,遵守逐箱上限'),
+                T('Container payload limits enforced (28.2t / 26.7t / 26.5t)', '貨櫃載重上限嚴格執行 (28.2t / 26.7t / 26.5t)'),
+                T('Heavier cartons pack first, keeping the centre of gravity low', '重箱優先擺放,令重心保持低'),
+                T('Live centre-of-gravity offset warning when the load leans', '重心偏移即時警告'),
+              ].map((rule, i) => (
+                <li key={i} className="flex gap-3 text-sm text-slate-700">
+                  <Check size={17} className="text-emerald-600 shrink-0 mt-0.5" /> {rule}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 mb-4">{T('Supported containers', '支援貨櫃')}</h3>
+            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-left text-slate-500">
+                    <th className="p-3.5 font-semibold">{T('Type', '櫃型')}</th>
+                    <th className="p-3.5 font-semibold">{T('Internal (L×W×H cm)', '內籠 (長×闊×高 cm)')}</th>
+                    <th className="p-3.5 font-semibold">{T('Payload', '載重')}</th>
+                  </tr>
+                </thead>
+                <tbody className="[&_td]:p-3.5 [&_tr]:border-b [&_tr]:border-slate-100 text-slate-700">
+                  <tr><td className="font-bold">20' GP</td><td className="font-mono text-xs">589 × 235 × 239</td><td>28,200 kg</td></tr>
+                  <tr><td className="font-bold">40' GP</td><td className="font-mono text-xs">1,203 × 235 × 239</td><td>26,700 kg</td></tr>
+                  <tr><td className="font-bold">40' HQ</td><td className="font-mono text-xs">1,203 × 235 × 269</td><td>26,500 kg</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500 mt-3">
+              {T('Pallets, trucks and custom container sizes are on the roadmap.', '卡板、貨車同自訂櫃型喺 roadmap 上。')}
+            </p>
           </div>
         </div>
       </section>
