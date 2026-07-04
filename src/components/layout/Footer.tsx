@@ -80,7 +80,11 @@ export default function Footer() {
 
         <div className="border-t border-slate-800/70 mt-10 pt-7 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <p>&copy; 2026 DimPack3D. {T('All rights reserved.', '版權所有。')}</p>
-          <p>{T('Made for importers, sellers and freight forwarders.', '為進口商、賣家同貨代而設。')}</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link to="/about" className="hover:text-slate-300 transition-colors">{T('About', '關於')}</Link>
+            <Link to="/privacy" className="hover:text-slate-300 transition-colors">{T('Privacy', '私隱')}</Link>
+            <Link to="/terms" className="hover:text-slate-300 transition-colors">{T('Terms', '條款')}</Link>
+          </div>
         </div>
       </div>
     </footer>

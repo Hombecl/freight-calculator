@@ -7,6 +7,9 @@ import FbaPage from './pages/FbaPage';
 import PlannerPage from './pages/PlannerPage';
 import AnswersHub from './pages/AnswersHub';
 import AnswerPage from './pages/AnswerPage';
+import AboutPage from './pages/AboutPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import GuidesPage from './pages/guides/GuidesPage';
 import FbaSizeTiersGuide from './pages/guides/FbaSizeTiersGuide';
 import CbmCalculatorGuide from './pages/guides/CbmCalculatorGuide';
@@ -28,6 +31,9 @@ export default function App() {
         <Route path="planner" element={<PlannerPage />} />
         <Route path="answers" element={<AnswersHub />} />
         <Route path="answers/:slug" element={<AnswerPage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
+        <Route path="terms" element={<TermsPage />} />
         <Route path="guides" element={<GuidesPage />} />
         <Route path="guides/fba-size-tiers-2025" element={<FbaSizeTiersGuide />} />
         <Route path="guides/cbm-calculator-shipping" element={<CbmCalculatorGuide />} />

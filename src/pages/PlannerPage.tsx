@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Share2, Check } from 'lucide-react';
+import { IS_ZH } from '../lib/locale';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
@@ -79,10 +80,13 @@ export default function PlannerPage() {
 
   // live stats reflect manual edits (falls back to the packer's own stats)
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
-  const stats = useMemo(
-    () => (liveBoxes ? computeStats(liveBoxes, container) : result.stats),
-    [liveBoxes, result, container],
-  );
+  // a plan opened from a share link (exact positions as shared)
+  const [sharedBoxes, setSharedBoxes] = useState<PlannerBox[] | null>(null);
+  const stats = useMemo(() => {
+    const effective = liveBoxes ?? sharedBoxes;
+    return effective ? computeStats(effective, container) : result.stats;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveBoxes, sharedBoxes, result, container]);
 
   const totalQty = specs.reduce((s, x) => s + x.qty, 0);
   const balanceWarn = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15;
@@ -103,11 +107,57 @@ export default function PlannerPage() {
 
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
-  const regen = () => { setLiveBoxes(null); setSeed((n) => n + 1); };
+  const regen = () => { setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); };
+
+  // ---- share links (free, no gate — sharing is the viral loop) ----
+  const [shareState, setShareState] = useState<'idle' | 'busy' | 'copied' | 'error'>('idle');
+  const shareId = params.get('share');
+
+  useEffect(() => {
+    if (!shareId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/share?id=${shareId}`);
+        if (!res.ok) return;
+        const plan = await res.json();
+        if (plan.containerKey && CONTAINERS[plan.containerKey as ContainerKey]) setContainerKey(plan.containerKey);
+        if (Array.isArray(plan.specs) && plan.specs.length) setSpecs(plan.specs);
+        if (Array.isArray(plan.boxes) && plan.boxes.length) setSharedBoxes(plan.boxes);
+        track('share_open');
+      } catch { /* leave defaults */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareId]);
+
+  const sharePlan = async () => {
+    setShareState('busy');
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          containerKey,
+          container,
+          specs,
+          boxes: liveBoxes ?? sharedBoxes ?? result.boxes,
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const { id } = await res.json();
+      const url = `${window.location.origin}${IS_ZH ? '/zh' : ''}/planner?share=${id}`;
+      await navigator.clipboard.writeText(url);
+      track('share_create');
+      setShareState('copied');
+      setTimeout(() => setShareState('idle'), 2500);
+    } catch {
+      setShareState('error');
+      setTimeout(() => setShareState('idle'), 2500);
+    }
+  };
 
   // export
   const snapshotFn = useRef<(() => string | null) | null>(null);
-  const currentBoxes = liveBoxes ?? result.boxes;
+  const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const meta = (): PlanMeta => ({
     title: 'Container Load Plan',
     containerLabel: container.label,
@@ -289,6 +339,24 @@ export default function PlannerPage() {
             </button>
           </div>
 
+          <button
+            onClick={sharePlan}
+            disabled={shareState === 'busy'}
+            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              shareState === 'copied'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                : shareState === 'error'
+                  ? 'border-red-300 bg-red-50 text-red-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            {shareState === 'copied'
+              ? (<><Check size={15} /> Link copied — send it to anyone</>)
+              : shareState === 'error'
+                ? 'Could not create link — try again'
+                : (<><Share2 size={15} /> {shareState === 'busy' ? 'Creating link…' : 'Share this plan'}</>)}
+          </button>
+
           <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
             <div className="flex justify-between"><span>Packed</span><span className="font-semibold">{result.boxes.length} / {totalQty}</span></div>
             <div className="flex justify-between"><span>Volume utilization</span><span className="font-semibold">{stats.volumeUtil.toFixed(1)}%</span></div>
@@ -334,9 +402,9 @@ export default function PlannerPage() {
         {/* right: 3D editor */}
         <div>
           <InteractiveLoadPlanner
-            key={`${containerKey}-${seed}`}
+            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
             container={container}
-            boxes={result.boxes}
+            boxes={sharedBoxes ?? result.boxes}
             grid={1}
             unitLabel="cm"
             onChange={setLiveBoxes}
