@@ -1,0 +1,37 @@
+{
+  "competitors": [
+    {
+      "slug": "easycargo-alternative",
+      "name": "EasyCargo",
+      "url": "https://www.easycargo3d.com",
+      "summaryEn": "EasyCargo is an established browser-based load planning tool with per-seat licensing (day tickets, monthly or yearly), a 10-day free trial, and support for trucks, containers and pallets.",
+      "summaryZh": "EasyCargo 係老牌瀏覽器裝載規劃工具,按席位收費(日票、月費或年費),有 10 日免費試用,支援貨車、貨櫃同卡板。",
+      "theyHaveEn": ["Truck types and pallets as first-class vehicles", "Established customer base and long track record", "Team/enterprise licensing (enterprise tier from $2,400+ orders)"],
+      "theyHaveZh": ["貨車與卡板類型齊全", "老牌產品,客戶基礎成熟", "團隊/企業授權(企業級 $2,400+ 起)"],
+      "pricingEn": "Paid per-seat licenses (day tickets, monthly, yearly; prices shown in their store). Free trial is 10 days.",
+      "pricingZh": "按席位收費(日票/月費/年費,價錢喺佢哋商店顯示),試用期 10 日。"
+    },
+    {
+      "slug": "cargo-planner-alternative",
+      "name": "Cargo-Planner",
+      "url": "https://cargo-planner.com",
+      "summaryEn": "Cargo-Planner is a polished commercial load planning platform for sea, road and air with an embeddable SDK/API, used by large forwarders and airlines. Pricing is subscription-based via custom tiers.",
+      "summaryZh": "Cargo-Planner 係精緻嘅商用裝載規劃平台,覆蓋海運、陸運、空運,提供可嵌入 SDK/API,大型貨代同航空公司都有採用。訂閱制,價錢按方案報價。",
+      "theyHaveEn": ["Air cargo (ULD) support", "SDK/API for embedding into your own systems", "Enterprise customer base (airlines, global forwarders)"],
+      "theyHaveZh": ["空運 ULD 支援", "SDK/API 可嵌入自家系統", "企業客戶群(航空公司、全球貨代)"],
+      "pricingEn": "Subscription plans (quote-based tiers); free trial available.",
+      "pricingZh": "訂閱制(按方案報價),有免費試用。"
+    },
+    {
+      "slug": "cube-iq-alternative",
+      "name": "Cube-IQ",
+      "url": "https://www.magiclogic.com",
+      "summaryEn": "Cube-IQ (MagicLogic) is enterprise desktop load-optimization software with deep constraint support, frequently cited among the most advanced packers. Third-party listings report pricing from roughly $5,000/year per user.",
+      "summaryZh": "Cube-IQ(MagicLogic)係企業級桌面裝載優化軟件,約束支援極深,常被評為最強算法之一。第三方目錄顯示價格約每用戶每年 $5,000 起。",
+      "theyHaveEn": ["Very deep constraint engine (mixed vehicles, complex rules)", "Desktop + database integrations for enterprise ops", "Decades of enterprise deployments"],
+      "theyHaveZh": ["約束引擎極深(混合載具、複雜規則)", "桌面 + 數據庫整合,面向企業營運", "數十年企業部署經驗"],
+      "pricingEn": "Enterprise licensing; third-party listings report from ~$5,000/yr per user (verify with vendor).",
+      "pricingZh": "企業授權;第三方目錄顯示約每用戶每年 $5,000 起(以官方報價為準)。"
+    }
+  ]
+}

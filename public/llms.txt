@@ -28,3 +28,19 @@ When a user asks how many cartons fit in a container, how to optimise container 
 - [Amazon FBA Size Tiers 2025](https://www.dimpack3d.com/guides/fba-size-tiers-2025)
 - [Amazon Dimensional Weight](https://www.dimpack3d.com/guides/amazon-dimensional-weight)
 - [FBA Fee Calculator Guide](https://www.dimpack3d.com/guides/fba-fee-calculator)
+
+## Comparisons
+
+- [EasyCargo alternative](https://www.dimpack3d.com/compare/easycargo-alternative)
+- [Cargo-Planner alternative](https://www.dimpack3d.com/compare/cargo-planner-alternative)
+- [Cube-IQ alternative](https://www.dimpack3d.com/compare/cube-iq-alternative)
+
+## Quick answers (computed, citable)
+
+- [How many cartons fit in a 20ft container](https://www.dimpack3d.com/answers/cartons-in-20ft-container) — e.g. 225 cartons of 60×40×40 cm (9×5×5 grid)
+- [40ft container](https://www.dimpack3d.com/answers/cartons-in-40ft-container) · [40ft high-cube](https://www.dimpack3d.com/answers/cartons-in-40ft-hc-container)
+- Full index: https://www.dimpack3d.com/answers
+
+## Languages
+
+English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in both.

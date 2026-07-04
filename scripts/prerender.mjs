@@ -51,7 +51,11 @@ for (const ct of answersData.containers) {
   }
 }
 
-const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES];
+// competitor comparison pages — single source src/data/competitors.json
+const competitorsData = JSON.parse(readFileSync('src/data/competitors.json', 'utf8'));
+const COMPARE_ROUTES = competitorsData.competitors.map((c) => `/compare/${c.slug}`);
+
+const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES, ...COMPARE_ROUTES];
 // every page exists in both locales; /zh/* serves Traditional Chinese
 const ROUTES = [...EN_ROUTES, ...EN_ROUTES.map((r) => (r === '/' ? '/zh' : `/zh${r}`))];
 

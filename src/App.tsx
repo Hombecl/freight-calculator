@@ -10,6 +10,7 @@ import AnswerPage from './pages/AnswerPage';
 import AboutPage from './pages/AboutPage';
 import MyPlansPage from './pages/MyPlansPage';
 import ReviewPage from './pages/ReviewPage';
+import ComparePage from './pages/ComparePage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import GuidesPage from './pages/guides/GuidesPage';
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="answers/:slug" element={<AnswerPage />} />
         <Route path="plans" element={<MyPlansPage />} />
         <Route path="review/:id" element={<ReviewPage />} />
+        <Route path="compare/:slug" element={<ComparePage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
