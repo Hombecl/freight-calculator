@@ -52,6 +52,39 @@ export default function WarehousePage() {
   const totalQty = items.reduce((s, x) => s + x.qty, 0);
   const regen = () => { setBaseline(null); setLiveBoxes(null); setSelectedId(null); setSeed((n) => n + 1); track('warehouse_arrange'); };
 
+  // real-world example layouts, one click — so newcomers see what "done" looks like
+  const loadExample = (key: 'threepl' | 'crossdock') => {
+    if (key === 'threepl') {
+      // 24m x 14m mixed 3PL floor: racking along the far wall + pallet rows
+      const fl = { l: 2400, w: 1400 };
+      setFloorL(fl.l); setFloorW(fl.w); setAisle(300);
+      const its: FloorItemSpec[] = [
+        { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 60, color: PALETTE[0] },
+        { id: 'gma', label: 'GMA pallet', l: 122, w: 102, h: 150, qty: 24, color: PALETTE[1] },
+      ];
+      setItems(its);
+      const rows = autoArrangeFloor({ l: fl.l, w: fl.w - 140 }, its, 300);
+      const racks: PlannerBox[] = Array.from({ length: 7 }, (_, i) => ({
+        id: `rack-${i}`, label: 'Rack block', l: 270, w: 110, h: 300,
+        px: 60 + i * 300, py: 0, pz: fl.w - 120, color: PALETTE[3],
+      }));
+      setBaseline([...rows, ...racks]);
+    } else {
+      // 18m x 10m cross-dock: staging blocks near the dock, wide lanes
+      const fl = { l: 1800, w: 1000 };
+      setFloorL(fl.l); setFloorW(fl.w); setAisle(350);
+      const its: FloorItemSpec[] = [
+        { id: 'eur', label: 'Outbound pallets', l: 120, w: 80, h: 150, qty: 24, color: PALETTE[0] },
+        { id: 'gma', label: 'Inbound pallets', l: 122, w: 102, h: 150, qty: 12, color: PALETTE[2] },
+      ];
+      setItems(its);
+      setBaseline(autoArrangeFloor(fl, its, 350));
+    }
+    setLiveBoxes(null);
+    setSelectedId(null);
+    track('warehouse_example', key);
+  };
+
   // forklift route to the selected pallet — the "we compute how the truck
   // actually gets there" pitch moment
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -169,6 +202,14 @@ export default function WarehousePage() {
           </div>
 
           <div className="space-y-3">
+            <div className="flex gap-1.5 mb-1">
+              <button onClick={() => loadExample('threepl')} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:border-blue-300">
+                Example: 3PL floor
+              </button>
+              <button onClick={() => loadExample('crossdock')} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:border-blue-300">
+                Example: Cross-dock
+              </button>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Floor items (cm)</span>
               <button onClick={addItem} className="text-xs text-blue-600 font-medium">+ Add</button>
@@ -269,10 +310,13 @@ export default function WarehousePage() {
             grid={10}
             unitLabel="cm"
             showDoor
+            autoSpin
             hintOverlay
             hintText="Drag a pallet to move it · click one to see the forklift route"
             flagIds={reach.unreachable}
             path={path}
+            pathWidth={aisle}
+            selectId={selectedId}
             onSelect={setSelectedId}
             onChange={setLiveBoxes}
           />

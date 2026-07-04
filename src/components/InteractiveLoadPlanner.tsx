@@ -50,6 +50,8 @@ interface Props {
   hintText?: string; // custom hint chip text (defaults to the explore hint)
   flagIds?: string[]; // boxes tinted red (e.g. forklift-unreachable in warehouse mode)
   path?: { x: number; z: number }[] | null; // animated route drawn on the floor (e.g. forklift dock→pallet)
+  pathWidth?: number; // draw a translucent clearance band of this width along the path (e.g. aisle width)
+  selectId?: string | null; // externally-driven selection (page placed an item and wants buttons live)
   onSelect?: (id: string | null) => void; // selection change (click a box)
   onChange?: (boxes: PlannerBox[]) => void;
   registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
@@ -110,6 +112,8 @@ export default function InteractiveLoadPlanner({
   hintText,
   flagIds,
   path,
+  pathWidth,
+  selectId,
   onSelect,
   onChange,
   registerSnapshot,
@@ -119,6 +123,8 @@ export default function InteractiveLoadPlanner({
   const [webglFailed, setWebglFailed] = useState(false);
   const [interacted, setInteracted] = useState(false);
   const interactedRef = useRef(false);
+  const lastPointerRef = useRef(0); // for resuming the idle spin after inactivity
+  const pushHistoryRef = useRef<() => void>(() => {}); // set below; used at drag start
 
   // The live source of truth for box positions. We keep it in a ref so the
   // three.js pointer handlers always see the latest without re-running effect.
@@ -308,6 +314,7 @@ export default function InteractiveLoadPlanner({
 
     let mode: 'idle' | 'orbit' | 'drag' = 'idle';
     let dragId: string | null = null;
+    let dragMoved = false;
     let hoveredId: string | null = null;
     let dragPlane: any = null;
     let dragGrab = new THREE.Vector3(); // offset between hit point and box min-corner
@@ -327,6 +334,7 @@ export default function InteractiveLoadPlanner({
 
     const onDown = (e: PointerEvent) => {
       if (!interactedRef.current) { interactedRef.current = true; setInteracted(true); }
+      lastPointerRef.current = performance.now();
       setNdc(e);
       last = { x: e.clientX, y: e.clientY };
       const id = pickBox();
@@ -338,6 +346,7 @@ export default function InteractiveLoadPlanner({
         applyHighlight();
         mode = 'drag';
         dragId = id;
+        dragMoved = false;
         syncShadow(b);
         shadow.visible = true;
         // horizontal drag plane at the box base height
@@ -355,6 +364,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const onMove = (e: PointerEvent) => {
+      lastPointerRef.current = performance.now();
       if (mode === 'orbit') {
         const dx = e.clientX - last.x;
         const dy = e.clientY - last.y;
@@ -376,6 +386,10 @@ export default function InteractiveLoadPlanner({
         nz = clamp(snap(nz, grid), 0, container.w - b.w);
         const trial: PlannerBox = { ...b, px: nx, pz: nz };
         if (!collidesAny(trial, boxesRef.current)) {
+          if (!dragMoved && (nx !== b.px || nz !== b.pz)) {
+            pushHistoryRef.current(); // snapshot once, at the first real move
+            dragMoved = true;
+          }
           b.px = nx; b.pz = nz;
           syncMesh(b);
           syncShadow(b);
@@ -405,6 +419,7 @@ export default function InteractiveLoadPlanner({
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      lastPointerRef.current = performance.now();
       radius = clamp(radius * (1 + Math.sign(e.deltaY) * 0.1), maxDim * 0.6, maxDim * 6);
       applyCamera();
     };
@@ -417,10 +432,17 @@ export default function InteractiveLoadPlanner({
     let raf = 0;
     const loop = () => {
       raf = requestAnimationFrame(loop);
-      // gentle idle orbit so visitors can SEE it is a live 3D scene
-      if (autoSpin && !interactedRef.current && mode === 'idle') {
-        theta -= 0.0022;
-        applyCamera();
+      // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
+      // (slower) after 10s of inactivity so the scene never feels frozen
+      if (autoSpin && mode === 'idle') {
+        const idleFor = performance.now() - lastPointerRef.current;
+        if (!interactedRef.current) {
+          theta -= 0.0022;
+          applyCamera();
+        } else if (idleFor > 10_000) {
+          theta -= 0.0009;
+          applyCamera();
+        }
       }
       // animate the route marker (forklift) along the current path
       const pa = pathAnimRef.current;
@@ -514,12 +536,33 @@ export default function InteractiveLoadPlanner({
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
     const total = cum[cum.length - 1];
 
+    const routeGroup = new THREE.Group();
     const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const line = new THREE.Line(geo, new THREE.LineDashedMaterial({
+    const lineObj = new THREE.Line(geo, new THREE.LineDashedMaterial({
       color: 0x22d3ee, dashSize: 22, gapSize: 14, transparent: true, opacity: 0.95,
     }));
-    line.computeLineDistances();
-    scene.add(line);
+    lineObj.computeLineDistances();
+    routeGroup.add(lineObj);
+
+    // clearance band: the forklift's actual working width swept along the
+    // route — the "we simulate the truck's clearance" moment
+    if (pathWidth && pathWidth > 0) {
+      const bandMat = new THREE.MeshBasicMaterial({
+        color: 0x22d3ee, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false,
+      });
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const segLen = a.distanceTo(b);
+        if (segLen < 1) continue;
+        const band = new THREE.Mesh(new THREE.PlaneGeometry(segLen + pathWidth, pathWidth), bandMat);
+        band.rotation.x = -Math.PI / 2;
+        band.rotation.z = -Math.atan2(b.z - a.z, b.x - a.x);
+        band.position.set((a.x + b.x) / 2, pts[0].y - 3, (a.z + b.z) / 2);
+        routeGroup.add(band);
+      }
+    }
+    scene.add(routeGroup);
+    const line = routeGroup; // cleanup removes the whole group
 
     // the "forklift": a small emissive carrier travelling dock→pallet on loop
     const marker = new THREE.Group();
@@ -547,7 +590,37 @@ export default function InteractiveLoadPlanner({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, threeLoaded]);
+  }, [path, pathWidth, threeLoaded]);
+
+  // external selection sync (e.g. the page just placed a new item and wants
+  // the action buttons live for it). Declared AFTER the boxes-reset effect so
+  // it wins the same-render race.
+  useEffect(() => {
+    if (selectId === undefined) return;
+    setSelectedId(selectId);
+    selectedIdRef.current = selectId ?? null;
+  }, [selectId, boxes]);
+
+  // ---- undo history (one snapshot per action; capped) ----
+  const historyRef = useRef<PlannerBox[][]>([]);
+  const [histLen, setHistLen] = useState(0);
+  const pushHistory = () => {
+    historyRef.current.push(boxesRef.current.map((b) => ({ ...b })));
+    if (historyRef.current.length > 40) historyRef.current.shift();
+    setHistLen(historyRef.current.length);
+  };
+  pushHistoryRef.current = pushHistory;
+  const undo = () => {
+    const prev = historyRef.current.pop();
+    if (!prev) return;
+    setHistLen(historyRef.current.length);
+    boxesRef.current = prev;
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    onSelect?.(null);
+    sceneApi.current?.refresh();
+    commit();
+  };
 
   // ---- React-side actions on the selected box ----
   const rotateSelected = () => {
@@ -560,6 +633,7 @@ export default function InteractiveLoadPlanner({
     trial.pz = clamp(trial.pz, 0, container.w - trial.w);
     if (trial.l > container.l || trial.w > container.w) return;
     if (collidesAny(trial, boxesRef.current)) return;
+    pushHistory();
     Object.assign(b, trial);
     sceneApi.current?.refresh();
     commit();
@@ -578,14 +652,30 @@ export default function InteractiveLoadPlanner({
       const zOverlap = b.pz < o.pz + o.w - EPS && b.pz + b.w > o.pz + EPS;
       if (xOverlap && zOverlap) restY = Math.max(restY, o.py + o.h);
     }
+    pushHistory();
     b.py = clamp(restY, 0, container.h - b.h);
     sceneApi.current?.refresh();
     commit();
   };
 
+  const deleteSelected = () => {
+    const id = selectedIdRef.current;
+    if (!id) return;
+    pushHistory();
+    boxesRef.current = boxesRef.current.filter((b) => b.id !== id);
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    onSelect?.(null);
+    sceneApi.current?.refresh();
+    commit();
+  };
+
   const resetPlan = () => {
+    pushHistory();
     boxesRef.current = boxes.map((b) => ({ ...b }));
     setSelectedId(null);
+    selectedIdRef.current = null;
+    onSelect?.(null);
     sceneApi.current?.refresh();
     commit();
   };
@@ -648,6 +738,20 @@ export default function InteractiveLoadPlanner({
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
         >
           Drop to floor
+        </button>
+        <button
+          onClick={deleteSelected}
+          disabled={!selected}
+          className="px-3 py-1 rounded bg-white border border-red-300 text-red-600 disabled:opacity-40 disabled:border-slate-200 disabled:text-slate-400"
+        >
+          Delete
+        </button>
+        <button
+          onClick={undo}
+          disabled={histLen === 0}
+          className="px-3 py-1 rounded bg-slate-200 text-slate-700 disabled:opacity-40"
+        >
+          ↩ Undo
         </button>
         <button
           onClick={resetPlan}
