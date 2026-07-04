@@ -25,11 +25,13 @@ import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
  *   tools/FAQ   — secondary tools + objections + SEO
  */
 
+// A realistically FULL 20'GP — the hero must demonstrate high utilization,
+// so quantities are sized to fill ~80%+ of the container.
 const DEMO_CONTAINER = { l: 589, w: 235, h: 239, maxWeight: 28200 }; // 20' GP
 const DEMO_SPECS: PackItemSpec[] = [
-  { id: 'd1', label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 24, color: 0xfbbf24, unloadOrder: 2 },
-  { id: 'd2', label: 'Carton B', l: 50, w: 35, h: 30, weight: 12, qty: 18, color: 0x60a5fa, unloadOrder: 2 },
-  { id: 'd3', label: 'Fragile', l: 45, w: 35, h: 25, weight: 6, qty: 10, color: 0x34d399, maxStack: 0, unloadOrder: 1 },
+  { id: 'd1', label: 'Master carton', l: 58, w: 46, h: 47, weight: 18, qty: 160, color: 0xfbbf24 },
+  { id: 'd2', label: 'Half carton', l: 48, w: 39, h: 39, weight: 12, qty: 90, color: 0x60a5fa },
+  { id: 'd3', label: 'Fragile', l: 45, w: 38, h: 29, weight: 6, qty: 30, color: 0x34d399, maxStack: 0 },
 ];
 
 export default function HomePage() {
@@ -372,7 +374,7 @@ export default function HomePage() {
           {[
             { demo: 'retail', title: T('Mixed retail import', '混裝零售進口'), body: T("20'GP · 3 carton sizes · fragile display units that nothing may stack on", "20'GP · 3 種箱型 · 易碎陳列品唔可以壓"), tag: T('Fragile handling', '易碎處理') },
             { demo: 'furniture', title: T('Flat-pack furniture', '平板傢俬'), body: T("40'HQ · heavy flat-packs kept this-way-up · chairs and hardware fill the gaps", "40'HQ · 重型平板箱不可倒置 · 椅同五金填空隙"), tag: T('This-way-up', '不可倒置') },
-            { demo: 'multistop', title: T('Multi-stop delivery', '多站卸貨'), body: T("40'GP · three drop-offs · first stop's cartons load nearest the door automatically", "40'GP · 三個卸貨點 · 第一站嘅貨自動排最近櫃門"), tag: T('Unload order', '落貨順序') },
+            { demo: 'multistop', title: T('Multi-stop delivery', '多站卸貨'), body: T("20'GP · three drop-offs · first stop's cartons load nearest the door automatically", "20'GP · 三個卸貨點 · 第一站嘅貨自動排最近櫃門"), tag: T('Unload order', '落貨順序') },
           ].map((s, i) => (
             <Link key={i} to={`/planner?demo=${s.demo}`} className="group rounded-2xl border border-slate-200 p-6 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-50 transition-all">
               <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 rounded-full px-2.5 py-1 mb-3">{s.tag}</span>

@@ -29,35 +29,34 @@ const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xf472b6, 0xa78bfa, 0xf87171];
 
 type Spec = PackItemSpec;
 
+// Quantities sized so the default view opens on a genuinely FULL container —
+// the first impression must demonstrate high utilization, not an empty box.
 const DEFAULT_SPECS: Spec[] = [
-  { id: 's1', label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 40, color: PALETTE[0], unloadOrder: 2 },
-  { id: 's2', label: 'Carton B (fragile)', l: 50, w: 30, h: 30, weight: 8, qty: 24, color: PALETTE[1], maxStack: 0, unloadOrder: 1 },
+  { id: 's1', label: 'Master carton', l: 60, w: 50, h: 45, weight: 18, qty: 140, color: PALETTE[0], unloadOrder: 2 },
+  { id: 's2', label: 'Half carton', l: 55, w: 45, h: 40, weight: 12, qty: 70, color: PALETTE[1], unloadOrder: 2 },
+  { id: 's3', label: 'Fragile display', l: 45, w: 40, h: 30, weight: 6, qty: 30, color: PALETTE[2], maxStack: 0, unloadOrder: 1 },
 ];
 
 /** Example scenarios reachable from the homepage via /planner?demo=... */
 const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
   retail: {
     container: '20gp',
-    specs: [
-      { id: 'p1', label: 'Master carton', l: 60, w: 40, h: 40, weight: 18, qty: 48, color: PALETTE[0], unloadOrder: 2 },
-      { id: 'p2', label: 'Half carton', l: 50, w: 35, h: 30, weight: 10, qty: 30, color: PALETTE[1], unloadOrder: 2 },
-      { id: 'p3', label: 'Display units (fragile)', l: 45, w: 35, h: 25, weight: 6, qty: 16, color: PALETTE[2], maxStack: 0, unloadOrder: 1 },
-    ],
+    specs: DEFAULT_SPECS,
   },
   furniture: {
     container: '40hq',
     specs: [
-      { id: 'p1', label: 'Flat-pack (this way up)', l: 120, w: 80, h: 15, weight: 32, qty: 60, color: PALETTE[3], keepUpright: true },
-      { id: 'p2', label: 'Chair boxes', l: 65, w: 60, h: 55, weight: 14, qty: 40, color: PALETTE[4] },
-      { id: 'p3', label: 'Hardware kits', l: 40, w: 30, h: 20, weight: 12, qty: 30, color: PALETTE[5] },
+      { id: 'p1', label: 'Sofa boxes (this way up)', l: 200, w: 90, h: 80, weight: 45, qty: 25, color: PALETTE[3], keepUpright: true },
+      { id: 'p2', label: 'Flat-pack (this way up)', l: 120, w: 80, h: 15, weight: 32, qty: 80, color: PALETTE[4], keepUpright: true },
+      { id: 'p3', label: 'Chair boxes', l: 65, w: 60, h: 55, weight: 14, qty: 60, color: PALETTE[5] },
     ],
   },
   multistop: {
-    container: '40gp',
+    container: '20gp',
     specs: [
-      { id: 'p1', label: 'Stop 3 — deepest', l: 60, w: 40, h: 40, weight: 20, qty: 40, color: PALETTE[0], unloadOrder: 3 },
-      { id: 'p2', label: 'Stop 2 — middle', l: 55, w: 40, h: 35, weight: 15, qty: 36, color: PALETTE[1], unloadOrder: 2 },
-      { id: 'p3', label: 'Stop 1 — at the door', l: 50, w: 35, h: 30, weight: 10, qty: 30, color: PALETTE[2], unloadOrder: 1 },
+      { id: 'p1', label: 'Stop 3 — deepest', l: 60, w: 50, h: 45, weight: 20, qty: 85, color: PALETTE[0], unloadOrder: 3 },
+      { id: 'p2', label: 'Stop 2 — middle', l: 55, w: 45, h: 40, weight: 15, qty: 85, color: PALETTE[1], unloadOrder: 2 },
+      { id: 'p3', label: 'Stop 1 — at the door', l: 50, w: 40, h: 35, weight: 10, qty: 95, color: PALETTE[2], unloadOrder: 1 },
     ],
   },
 };
