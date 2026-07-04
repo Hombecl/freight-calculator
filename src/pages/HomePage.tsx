@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Package, Container, Cuboid, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles, X, Check, TrendingDown, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react';
+import { Package, Container, Cuboid, Move3d, ArrowRight, CheckCircle, Zap, Globe, Calculator, Star, Play, RotateCcw, Sparkles, X, Check, TrendingDown, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useState, useEffect, useMemo } from 'react';
 import Packing3DPreview from '../components/Packing3DPreview';
@@ -278,13 +278,13 @@ export default function HomePage() {
   return (
     <div className="-mt-14 md:-mt-16">
       <Helmet>
-        <title>DimPack3D - Free 3D Packaging Calculator | CBM & FBA Size Optimizer</title>
-        <meta name="description" content="Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize FBA packaging dimensions, visualize container loading, and estimate shipping costs. Perfect for Amazon & Walmart sellers." />
-        <meta name="keywords" content="packaging calculator, CBM calculator, FBA calculator, dimensional weight calculator, 3D container loading, Amazon FBA size tiers, box packing calculator, shipping calculator, carton calculator, e-commerce logistics" />
+        <title>DimPack3D - Free 3D Container Load Planner | Pack, Edit & Export Load Plans</title>
+        <meta name="description" content="Plan container loads in interactive 3D — auto-optimize with real bin-packing, drag cartons by hand, respect weight & stacking limits, then export a PDF load plan and packing list. Plus free CBM, carton packing and Amazon FBA calculators." />
+        <meta name="keywords" content="container load planner, load planning software, 3D bin packing, container loading calculator, packing list PDF, CBM calculator, FBA calculator, dimensional weight calculator, carton calculator, freight forwarder tools, e-commerce logistics" />
         <link rel="canonical" href="https://www.dimpack3d.com/" />
         <meta property="og:url" content="https://www.dimpack3d.com/" />
-        <meta property="og:title" content="DimPack3D - Free 3D Packaging Calculator | CBM & FBA Size Optimizer" />
-        <meta property="og:description" content="Free 3D packaging calculator for e-commerce sellers. Calculate CBM, optimize packaging, visualize container loading in 3D." />
+        <meta property="og:title" content="DimPack3D - Free 3D Container Load Planner" />
+        <meta property="og:description" content="Auto-optimize container loads with real bin-packing, fine-tune in interactive 3D, export PDF load plans — free." />
 
         {/* HowTo Schema - How to use the calculator */}
         <script type="application/ld+json">{`
@@ -359,27 +359,34 @@ export default function HomePage() {
           {
             "@context": "https://schema.org",
             "@type": "ItemList",
-            "name": "DimPack3D Packaging Tools",
-            "description": "Three powerful packaging and logistics calculators for e-commerce sellers",
-            "numberOfItems": 3,
+            "name": "DimPack3D Load Planning & Packaging Tools",
+            "description": "Free load planning and packaging tools for e-commerce sellers, importers and freight forwarders",
+            "numberOfItems": 4,
             "itemListElement": [
               {
                 "@type": "ListItem",
                 "position": 1,
+                "name": "Interactive 3D Load Planner",
+                "description": "Auto-optimize container loads with real bin-packing (weight and stacking limits), fine-tune by dragging cartons in 3D, export PDF load plans and packing lists",
+                "url": "https://www.dimpack3d.com/planner"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
                 "name": "Product Packing Calculator",
                 "description": "Calculate optimal product-to-carton packing with 3D visualization and shipping cost estimates",
                 "url": "https://www.dimpack3d.com/packing"
               },
               {
                 "@type": "ListItem",
-                "position": 2,
+                "position": 3,
                 "name": "Container Loading Calculator",
                 "description": "Calculate carton-to-container loading for 20GP, 40GP, 40HQ with maximum space utilization",
                 "url": "https://www.dimpack3d.com/container"
               },
               {
                 "@type": "ListItem",
-                "position": 3,
+                "position": 4,
                 "name": "Amazon FBA Size Tier Calculator",
                 "description": "Calculate Amazon FBA size tiers and estimate fulfillment fees based on 2025 standards",
                 "url": "https://www.dimpack3d.com/fba"
@@ -415,57 +422,55 @@ export default function HomePage() {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
                 {lang === 'zh' ? (
                   <>
-                    <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">3D 智能包裝</span>
+                    <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">3D 互動</span>
                     <br/>
-                    <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">計算工具</span>
+                    <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">貨櫃裝載規劃</span>
                   </>
                 ) : (
                   <>
-                    <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Smart 3D</span>
+                    <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Plan Container</span>
                     <br/>
-                    <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">Packaging</span>
-                    <br/>
-                    <span className="text-white">Calculator</span>
+                    <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">Loads in 3D</span>
                   </>
                 )}
               </h1>
 
               <p className="text-lg md:text-xl text-blue-100/80 mb-8 leading-relaxed max-w-lg">
                 {lang === 'zh'
-                  ? '專為跨境電商賣家設計。計算最佳裝箱方案、海空運費用、貨櫃裝載率，以及 Amazon FBA 尺寸分級。'
-                  : 'Built for e-commerce sellers. Calculate optimal packing, shipping costs, container loading, and Amazon FBA size tiers.'}
+                  ? '真實裝箱算法自動優化（重量與堆疊限制），再親手拖動微調，一鍵導出 PDF 裝載方案同裝箱單。兼備 CBM、裝箱與 Amazon FBA 計算器。'
+                  : 'Auto-optimize with real bin-packing — weight & stacking limits included — then fine-tune every carton by hand and export a PDF load plan with packing list. Plus free CBM, carton packing and Amazon FBA calculators.'}
               </p>
 
               <div className="flex flex-wrap gap-4">
                 <Link
-                  to="/packing"
+                  to="/planner"
                   className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-6 py-3.5 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105"
                 >
                   <Play size={18} className="group-hover:scale-110 transition-transform" />
-                  {lang === 'zh' ? '開始使用' : 'Get Started'}
+                  {lang === 'zh' ? '打開裝載規劃器' : 'Open Load Planner'}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <a
                   href="#tools"
                   className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/40 text-white px-6 py-3.5 rounded-xl font-bold text-lg transition-all backdrop-blur-sm"
                 >
-                  {lang === 'zh' ? '瀏覽工具' : 'View Tools'}
+                  {lang === 'zh' ? '瀏覽全部工具' : 'All Tools'}
                 </a>
               </div>
 
               {/* Quick stats under CTA */}
               <div className="flex flex-wrap gap-6 mt-10 pt-8 border-t border-white/10">
                 <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-black text-white">3</div>
-                  <div className="text-xs text-blue-300 uppercase tracking-wider">{lang === 'zh' ? '計算工具' : 'Tools'}</div>
+                  <div className="text-2xl md:text-3xl font-black text-white">4</div>
+                  <div className="text-xs text-blue-300 uppercase tracking-wider">{lang === 'zh' ? '免費工具' : 'Free Tools'}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl md:text-3xl font-black text-white">PDF</div>
+                  <div className="text-xs text-blue-300 uppercase tracking-wider">{lang === 'zh' ? '裝載方案導出' : 'Load Plan Export'}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl md:text-3xl font-black text-white">2025</div>
                   <div className="text-xs text-blue-300 uppercase tracking-wider">{lang === 'zh' ? 'FBA 標準' : 'FBA Rates'}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-black text-white">3D</div>
-                  <div className="text-xs text-blue-300 uppercase tracking-wider">{lang === 'zh' ? '視覺化' : 'Visualize'}</div>
                 </div>
               </div>
             </div>
@@ -791,16 +796,57 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
-              {lang === 'zh' ? '三大核心工具' : 'Three Powerful Tools'}
+              {lang === 'zh' ? '四大核心工具' : 'Four Powerful Tools'}
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               {lang === 'zh'
-                ? '從產品裝箱到貨櫃裝載，從運費計算到 FBA 尺寸分級，一站式解決包裝物流難題。'
-                : 'From product packing to container loading, shipping costs to FBA sizing - solve all your packaging challenges in one place.'}
+                ? '從互動裝載規劃到產品裝箱、貨櫃計算同 FBA 尺寸分級，一站式解決包裝物流難題。'
+                : 'From interactive load planning to carton packing, container maths and FBA sizing — solve every packaging challenge in one place.'}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Interactive Load Planner Card */}
+            <Link to="/planner" className="group">
+              <div className="relative bg-gradient-to-br from-indigo-50 to-white border-2 border-indigo-200 hover:border-indigo-400 rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-indigo-100/50 h-full overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500" />
+                <span className="absolute top-4 right-4 text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                  {lang === 'zh' ? '新推出' : 'NEW'}
+                </span>
+
+                <div className="relative">
+                  <div className="bg-gradient-to-br from-indigo-600 to-indigo-500 text-white w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all shadow-lg shadow-indigo-500/30">
+                    <Move3d size={28} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">
+                    {lang === 'zh' ? '互動裝載規劃器' : '3D Load Planner'}
+                  </h3>
+                  <p className="text-slate-600 mb-4 text-sm leading-relaxed">
+                    {lang === 'zh'
+                      ? '真實裝箱算法自動優化，親手拖動微調每個紙箱，導出 PDF 裝載方案。'
+                      : 'Auto-optimize with real bin-packing, drag every carton by hand, export PDF load plans.'}
+                  </p>
+                  <ul className="space-y-2 text-sm text-slate-500">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-indigo-500 flex-shrink-0" />
+                      {lang === 'zh' ? '重量與堆疊限制' : 'Weight & stack limits'}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-indigo-500 flex-shrink-0" />
+                      {lang === 'zh' ? '拖放編輯 + 落貨順序' : 'Drag-edit + unload order'}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-indigo-500 flex-shrink-0" />
+                      {lang === 'zh' ? 'PDF / CSV 裝箱單導出' : 'PDF / CSV export'}
+                    </li>
+                  </ul>
+                  <div className="mt-6 flex items-center text-indigo-600 font-bold text-sm group-hover:gap-3 gap-2 transition-all">
+                    {lang === 'zh' ? '立即使用' : 'Try Now'} <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
             {/* Packing Calculator Card */}
             <Link to="/packing" className="group">
               <div className="relative bg-gradient-to-br from-blue-50 to-white border-2 border-blue-100 hover:border-blue-300 rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-blue-100/50 h-full overflow-hidden">
@@ -1279,16 +1325,16 @@ export default function HomePage() {
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            {lang === 'zh' ? '立即開始計算' : 'Start Calculating Now'}
+            {lang === 'zh' ? '立即規劃你的下一個貨櫃' : 'Plan Your Next Container Load'}
           </h2>
           <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
-            {lang === 'zh' ? '無需註冊，完全免費，即時獲得結果' : 'No signup required. Completely free. Get instant results.'}
+            {lang === 'zh' ? '無需註冊，完全免費 — 優化、微調、導出 PDF 裝載方案' : 'No signup required. Completely free — optimize, fine-tune, and export a PDF load plan.'}
           </p>
           <Link
-            to="/packing"
+            to="/planner"
             className="group inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-50 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
           >
-            {lang === 'zh' ? '開始使用' : 'Get Started'}
+            {lang === 'zh' ? '打開裝載規劃器' : 'Open Load Planner'}
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>

@@ -450,7 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // State
-  const [lang, setLang] = useState<Language>(() => getInitialState('lang', 'zh'));
+  const [lang, setLang] = useState<Language>(() => getInitialState('lang', 'en'));
   const [units, setUnits] = useState<Units>(() => getInitialState('units', defaultUnits));
   const [rates, setRates] = useState<Rates>(() => getInitialState('rates', defaultRates));
   const [dimFactor, setDimFactor] = useState(() => getInitialState('dimFactor', 5000));
