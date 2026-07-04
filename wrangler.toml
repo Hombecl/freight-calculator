@@ -1,0 +1,10 @@
+# Cloudflare Pages config — read by `wrangler pages deploy`.
+# Functions in ./functions are bundled automatically; LEADS is the KV store
+# for email capture (export gate + warehouse waitlist).
+name = "dimpack3d"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "LEADS"
+id = "13e65133a1414b1ebe5d125d38d43eb8"

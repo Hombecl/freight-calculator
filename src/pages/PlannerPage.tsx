@@ -8,6 +8,7 @@ import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '..
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
 import PaywallModal from '../components/PaywallModal';
+import { track } from '../lib/track';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -115,9 +116,12 @@ export default function PlannerPage() {
     weightUnit: 'kg',
     date: new Date().toLocaleDateString(),
   });
-  const runCsv = () =>
+  const runCsv = () => {
+    track('export_csv');
     downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
-  const runPdf = () =>
+  };
+  const runPdf = () => {
+    track('export_pdf');
     openPrintablePlan({
       meta: meta(),
       stats,
@@ -126,6 +130,7 @@ export default function PlannerPage() {
       totalRequested: totalQty,
       imageDataUrl: snapshotFn.current?.() ?? null,
     });
+  };
 
   // export gate: secure Pro (Supabase-verified) OR free email lead-capture
   const ent = useEntitlement();

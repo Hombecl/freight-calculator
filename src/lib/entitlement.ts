@@ -19,8 +19,11 @@ export interface Entitlement {
 }
 
 const KEY = 'dimpack_entitlement';
-// optional lead sink, e.g. a Formspree / Supabase function URL
-const LEAD_ENDPOINT = (import.meta as any).env?.VITE_LEAD_ENDPOINT as string | undefined;
+// lead sink — defaults to the same-origin Pages Function (functions/api/lead.ts,
+// stores to KV). Override with VITE_LEAD_ENDPOINT if needed. Fire-and-forget,
+// so localhost dev (where /api/lead doesn't exist) fails silently.
+const LEAD_ENDPOINT: string =
+  ((import.meta as any).env?.VITE_LEAD_ENDPOINT as string | undefined) ?? '/api/lead';
 
 export function readEntitlement(): Entitlement {
   try {

@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
 import { captureLead } from '../lib/entitlement';
+import { track } from '../lib/track';
 
 /**
  * Homepage v4 — less text, more product.
@@ -54,7 +55,12 @@ export default function HomePage() {
   const submitWaitlist = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(whEmail)) return;
     captureLead(whEmail.trim(), { proWaitlist: true, source: 'warehouse-waitlist' });
+    track('waitlist_warehouse');
     setWhState('done');
+  };
+  const switchHero = (mode: 'container' | 'carton') => {
+    setHeroMode(mode);
+    track('hero_tab', mode);
   };
 
   const tasks = [
@@ -177,7 +183,7 @@ export default function HomePage() {
             <div>
               <div className="flex gap-1.5 mb-3">
                 <button
-                  onClick={() => setHeroMode('container')}
+                  onClick={() => switchHero('container')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'container' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
@@ -185,7 +191,7 @@ export default function HomePage() {
                   <Container size={15} /> {T('Cartons → container', '紙箱 → 貨櫃')}
                 </button>
                 <button
-                  onClick={() => setHeroMode('carton')}
+                  onClick={() => switchHero('carton')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'carton' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
