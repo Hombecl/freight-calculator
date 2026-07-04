@@ -42,12 +42,20 @@ const BASE_ROUTES = [
 ];
 
 // programmatic answer pages — same single source as src/lib/answers.ts
+// (containers/trucks pack cartons IN; pallets stack cartons ON)
 const answersData = JSON.parse(readFileSync('src/data/answers.json', 'utf8'));
 const ANSWER_ROUTES = [];
-for (const ct of answersData.containers) {
-  ANSWER_ROUTES.push(`/answers/cartons-in-${ct.slug}`);
-  for (const c of answersData.cartons) {
-    ANSWER_ROUTES.push(`/answers/how-many-${c.l}x${c.w}x${c.h}-cartons-fit-in-a-${ct.slug}`);
+const vesselGroups = [
+  { list: answersData.containers, prep: 'in' },
+  { list: answersData.pallets ?? [], prep: 'on' },
+  { list: answersData.trucks ?? [], prep: 'in' },
+];
+for (const { list, prep } of vesselGroups) {
+  for (const v of list) {
+    ANSWER_ROUTES.push(`/answers/cartons-${prep}-${v.slug}`);
+    for (const c of answersData.cartons) {
+      ANSWER_ROUTES.push(`/answers/how-many-${c.l}x${c.w}x${c.h}-cartons-fit-${prep}-a-${v.slug}`);
+    }
   }
 }
 
@@ -125,8 +133,9 @@ try {
   // hang-proof renderer: own profile dir (no lock contention with the user's
   // running Chrome), process-group SIGKILL on a hard 45s timer (execFileSync's
   // timeout can block forever on a pipe held open by an orphaned Chrome helper)
-  const profile = mkdtempSync(join(tmpdir(), 'prerender-profile-'));
-  const renderRoute = (url) => new Promise((resolve) => {
+  const CONCURRENCY = 4;
+  const profiles = Array.from({ length: CONCURRENCY }, () => mkdtempSync(join(tmpdir(), 'prerender-profile-')));
+  const renderRoute = (url, profile) => new Promise((resolve) => {
     const child = spawn(chrome, [
       '--headless=new',
       '--disable-gpu',
@@ -148,20 +157,16 @@ try {
   });
 
   let ok = 0;
-  for (const route of ROUTES) {
-    const url = `http://localhost:${PORT}${route}`;
-    const html = await renderRoute(url);
+  const snapshotOne = async (route, profile) => {
+    const html = await renderRoute(`http://localhost:${PORT}${route}`, profile);
     if (!html) {
       console.warn(`[prerender] FAILED ${route}: no output (timeout or crash)`);
-      continue;
+      return;
     }
-    // sanity: only keep snapshots that actually contain rendered content
     if (!html.includes('</body>') || html.length < 5_000) {
       console.warn(`[prerender] ${route} rendered too little — kept as SPA shell`);
-      continue;
+      return;
     }
-    // "<route>.html" (not "<route>/index.html") so Cloudflare Pages serves
-    // /planner directly from planner.html with no 308 trailing-slash redirect
     const outPath = route === '/'
       ? join('dist', 'index.html')
       : join('dist', `${route.replace(/^\//, '')}.html`);
@@ -169,7 +174,16 @@ try {
     writeFileSync(outPath, '<!DOCTYPE html>\n' + html);
     ok++;
     console.log(`[prerender] ${route} → ${outPath} (${(html.length / 1024).toFixed(0)} KB)`);
-  }
+  };
+
+  // worker pool: CONCURRENCY Chrome instances, each with its own profile dir
+  const queue = [...ROUTES];
+  await Promise.all(profiles.map(async (profile) => {
+    while (queue.length) {
+      const route = queue.shift();
+      if (route) await snapshotOne(route, profile);
+    }
+  }));
   writeSitemap();
   console.log(`[prerender] done: ${ok}/${ROUTES.length} routes snapshotted`);
   if (ok === 0) process.exit(1);

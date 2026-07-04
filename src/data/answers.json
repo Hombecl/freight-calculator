@@ -4,6 +4,28 @@
     { "key": "40gp", "slug": "40ft-container", "labelEn": "40ft container (40' GP)", "labelZh": "40 呎標準櫃 (40' GP)", "l": 1203, "w": 235, "h": 239, "maxWeight": 26700 },
     { "key": "40hq", "slug": "40ft-hc-container", "labelEn": "40ft high-cube container (40' HQ)", "labelZh": "40 呎高櫃 (40' HQ)", "l": 1203, "w": 235, "h": 269, "maxWeight": 26500 }
   ],
+  "pallets": [
+    { "key": "eur", "slug": "eur-pallet", "labelEn": "EUR pallet (EPAL, 120×80 cm)", "labelZh": "歐標卡板 (EPAL, 120×80 cm)", "l": 120, "w": 80, "h": 165, "maxWeight": 1500,
+      "noteEn": "Assumes a usable load height of 165 cm (180 cm overall minus the 14.4 cm pallet) and the EPAL dynamic rating of 1,500 kg. Adjust for your racking or trailer height limits.",
+      "noteZh": "假設可用堆疊高度 165 cm(整體 180 cm 減 14.4 cm 卡板),EPAL 動態載重 1,500 kg。請按你嘅貨架或車廂高度限制調整。" },
+    { "key": "gma", "slug": "us-gma-pallet", "labelEn": "US GMA pallet (48×40 in)", "labelZh": "美式 GMA 卡板 (48×40 吋)", "l": 121.9, "w": 101.6, "h": 152, "maxWeight": 1134,
+      "noteEn": "48×40 in = 121.9×101.6 cm. Assumes a 152 cm usable load height (60 in overall) and the commonly cited ~2,500 lb (1,134 kg) dynamic rating — verify your pallet spec.",
+      "noteZh": "48×40 吋 = 121.9×101.6 cm。假設可用高度 152 cm(整體 60 吋),常見動態載重約 2,500 磅(1,134 kg)— 以實際卡板規格為準。" },
+    { "key": "ind", "slug": "industrial-pallet", "labelEn": "Industrial pallet (120×100 cm)", "labelZh": "工業卡板 (120×100 cm)", "l": 120, "w": 100, "h": 165, "maxWeight": 1500,
+      "noteEn": "Assumes a 165 cm usable load height and a 1,500 kg dynamic rating — verify against your pallet spec and racking limits.",
+      "noteZh": "假設可用高度 165 cm、動態載重 1,500 kg — 以實際卡板規格同貨架限制為準。" }
+  ],
+  "trucks": [
+    { "key": "53ft", "slug": "53ft-trailer", "labelEn": "53ft dry van trailer", "labelZh": "53 呎乾貨掛車", "l": 1602, "w": 254, "h": 269, "maxWeight": 20000,
+      "noteEn": "Typical 53' dry-van interior dimensions; payload varies by tractor, axles and carrier — confirm before booking.",
+      "noteZh": "53 呎乾貨掛車典型內籠尺寸;載重視乎車頭、車軸同承運人 — 訂車前請確認。" },
+    { "key": "eusemi", "slug": "eu-semi-trailer", "labelEn": "EU semi-trailer (13.6 m)", "labelZh": "歐洲半掛車 (13.6 米)", "l": 1360, "w": 245, "h": 270, "maxWeight": 24000,
+      "noteEn": "Typical 13.6 m tautliner interior; ~24 t payload is a common figure — confirm with your carrier and route weight limits.",
+      "noteZh": "13.6 米篷布半掛車典型內籠;載重約 24 噸屬常見數字 — 以承運人同路線限重為準。" },
+    { "key": "26ft", "slug": "26ft-box-truck", "labelEn": "26ft box truck", "labelZh": "26 呎箱型貨車", "l": 779, "w": 246, "h": 239, "maxWeight": 4500,
+      "noteEn": "Typical 26 ft box truck interior; payload varies widely by chassis (often 4–5 t) — verify your vehicle's rating.",
+      "noteZh": "26 呎箱車典型內籠;載重因車架差異大(常見 4–5 噸)— 以實際車輛規格為準。" }
+  ],
   "cartons": [
     { "l": 60, "w": 40, "h": 40 },
     { "l": 60, "w": 50, "h": 45 },

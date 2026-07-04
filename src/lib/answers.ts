@@ -3,15 +3,18 @@
  * (/answers/*). One JSON source (src/data/answers.json) drives the pages,
  * the prerender route list, and the sitemap.
  *
- * Counting method: single-SKU orientation grid — try all 6 axis-aligned
- * orientations, take the best floor(L/l)·floor(W/w)·floor(H/h). This is the
- * standard industry estimate for identical cartons; pages say so explicitly
- * and point to the 3D planner for mixed loads.
+ * Vessels come in three kinds — shipping containers, pallets (cartons stack
+ * ON them, open top) and trucks. Counting method: single-SKU orientation
+ * grid — best of the 6 axis-aligned orientations. Pages state the method and
+ * each vessel's assumptions (`note*`) openly.
  */
 
 import data from '../data/answers.json';
 
-export interface AnswerContainer {
+export type VesselKind = 'container' | 'pallet' | 'truck';
+
+export interface AnswerVessel {
+  kind: VesselKind;
   key: string;
   slug: string;
   labelEn: string;
@@ -20,31 +23,48 @@ export interface AnswerContainer {
   w: number;
   h: number;
   maxWeight: number;
+  noteEn?: string;
+  noteZh?: string;
 }
 
 export interface CartonSize { l: number; w: number; h: number }
 
-export const CONTAINERS: AnswerContainer[] = data.containers;
+const tag = (kind: VesselKind) => (v: Omit<AnswerVessel, 'kind'>): AnswerVessel => ({ ...v, kind });
+
+export const CONTAINERS: AnswerVessel[] = (data.containers as Omit<AnswerVessel, 'kind'>[]).map(tag('container'));
+export const PALLETS: AnswerVessel[] = (data.pallets as Omit<AnswerVessel, 'kind'>[]).map(tag('pallet'));
+export const TRUCKS: AnswerVessel[] = (data.trucks as Omit<AnswerVessel, 'kind'>[]).map(tag('truck'));
+export const ALL_VESSELS: AnswerVessel[] = [...CONTAINERS, ...PALLETS, ...TRUCKS];
+
+export const GROUPS: { kind: VesselKind; vessels: AnswerVessel[] }[] = [
+  { kind: 'container', vessels: CONTAINERS },
+  { kind: 'pallet', vessels: PALLETS },
+  { kind: 'truck', vessels: TRUCKS },
+];
+
 export const CARTONS: CartonSize[] = data.cartons;
 
 export const cartonSlug = (c: CartonSize) => `${c.l}x${c.w}x${c.h}`;
 
-/** slug for a container hub page, e.g. "cartons-in-20ft-container" */
-export const containerPageSlug = (ct: AnswerContainer) => `cartons-in-${ct.slug}`;
+/** pallets stack cartons ON them; everything else packs cartons IN them */
+const prep = (v: AnswerVessel) => (v.kind === 'pallet' ? 'on' : 'in');
 
-/** slug for a combo page, e.g. "how-many-60x40x40-cartons-fit-in-a-20ft-container" */
-export const comboPageSlug = (c: CartonSize, ct: AnswerContainer) =>
-  `how-many-${cartonSlug(c)}-cartons-fit-in-a-${ct.slug}`;
+/** hub page slug, e.g. "cartons-in-20ft-container" / "cartons-on-eur-pallet" */
+export const vesselPageSlug = (v: AnswerVessel) => `cartons-${prep(v)}-${v.slug}`;
+
+/** combo slug, e.g. "how-many-60x40x40-cartons-fit-on-a-eur-pallet" */
+export const comboPageSlug = (c: CartonSize, v: AnswerVessel) =>
+  `how-many-${cartonSlug(c)}-cartons-fit-${prep(v)}-a-${v.slug}`;
 
 export interface FitResult {
   count: number;
-  orientation: CartonSize; // carton dims in the placed orientation
+  orientation: CartonSize;
   perRow: { x: number; y: number; z: number };
   utilization: number; // %
 }
 
-/** Best axis-aligned grid fit of identical cartons in a container. */
-export function gridFit(c: CartonSize, ct: { l: number; w: number; h: number }): FitResult {
+/** Best axis-aligned grid fit of identical cartons in/on a vessel. */
+export function gridFit(c: CartonSize, v: { l: number; w: number; h: number }): FitResult {
   const dims: [number, number, number][] = [
     [c.l, c.w, c.h], [c.l, c.h, c.w],
     [c.w, c.l, c.h], [c.w, c.h, c.l],
@@ -52,16 +72,16 @@ export function gridFit(c: CartonSize, ct: { l: number; w: number; h: number }):
   ];
   let best: FitResult = { count: 0, orientation: c, perRow: { x: 0, y: 0, z: 0 }, utilization: 0 };
   for (const [l, w, h] of dims) {
-    const nx = Math.floor(ct.l / l);
-    const nz = Math.floor(ct.w / w);
-    const ny = Math.floor(ct.h / h);
+    const nx = Math.floor(v.l / l);
+    const nz = Math.floor(v.w / w);
+    const ny = Math.floor(v.h / h);
     const count = nx * nz * ny;
     if (count > best.count) {
       best = {
         count,
         orientation: { l, w, h },
         perRow: { x: nx, y: ny, z: nz },
-        utilization: (count * c.l * c.w * c.h) / (ct.l * ct.w * ct.h) * 100,
+        utilization: (count * c.l * c.w * c.h) / (v.l * v.w * v.h) * 100,
       };
     }
   }
@@ -69,19 +89,19 @@ export function gridFit(c: CartonSize, ct: { l: number; w: number; h: number }):
 }
 
 export interface AnswerRoute {
-  path: string; // router path, e.g. /answers/how-many-...
-  kind: 'hub' | 'container' | 'combo';
-  container?: AnswerContainer;
+  path: string;
+  kind: 'hub' | 'vessel' | 'combo';
+  vessel?: AnswerVessel;
   carton?: CartonSize;
 }
 
 /** Every answers route (used by App routing, prerender, and the sitemap). */
 export function allAnswerRoutes(): AnswerRoute[] {
   const routes: AnswerRoute[] = [{ path: '/answers', kind: 'hub' }];
-  for (const ct of CONTAINERS) {
-    routes.push({ path: `/answers/${containerPageSlug(ct)}`, kind: 'container', container: ct });
+  for (const v of ALL_VESSELS) {
+    routes.push({ path: `/answers/${vesselPageSlug(v)}`, kind: 'vessel', vessel: v });
     for (const c of CARTONS) {
-      routes.push({ path: `/answers/${comboPageSlug(c, ct)}`, kind: 'combo', container: ct, carton: c });
+      routes.push({ path: `/answers/${comboPageSlug(c, v)}`, kind: 'combo', vessel: v, carton: c });
     }
   }
   return routes;
@@ -89,10 +109,10 @@ export function allAnswerRoutes(): AnswerRoute[] {
 
 /** Resolve an /answers/:slug to its meaning (or null). */
 export function resolveSlug(slug: string): AnswerRoute | null {
-  for (const ct of CONTAINERS) {
-    if (slug === containerPageSlug(ct)) return { path: `/answers/${slug}`, kind: 'container', container: ct };
+  for (const v of ALL_VESSELS) {
+    if (slug === vesselPageSlug(v)) return { path: `/answers/${slug}`, kind: 'vessel', vessel: v };
     for (const c of CARTONS) {
-      if (slug === comboPageSlug(c, ct)) return { path: `/answers/${slug}`, kind: 'combo', container: ct, carton: c };
+      if (slug === comboPageSlug(c, v)) return { path: `/answers/${slug}`, kind: 'combo', vessel: v, carton: c };
     }
   }
   return null;
