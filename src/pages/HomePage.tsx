@@ -8,7 +8,6 @@ import {
 import { useApp } from '../context/AppContext';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
-import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
 
 /**
@@ -49,15 +48,6 @@ export default function HomePage() {
   const demo = heroMode === 'container' ? containerDemo : cartonDemo;
   const scene = heroMode === 'container' ? CONTAINER_SCENE : CARTON_SCENE;
 
-  // warehouse demand test
-  const [whEmail, setWhEmail] = useState('');
-  const [whState, setWhState] = useState<'idle' | 'open' | 'done'>('idle');
-  const submitWaitlist = () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(whEmail)) return;
-    captureLead(whEmail.trim(), { proWaitlist: true, source: 'warehouse-waitlist' });
-    track('waitlist_warehouse');
-    setWhState('done');
-  };
   const switchHero = (mode: 'container' | 'carton') => {
     setHeroMode(mode);
     track('hero_tab', mode);
@@ -88,6 +78,15 @@ export default function HomePage() {
       iconCls: 'bg-teal-100 text-teal-700',
       title: T('Pick a container size', '揀啱貨櫃尺寸'),
       body: T('Instant carton count & CBM for 20GP / 40GP / 40HQ.', '即時計 20GP/40GP/40HQ 裝箱數同 CBM。'),
+    },
+    {
+      to: '/warehouse',
+      icon: Warehouse,
+      accent: 'border-slate-200 hover:border-purple-400',
+      iconCls: 'bg-purple-100 text-purple-700',
+      title: T('Arrange the warehouse floor', '規劃倉庫地面'),
+      body: T('Pallet rows, forklift aisles, and live dock-reachability checks.', '卡板排位、叉車通道、實時碼頭可達性檢查。'),
+      badge: T('Beta', 'Beta'),
     },
     {
       to: '/fba',
@@ -227,12 +226,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ TASK NAV — every tool, verb-first ============ */}
+      {/* ============ TASK NAV — the whole chain, every tool ============ */}
       <section className="max-w-6xl mx-auto px-4 py-14 md:py-20">
-        <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-8">
-          {T('What do you need to do?', '你想做咩?')}
+        <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-3">
+          {T('One tool for every level of the load', '一件工具,覆蓋成條裝載鏈')}
         </h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* the chain: makes the levels + what exists at each one explicit */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-8 text-sm font-semibold">
+          {[
+            { label: T('Products', '產品'), to: '/packing' },
+            { label: T('Cartons', '紙箱'), to: '/planner' },
+            { label: T('Containers · pallets · trucks', '貨櫃 · 卡板 · 貨車'), to: '/answers' },
+            { label: T('Warehouse floor', '倉庫地面'), to: '/warehouse', beta: true },
+          ].map((step, i, arr) => (
+            <span key={i} className="flex items-center gap-3">
+              <Link to={step.to} className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                {step.label}
+                {step.beta && <span className="ml-1.5 text-[9px] font-black uppercase bg-indigo-600 text-white px-1.5 py-0.5 rounded-full align-middle">Beta</span>}
+              </Link>
+              {i < arr.length - 1 && <ArrowRight size={15} className="text-slate-300" />}
+            </span>
+          ))}
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {tasks.map((t, i) => (
             <Link key={i} to={t.to} className={`group relative rounded-2xl border-2 ${t.accent} p-5 transition-all hover:shadow-lg`}>
               {t.badge && (
@@ -250,47 +266,6 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* demand test: which market wants warehouse floor planning? */}
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5">
-          {whState === 'done' ? (
-            <p className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
-              <Check size={16} /> {T("Thanks — you're on the list. We'll email you when warehouse planning ships.", '多謝 — 已記低。倉庫規劃推出時會 email 通知你。')}
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center"><Warehouse size={20} /></span>
-                <div>
-                  <p className="font-bold text-slate-800 text-sm">
-                    {T('Arrange a warehouse floor', '規劃倉庫地面擺位')}
-                    <span className="ml-2 text-[10px] font-black uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{T('Coming soon', '即將推出')}</span>
-                  </p>
-                  <p className="text-xs text-slate-500">{T('Racking, aisles, pallet positions — want it? Tell us where to reach you.', '貨架、通道、卡板位 — 想要?留低 email 話我哋知。')}</p>
-                </div>
-              </div>
-              {whState === 'open' ? (
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    autoFocus
-                    value={whEmail}
-                    onChange={(e) => setWhEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && submitWaitlist()}
-                    placeholder="you@company.com"
-                    className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-56 outline-none focus:border-blue-500"
-                  />
-                  <button onClick={submitWaitlist} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold">
-                    {T('Notify me', '通知我')}
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => setWhState('open')} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:border-slate-400">
-                  {T('I need this →', '我需要呢個 →')}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
       </section>
 
       {/* ============ HOW IT WORKS — shown, not told ============ */}

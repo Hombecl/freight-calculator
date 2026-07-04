@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 const BASE_ROUTES = [
   '/',
   '/planner',
+  '/warehouse',
   '/packing',
   '/container',
   '/fba',

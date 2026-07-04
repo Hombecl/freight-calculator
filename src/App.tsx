@@ -11,6 +11,7 @@ import AboutPage from './pages/AboutPage';
 import MyPlansPage from './pages/MyPlansPage';
 import ReviewPage from './pages/ReviewPage';
 import ComparePage from './pages/ComparePage';
+import WarehousePage from './pages/WarehousePage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import GuidesPage from './pages/guides/GuidesPage';
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="container" element={<ContainerPage />} />
         <Route path="fba" element={<FbaPage />} />
         <Route path="planner" element={<PlannerPage />} />
+        <Route path="warehouse" element={<WarehousePage />} />
         <Route path="answers" element={<AnswersHub />} />
         <Route path="answers/:slug" element={<AnswerPage />} />
         <Route path="plans" element={<MyPlansPage />} />

@@ -47,6 +47,7 @@ interface Props {
   showDoor?: boolean; // draw a door marker on the +X face (default true)
   autoSpin?: boolean; // slowly orbit the camera until the user first interacts
   hintOverlay?: boolean; // show a "drag to explore" hint until first interaction
+  flagIds?: string[]; // boxes tinted red (e.g. forklift-unreachable in warehouse mode)
   onChange?: (boxes: PlannerBox[]) => void;
   registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
 }
@@ -103,6 +104,7 @@ export default function InteractiveLoadPlanner({
   showDoor = true,
   autoSpin = false,
   hintOverlay = false,
+  flagIds,
   onChange,
   registerSnapshot,
 }: Props) {
@@ -427,6 +429,17 @@ export default function InteractiveLoadPlanner({
       m.material.emissive?.setHex(id === selectedId ? 0x2563eb : 0x000000);
     });
   }, [selectedId]);
+
+  // tint flagged boxes red (restores the box's own color when unflagged)
+  useEffect(() => {
+    const api = sceneApi.current;
+    if (!api) return;
+    const flagged = new Set(flagIds ?? []);
+    api.meshById.forEach((m: any, id: string) => {
+      const original = boxesRef.current.find((b) => b.id === id)?.color ?? 0xfbbf24;
+      m.material.color?.setHex(flagged.has(id) ? 0xef4444 : original);
+    });
+  }, [flagIds, boxes]);
 
   // ---- React-side actions on the selected box ----
   const rotateSelected = () => {
