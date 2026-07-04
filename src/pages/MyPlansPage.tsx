@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowRight, Trash2, FolderOpen, LogOut } from 'lucide-react';
+import { ArrowRight, Trash2, FolderOpen, LogOut, UserCheck, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../hooks/useAuth';
-import { listPlans, deletePlan, type SavedPlan } from '../lib/plans';
+import { listPlans, deletePlan, submitForReview, type SavedPlan } from '../lib/plans';
 import { track } from '../lib/track';
+
+const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
+  draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' },
+  pending_review: { label: 'Pending review', cls: 'bg-amber-100 text-amber-700' },
+  approved: { label: 'Approved', cls: 'bg-emerald-100 text-emerald-700' },
+  changes_requested: { label: 'Changes requested', cls: 'bg-red-100 text-red-600' },
+};
 
 /**
  * /plans — the workspace: saved plans + the ROI summary (ENTERPRISE.md §3).
@@ -41,6 +48,18 @@ export default function MyPlansPage() {
   const remove = async (id: string) => {
     if (!window.confirm(T('Delete this plan?', '刪除呢個方案?'))) return;
     if (await deletePlan(id)) setPlans((p) => (p ? p.filter((x) => x.id !== id) : p));
+  };
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const requestReview = async (id: string) => {
+    const { token, error } = await submitForReview(id);
+    if (error || !token) return;
+    const url = `${window.location.origin}/review/${id}?t=${token}`;
+    await navigator.clipboard.writeText(url);
+    track('review_submit');
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2500);
+    setPlans((p) => (p ? p.map((x) => (x.id === id ? { ...x, status: 'pending_review' } : x)) : p));
   };
 
   const signIn = async () => {
@@ -131,12 +150,26 @@ export default function MyPlansPage() {
               {plans.map((p) => (
                 <li key={p.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-5 py-4 hover:border-blue-300 transition-colors">
                   <div>
-                    <p className="font-bold text-slate-900">{p.name}</p>
+                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                      {p.name}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${(STATUS_CHIP[p.status] ?? STATUS_CHIP.draft).cls}`}>
+                        {(STATUS_CHIP[p.status] ?? STATUS_CHIP.draft).label}
+                      </span>
+                    </p>
                     <p className="text-xs text-slate-500">
                       {p.container_key.toUpperCase()} · {Number(p.stats?.volumeUtil ?? 0).toFixed(1)}% · {p.boxes?.length ?? 0} {T('cartons', '箱')} · {new Date(p.updated_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => requestReview(p.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${
+                        copiedId === p.id ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}
+                      title={T('Copy a review link for an approver', '複製批核連結')}
+                    >
+                      {copiedId === p.id ? (<><Check size={14} /> {T('Link copied', '已複製')}</>) : (<><UserCheck size={14} /> {T('Review', '批核')}</>)}
+                    </button>
                     <Link
                       to={`/planner?saved=${p.id}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-semibold"
