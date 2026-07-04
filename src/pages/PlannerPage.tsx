@@ -4,6 +4,8 @@ import { Download, FileText } from 'lucide-react';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
+import { useEntitlement } from '../hooks/useEntitlement';
+import PaywallModal from '../components/PaywallModal';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -82,9 +84,9 @@ export default function PlannerPage() {
     weightUnit: 'kg',
     date: new Date().toLocaleDateString(),
   });
-  const exportCsv = () =>
+  const runCsv = () =>
     downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
-  const exportPdf = () =>
+  const runPdf = () =>
     openPrintablePlan({
       meta: meta(),
       stats,
@@ -93,6 +95,26 @@ export default function PlannerPage() {
       totalRequested: totalQty,
       imageDataUrl: snapshotFn.current?.() ?? null,
     });
+
+  // export gate (see entitlement.ts — lead-capture layer, not a secure paywall)
+  const ent = useEntitlement();
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const pending = useRef<null | (() => void)>(null);
+  const guardExport = (run: () => void) => {
+    if (ent.canExport) { run(); return; }
+    pending.current = run;
+    setPaywallOpen(true);
+  };
+  const exportCsv = () => guardExport(runCsv);
+  const exportPdf = () => guardExport(runPdf);
+  const onUnlock = (email: string, proWaitlist: boolean) => {
+    ent.submitEmail(email, proWaitlist);
+    setPaywallOpen(false);
+    const run = pending.current;
+    pending.current = null;
+    // entitlement state updates async; run the queued export directly
+    if (run) run();
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -286,6 +308,8 @@ export default function PlannerPage() {
           />
         </div>
       </div>
+
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} onSubmit={onUnlock} />
     </div>
   );
 }
