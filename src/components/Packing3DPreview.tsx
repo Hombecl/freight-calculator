@@ -127,8 +127,14 @@ export default function Packing3DPreview({
     camera.position.set(camX, camY, camZ);
     camera.lookAt(0, 0, 0);
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // Renderer — WebGL may be unavailable (headless/locked-down machines);
+    // fail quietly instead of crashing the whole React tree.
+    let renderer: any;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.innerHTML = '';

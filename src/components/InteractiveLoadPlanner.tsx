@@ -104,6 +104,7 @@ export default function InteractiveLoadPlanner({
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
+  const [webglFailed, setWebglFailed] = useState(false);
 
   // The live source of truth for box positions. We keep it in a ref so the
   // three.js pointer handlers always see the latest without re-running effect.
@@ -162,7 +163,15 @@ export default function InteractiveLoadPlanner({
     };
     applyCamera();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    // WebGL can be unavailable (headless crawlers, GPU-blacklisted or locked-down
+    // machines). Never let that take down the whole React tree.
+    let renderer: any;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    } catch {
+      setWebglFailed(true);
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mount.innerHTML = '';
@@ -457,7 +466,12 @@ export default function InteractiveLoadPlanner({
         className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
         style={{ cursor: selectedId ? 'grab' : 'move' }}
       >
-        {!threeLoaded && (
+        {webglFailed ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-sm px-6 text-center">
+            <span className="font-semibold text-slate-300">3D view unavailable</span>
+            <span>This device/browser has WebGL disabled. The optimizer still works — utilization and stats are shown below.</span>
+          </div>
+        ) : !threeLoaded && (
           <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
             Loading 3D…
           </div>
