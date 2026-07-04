@@ -8,6 +8,12 @@
 
 export function track(event: string, meta?: string) {
   try {
+    // mirror to GA4 when its lazy-loaded tag is present (see index.html)
+    (window as any).gtag?.(
+      'event',
+      event === 'pageview' ? 'page_view' : event,
+      event === 'pageview' ? { page_path: location.pathname } : { meta: meta ?? '' },
+    );
     const body = JSON.stringify({
       e: event,
       p: location.pathname,

@@ -46,6 +46,10 @@ export default function Footer() {
               <li>✓ {T('No signup to plan', '規劃無需註冊')}</li>
               <li>✓ {T('Shipment data never leaves your device', '貨運數據永不離開你部機')}</li>
             </ul>
+            <p className="text-sm mt-5">
+              {T('Questions, partnerships, feedback:', '查詢、合作、意見:')}{' '}
+              <a href="mailto:hello@dimpack3d.com" className="text-blue-400 hover:text-blue-300 font-medium">hello@dimpack3d.com</a>
+            </p>
           </div>
 
           {/* Product */}
