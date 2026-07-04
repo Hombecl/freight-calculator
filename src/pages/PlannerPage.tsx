@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
-import { packContainer, computeStats, type PackItemSpec } from '../lib/binPacking';
+import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -24,8 +24,8 @@ const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xf472b6, 0xa78bfa, 0xf87171];
 type Spec = PackItemSpec;
 
 const DEFAULT_SPECS: Spec[] = [
-  { id: 's1', label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 40, color: PALETTE[0] },
-  { id: 's2', label: 'Carton B (fragile)', l: 50, w: 30, h: 30, weight: 8, qty: 24, color: PALETTE[1], maxStack: 0 },
+  { id: 's1', label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 40, color: PALETTE[0], unloadOrder: 2 },
+  { id: 's2', label: 'Carton B (fragile)', l: 50, w: 30, h: 30, weight: 8, qty: 24, color: PALETTE[1], maxStack: 0, unloadOrder: 1 },
 ];
 
 export default function PlannerPage() {
@@ -36,7 +36,7 @@ export default function PlannerPage() {
   const container = CONTAINERS[containerKey];
 
   const result = useMemo(
-    () => packContainer(container, specs),
+    () => packWithConstraints(container, specs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [containerKey, seed],
   );
@@ -158,6 +158,28 @@ export default function PlannerPage() {
                     This way up
                   </label>
                 </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] uppercase text-slate-400">Group</label>
+                    <input
+                      value={s.group ?? ''}
+                      placeholder="(keep together)"
+                      onChange={(e) => updateSpec(s.id, { group: e.target.value || undefined })}
+                      className="w-full text-sm px-1 py-0.5 rounded border border-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-slate-400">Unload # (1=door)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={s.unloadOrder ?? ''}
+                      placeholder="—"
+                      onChange={(e) => updateSpec(s.id, { unloadOrder: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+                      className="w-full text-sm px-1 py-0.5 rounded border border-slate-200"
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -185,6 +207,23 @@ export default function PlannerPage() {
                 {balanceWarn ? 'Off-centre' : 'Balanced'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
               </span>
             </div>
+            {result.zones.length > 1 && (
+              <div className="pt-1">
+                <span className="text-xs font-semibold text-slate-500">Load zones (back → door)</span>
+                <div className="flex gap-1 mt-1">
+                  {[...result.zones].map((z) => (
+                    <div
+                      key={z.unloadOrder}
+                      className="flex-1 text-center text-[10px] py-1 rounded bg-slate-100 text-slate-600"
+                      style={{ flexGrow: Math.max(1, z.xEnd - z.xStart) }}
+                    >
+                      #{z.unloadOrder} · {z.count}
+                    </div>
+                  ))}
+                  <div className="text-[10px] py-1 px-1 rounded bg-green-100 text-green-700 font-semibold self-stretch flex items-center">DOOR</div>
+                </div>
+              </div>
+            )}
             {result.unplaced > 0 && (
               <p className="text-xs text-amber-600">Not everything fits — {result.unplaced} carton(s) left out (volume or weight limit).</p>
             )}

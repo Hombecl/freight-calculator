@@ -30,6 +30,8 @@ export interface PackItemSpec {
   allowRotate?: boolean; // default true
   keepUpright?: boolean; // default false — if true, h stays vertical (yaw only)
   maxStack?: number; // max total weight allowed resting on top (default Infinity)
+  group?: string; // keep-together: same group is packed contiguously
+  unloadOrder?: number; // 1 = unload first (nearest door); higher = loaded deeper
 }
 
 export interface PackContainer {
@@ -149,6 +151,10 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
   const queue: { spec: PackItemSpec; unit: number }[] = [];
   specs.forEach((s) => { for (let i = 0; i < s.qty; i++) queue.push({ spec: s, unit: i }); });
   queue.sort((a, b) => {
+    // keep-together first (same group contiguous); groups undefined compare
+    // equal, so default behaviour is unchanged
+    const ga = a.spec.group ?? '', gb = b.spec.group ?? '';
+    if (ga !== gb) return ga < gb ? -1 : 1;
     if (b.spec.weight !== a.spec.weight) return b.spec.weight - a.spec.weight;
     return (b.spec.l * b.spec.w * b.spec.h) - (a.spec.l * a.spec.w * a.spec.h);
   });
@@ -241,6 +247,85 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
 
   const boxes = nodes.map((n) => n.box);
   return { boxes, unplaced, stats: computeStats(boxes, container) };
+}
+
+export interface ZoneInfo {
+  unloadOrder: number;
+  xStart: number;
+  xEnd: number;
+  count: number;
+}
+
+export interface ConstrainedResult extends PackResult {
+  zones: ZoneInfo[];
+}
+
+/**
+ * packWithConstraints — L3 layer on top of packContainer.
+ *
+ * If any spec carries an unloadOrder, the container length is partitioned into
+ * contiguous zones along X: highest unloadOrder loads deepest (X≈0), lowest
+ * unloadOrder ends nearest the door (X≈L). Each zone is packed independently
+ * (so a zone is never blocked by a later-unload zone) and its result is shifted
+ * into place. Keep-together (group) is honoured inside each zone by the
+ * group-aware queue sort in packContainer.
+ *
+ * With no unloadOrder anywhere, this is exactly packContainer (single zone).
+ */
+export function packWithConstraints(
+  container: PackContainer, specs: PackItemSpec[],
+): ConstrainedResult {
+  const hasOrder = specs.some((s) => s.unloadOrder != null);
+  if (!hasOrder) {
+    const r = packContainer(container, specs);
+    return { ...r, zones: [{ unloadOrder: 1, xStart: 0, xEnd: container.l, count: r.boxes.length }] };
+  }
+
+  // group specs by unloadOrder, deepest (highest order) first
+  const byOrder = new Map<number, PackItemSpec[]>();
+  specs.forEach((s) => {
+    const key = s.unloadOrder ?? 1;
+    if (!byOrder.has(key)) byOrder.set(key, []);
+    byOrder.get(key)!.push(s);
+  });
+  const orders = [...byOrder.keys()].sort((a, b) => b - a);
+
+  const volOf = (list: PackItemSpec[]) =>
+    list.reduce((sum, s) => sum + s.l * s.w * s.h * s.qty, 0);
+  const totalVol = orders.reduce((sum, o) => sum + volOf(byOrder.get(o)!), 0) || 1;
+  const minLenOf = (list: PackItemSpec[]) =>
+    Math.max(...list.map((s) => Math.min(s.l, s.w, s.h)), 1);
+
+  const boxes: PlannerBox[] = [];
+  const zones: ZoneInfo[] = [];
+  let unplaced = 0;
+  let cumX = 0;
+
+  orders.forEach((order, i) => {
+    const list = byOrder.get(order)!;
+    const remaining = container.l - cumX;
+    const isLast = i === orders.length - 1;
+    const proportional = container.l * (volOf(list) / totalVol);
+    let zoneLen = isLast ? remaining : Math.min(remaining, Math.max(minLenOf(list), proportional));
+    zoneLen = Math.max(0, Math.min(zoneLen, remaining));
+    if (zoneLen <= EPS) {
+      unplaced += list.reduce((s, x) => s + x.qty, 0);
+      return;
+    }
+    const sub = packContainer(
+      {
+        l: zoneLen, w: container.w, h: container.h,
+        maxWeight: container.maxWeight != null ? container.maxWeight * (volOf(list) / totalVol) : undefined,
+      },
+      list,
+    );
+    sub.boxes.forEach((b) => boxes.push({ ...b, px: b.px + cumX }));
+    unplaced += sub.unplaced;
+    zones.push({ unloadOrder: order, xStart: cumX, xEnd: cumX + zoneLen, count: sub.boxes.length });
+    cumX += zoneLen;
+  });
+
+  return { boxes, unplaced, stats: computeStats(boxes, container), zones };
 }
 
 /** Volume utilisation, total weight, and centre of gravity for a set of boxes. */

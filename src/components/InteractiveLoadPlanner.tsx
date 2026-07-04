@@ -42,6 +42,7 @@ interface Props {
   boxes: PlannerBox[];
   grid?: number; // snap step in same unit as dims (default 1)
   unitLabel?: string; // 'cm' | 'inch' — display only
+  showDoor?: boolean; // draw a door marker on the +X face (default true)
   onChange?: (boxes: PlannerBox[]) => void;
 }
 
@@ -94,6 +95,7 @@ export default function InteractiveLoadPlanner({
   boxes,
   grid = 1,
   unitLabel = 'cm',
+  showDoor = true,
   onChange,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -188,6 +190,22 @@ export default function InteractiveLoadPlanner({
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = off.y;
     scene.add(floor);
+
+    // door marker on the +X face (green frame) — items nearest here come out first
+    if (showDoor) {
+      const doorGeo = new THREE.PlaneGeometry(container.w, container.h);
+      const door = new THREE.Mesh(
+        doorGeo,
+        new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.12, side: THREE.DoubleSide }),
+      );
+      door.rotation.y = Math.PI / 2;
+      door.position.set(container.l / 2, 0, 0);
+      scene.add(door);
+      scene.add(new THREE.LineSegments(
+        new THREE.EdgesGeometry(doorGeo),
+        new THREE.LineBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.8 }),
+      ).translateX(container.l / 2).rotateY(Math.PI / 2));
+    }
 
     const meshById = new Map<string, any>();
 
