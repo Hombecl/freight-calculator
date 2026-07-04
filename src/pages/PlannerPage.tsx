@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, Share2, Check } from 'lucide-react';
+import { Download, FileText, Share2, Check, Save } from 'lucide-react';
 import { IS_ZH } from '../lib/locale';
+import { savePlan, getPlan } from '../lib/plans';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
@@ -128,6 +129,44 @@ export default function PlannerPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareId]);
+
+  // ---- save to account (Tier 1 data gravity — see ENTERPRISE.md) ----
+  const [saveState, setSaveState] = useState<'idle' | 'busy' | 'saved' | 'error'>('idle');
+  const savedId = params.get('saved');
+
+  useEffect(() => {
+    if (!savedId) return;
+    (async () => {
+      const plan = await getPlan(savedId);
+      if (!plan) return;
+      if (CONTAINERS[plan.container_key as ContainerKey]) setContainerKey(plan.container_key as ContainerKey);
+      if (plan.specs?.length) setSpecs(plan.specs);
+      if (plan.boxes?.length) setSharedBoxes(plan.boxes);
+      track('saved_open');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedId]);
+
+  const saveToAccount = async () => {
+    const name = window.prompt('Plan name:', `${container.label} · ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+    setSaveState('busy');
+    const { error } = await savePlan({
+      name,
+      container_key: containerKey,
+      container,
+      specs,
+      boxes: currentBoxes,
+      stats: { volumeUtil: stats.volumeUtil, totalWeight: stats.totalWeight, placedCount: stats.placedCount },
+    });
+    if (error) {
+      setSaveState('error');
+    } else {
+      track('plan_saved');
+      setSaveState('saved');
+    }
+    setTimeout(() => setSaveState('idle'), 2500);
+  };
 
   const sharePlan = async () => {
     setShareState('busy');
@@ -356,6 +395,32 @@ export default function PlannerPage() {
                 ? 'Could not create link — try again'
                 : (<><Share2 size={15} /> {shareState === 'busy' ? 'Creating link…' : 'Share this plan'}</>)}
           </button>
+
+          {auth.enabled && (
+            auth.userId ? (
+              <button
+                onClick={saveToAccount}
+                disabled={saveState === 'busy'}
+                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  saveState === 'saved'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : saveState === 'error'
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                {saveState === 'saved'
+                  ? (<><Check size={15} /> Saved — see My Plans</>)
+                  : saveState === 'error'
+                    ? 'Save failed — try again'
+                    : (<><Save size={15} /> {saveState === 'busy' ? 'Saving…' : 'Save to my plans'}</>)}
+              </button>
+            ) : (
+              <p className="text-xs text-slate-400 text-center">
+                <Link to="/plans" className="text-blue-600 font-medium">Sign in</Link> to save plans &amp; track utilization over time
+              </p>
+            )
+          )}
 
           <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
             <div className="flex justify-between"><span>Packed</span><span className="font-semibold">{result.boxes.length} / {totalQty}</span></div>

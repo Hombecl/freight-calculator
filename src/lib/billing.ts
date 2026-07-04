@@ -32,8 +32,9 @@ export async function fetchSubscription(): Promise<Subscription | null> {
   if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+  // dp_ prefix: DimPack3D tables live in the shared commerce-ops SG project (DATA.md)
   const { data, error } = await supabase
-    .from('subscriptions')
+    .from('dp_subscriptions')
     .select('status, plan, current_period_end')
     .eq('user_id', user.id)
     .maybeSingle();

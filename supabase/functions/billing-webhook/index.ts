@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const { error } = await supabase.from('subscriptions').upsert({
+  const { error } = await supabase.from('dp_subscriptions').upsert({
     user_id: userId,
     email: attrs.user_email ?? null,
     status: ACTIVE.has(status) ? status : status,

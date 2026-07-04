@@ -8,6 +8,7 @@ import PlannerPage from './pages/PlannerPage';
 import AnswersHub from './pages/AnswersHub';
 import AnswerPage from './pages/AnswerPage';
 import AboutPage from './pages/AboutPage';
+import MyPlansPage from './pages/MyPlansPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import GuidesPage from './pages/guides/GuidesPage';
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="planner" element={<PlannerPage />} />
         <Route path="answers" element={<AnswersHub />} />
         <Route path="answers/:slug" element={<AnswerPage />} />
+        <Route path="plans" element={<MyPlansPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
