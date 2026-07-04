@@ -46,6 +46,7 @@ interface Props {
   unitLabel?: string; // 'cm' | 'inch' — display only
   showDoor?: boolean; // draw a door marker (default true)
   doorEdge?: 'E' | 'W' | 'N' | 'S'; // which face gets the marker (E = +X default)
+  doorEdges?: ('E' | 'W' | 'N' | 'S')[]; // multiple dock markers (overrides doorEdge)
   autoSpin?: boolean; // slowly orbit the camera until the user first interacts
   hintOverlay?: boolean; // show a "drag to explore" hint until first interaction
   hintText?: string; // custom hint chip text (defaults to the explore hint)
@@ -62,13 +63,16 @@ const EPS = 1e-6;
 
 // ---- pure geometry helpers (unit-tested friendly, no three.js) ----
 
+const isZone = (b: PlannerBox) => (b as PlannerBox & { kind?: string }).kind === 'zone';
+
 const overlaps3D = (a: PlannerBox, b: PlannerBox) =>
   a.px < b.px + b.l - EPS && a.px + a.l > b.px + EPS &&
   a.py < b.py + b.h - EPS && a.py + a.h > b.py + EPS &&
   a.pz < b.pz + b.w - EPS && a.pz + a.w > b.pz + EPS;
 
 const collidesAny = (candidate: PlannerBox, all: PlannerBox[]) =>
-  all.some((o) => o.id !== candidate.id && overlaps3D(candidate, o));
+  !isZone(candidate) &&
+  all.some((o) => o.id !== candidate.id && !isZone(o) && overlaps3D(candidate, o));
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -109,6 +113,7 @@ export default function InteractiveLoadPlanner({
   unitLabel = 'cm',
   showDoor = true,
   doorEdge = 'E',
+  doorEdges,
   autoSpin = false,
   hintOverlay = false,
   hintText,
@@ -122,6 +127,10 @@ export default function InteractiveLoadPlanner({
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
+  const undoRef = useRef<() => void>(() => {});
+  const rotateRef = useRef<() => void>(() => {});
+  const deleteRef = useRef<() => void>(() => {});
+  const nudgeRef = useRef<(dx: number, dz: number) => void>(() => {});
   const [webglFailed, setWebglFailed] = useState(false);
   const [interacted, setInteracted] = useState(false);
   const interactedRef = useRef(false);
@@ -228,9 +237,9 @@ export default function InteractiveLoadPlanner({
     floor.position.y = off.y;
     scene.add(floor);
 
-    // door/dock marker (green frame) — items nearest here come out first
-    if (showDoor) {
-      const alongX = doorEdge === 'E' || doorEdge === 'W';
+    // door/dock marker(s) (green frame) — items nearest here come out first
+    for (const de of (showDoor ? (doorEdges ?? [doorEdge]) : [])) {
+      const alongX = de === 'E' || de === 'W';
       const doorGeo = new THREE.PlaneGeometry(alongX ? container.w : container.l, container.h);
       const mat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
       const door = new THREE.Mesh(doorGeo, mat);
@@ -241,9 +250,9 @@ export default function InteractiveLoadPlanner({
       const place = (o: any) => {
         if (alongX) {
           o.rotation.y = Math.PI / 2;
-          o.position.set((doorEdge === 'E' ? 1 : -1) * container.l / 2, 0, 0);
+          o.position.set((de === 'E' ? 1 : -1) * container.l / 2, 0, 0);
         } else {
-          o.position.set(0, 0, (doorEdge === 'S' ? 1 : -1) * container.w / 2);
+          o.position.set(0, 0, (de === 'S' ? 1 : -1) * container.w / 2);
         }
         scene.add(o);
       };
@@ -254,8 +263,11 @@ export default function InteractiveLoadPlanner({
     const meshById = new Map<string, any>();
 
     const buildMesh = (b: PlannerBox) => {
-      const geo = new THREE.BoxGeometry(b.l, b.h, b.w);
-      const mat = new THREE.MeshLambertMaterial({ color: b.color });
+      const zone = isZone(b);
+      const geo = new THREE.BoxGeometry(b.l, zone ? 3 : b.h, b.w);
+      const mat = zone
+        ? new THREE.MeshBasicMaterial({ color: b.color, transparent: true, opacity: 0.28, depthWrite: false })
+        : new THREE.MeshLambertMaterial({ color: b.color });
       const mesh = new THREE.Mesh(geo, mat);
       const edges = new THREE.LineSegments(
         new THREE.EdgesGeometry(geo),
@@ -501,7 +513,7 @@ export default function InteractiveLoadPlanner({
       sceneApi.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge]);
+  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -631,6 +643,46 @@ export default function InteractiveLoadPlanner({
     commit();
   };
 
+  /** Nudge the selected box by one grid step (keyboard arrows). */
+  const nudgeSelected = (dx: number, dz: number) => {
+    const id = selectedIdRef.current;
+    if (!id) return;
+    const b = boxesRef.current.find((x) => x.id === id);
+    if (!b) return;
+    const step = Math.max(1, grid);
+    const nx = clamp(b.px + dx * step, 0, container.l - b.l);
+    const nz = clamp(b.pz + dz * step, 0, container.w - b.w);
+    if (nx === b.px && nz === b.pz) return;
+    const trial: PlannerBox = { ...b, px: nx, pz: nz };
+    if (collidesAny(trial, boxesRef.current)) return;
+    pushHistory();
+    b.px = nx; b.pz = nz;
+    sceneApi.current?.refresh();
+    commit();
+  };
+
+  // keyboard shortcuts — arrows nudge, R rotate, Del delete, Cmd/Ctrl+Z undo.
+  // Only when the pointer has interacted with this editor and no input focused.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (!interactedRef.current) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoRef.current(); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case 'ArrowUp': e.preventDefault(); nudgeRef.current(0, -1); break;
+        case 'ArrowDown': e.preventDefault(); nudgeRef.current(0, 1); break;
+        case 'ArrowLeft': e.preventDefault(); nudgeRef.current(-1, 0); break;
+        case 'ArrowRight': e.preventDefault(); nudgeRef.current(1, 0); break;
+        case 'r': case 'R': e.preventDefault(); rotateRef.current(); break;
+        case 'Delete': case 'Backspace': e.preventDefault(); deleteRef.current(); break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // ---- React-side actions on the selected box ----
   const rotateSelected = () => {
     const id = selectedIdRef.current;
@@ -688,6 +740,11 @@ export default function InteractiveLoadPlanner({
     sceneApi.current?.refresh();
     commit();
   };
+
+  undoRef.current = undo;
+  rotateRef.current = rotateSelected;
+  deleteRef.current = deleteSelected;
+  nudgeRef.current = nudgeSelected;
 
   const selected = boxesRef.current.find((b) => b.id === selectedId) || null;
 
@@ -775,7 +832,7 @@ export default function InteractiveLoadPlanner({
         )}
       </div>
       <p className="text-xs text-slate-400">
-        Drag a box to move it on the floor · drag empty space to orbit · scroll to zoom.
+        Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom.
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>
     </div>

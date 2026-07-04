@@ -48,3 +48,7 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 ## Warehouse (beta)
 
 - [Warehouse Floor Planner](https://www.dimpack3d.com/warehouse): arrange pallet rows with forklift aisles on a custom floor; live dock-reachability check flags any pallet a forklift (chosen aisle width: 2.7/3.0/3.5 m) can no longer reach. Beta — racking levels, zones and multi-dock on the roadmap.
+
+## Developer / Agent API
+
+- POST https://www.dimpack3d.com/api/pack — the bin-packing engine as a free (beta) REST endpoint with open CORS. Send {container:{l,w,h,maxWeight?}, items:[{l,w,h,qty,weight?,maxStack?,keepUpright?,group?,unloadOrder?}]} in cm/kg; returns exact placements (px,py,pz), utilization, weight/CoG stats and LIFO unload zones. GET the same URL for machine-readable usage. Docs: https://www.dimpack3d.com/api-docs

@@ -29,8 +29,9 @@ export interface FloorItemSpec {
   h: number; // visual height
   qty: number;
   color: number;
-  kind?: 'cargo' | 'rack' | 'obstacle'; // cargo auto-arranges; racks store; obstacles only block
+  kind?: 'cargo' | 'rack' | 'obstacle' | 'zone'; // zones are walkable named areas
   levels?: number; // rack levels (capacity math)
+  stack?: number; // cargo stacking (1 = single, 2 = double-stacked)
 }
 
 /**
@@ -71,7 +72,17 @@ export function autoArrangeFloor(
         l: s.l, w: s.w, h: s.h,
         px: x, py: 0, pz: z,
         color: s.color,
-      });
+        ...(s.kind ? { kind: s.kind } : {}),
+      } as PlannerBox);
+      if ((s.stack ?? 1) >= 2) {
+        boxes.push({
+          id: `${s.id}-${n++}`, label: s.label,
+          l: s.l, w: s.w, h: s.h,
+          px: x, py: s.h, pz: z,
+          color: s.color,
+          ...(s.kind ? { kind: s.kind } : {}),
+        } as PlannerBox);
+      }
       x += s.l;
       qi++;
     }
@@ -91,12 +102,14 @@ export function checkReachability(
   boxes: PlannerBox[],
   aisle: number, // forklift working width, cm
   cell = 10,
+  edges: ('E' | 'W' | 'N' | 'S')[] = ['E'], // dock edges the network is fed from
 ): ReachResult {
   const nx = Math.max(1, Math.ceil(floor.l / cell));
   const nz = Math.max(1, Math.ceil(floor.w / cell));
   const occ = new Uint8Array(nx * nz);
 
   for (const b of boxes) {
+    if ((b as any).kind === 'zone') continue; // zones are walkable labels
     const x0 = Math.max(0, Math.floor(b.px / cell));
     const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1);
     const z0 = Math.max(0, Math.floor(b.pz / cell));
@@ -124,12 +137,18 @@ export function checkReachability(
     return sum === 0;
   };
 
-  // flood fill from the dock edge (+X)
+  // flood fill from every selected dock edge
   const visited = new Uint8Array(nx * nz);
   const stack: number[] = [];
-  const dockX = nx - 1;
-  for (let z = 0; z < nz; z++) {
-    if (windowFree(dockX, z)) { visited[z * nx + dockX] = 1; stack.push(z * nx + dockX); }
+  const seed = (x: number, z: number) => {
+    const i = z * nx + x;
+    if (!visited[i] && windowFree(x, z)) { visited[i] = 1; stack.push(i); }
+  };
+  for (const e of edges) {
+    if (e === 'E') for (let z = 0; z < nz; z++) seed(nx - 1, z);
+    if (e === 'W') for (let z = 0; z < nz; z++) seed(0, z);
+    if (e === 'S') for (let x = 0; x < nx; x++) seed(x, nz - 1);
+    if (e === 'N') for (let x = 0; x < nx; x++) seed(x, 0);
   }
   while (stack.length) {
     const i = stack.pop()!;
@@ -151,6 +170,7 @@ export function checkReachability(
   const unreachable: string[] = [];
   const margin = r + 1;
   for (const b of boxes) {
+    if ((b as any).kind === 'zone') continue;
     const x0 = Math.max(0, Math.floor(b.px / cell) - margin);
     const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1 + margin);
     const z0 = Math.max(0, Math.floor(b.pz / cell) - margin);
@@ -184,6 +204,7 @@ export function forkliftPath(
   aisle: number,
   targetId: string,
   cell = 10,
+  edges: ('E' | 'W' | 'N' | 'S')[] = ['E'],
 ): { x: number; z: number }[] | null {
   const target = boxes.find((b) => b.id === targetId);
   if (!target) return null;
@@ -192,6 +213,7 @@ export function forkliftPath(
   const nz = Math.max(1, Math.ceil(floor.w / cell));
   const occ = new Uint8Array(nx * nz);
   for (const b of boxes) {
+    if ((b as any).kind === 'zone') continue; // zones are walkable labels
     const x0 = Math.max(0, Math.floor(b.px / cell));
     const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1);
     const z0 = Math.max(0, Math.floor(b.pz / cell));
@@ -225,9 +247,15 @@ export function forkliftPath(
   // BFS (queue — we want the SHORTEST route) with parent pointers
   const parent = new Int32Array(nx * nz).fill(-2); // -2 unvisited, -1 root
   const queue: number[] = [];
-  const dockX = nx - 1;
-  for (let z = 0; z < nz; z++) {
-    if (windowFree(dockX, z)) { parent[z * nx + dockX] = -1; queue.push(z * nx + dockX); }
+  const seedP = (x: number, z: number) => {
+    const i = z * nx + x;
+    if (parent[i] === -2 && windowFree(x, z)) { parent[i] = -1; queue.push(i); }
+  };
+  for (const e of edges) {
+    if (e === 'E') for (let z = 0; z < nz; z++) seedP(nx - 1, z);
+    if (e === 'W') for (let z = 0; z < nz; z++) seedP(0, z);
+    if (e === 'S') for (let x = 0; x < nx; x++) seedP(x, nz - 1);
+    if (e === 'N') for (let x = 0; x < nx; x++) seedP(x, 0);
   }
   let goal = -1;
   let head = 0;
@@ -275,6 +303,7 @@ export function placeNearDock(
 ): { px: number; pz: number } | null {
   const collides = (px: number, pz: number) =>
     boxes.some((b) =>
+      (b as any).kind !== 'zone' &&
       px < b.px + b.l && px + item.l > b.px &&
       pz < b.pz + b.w && pz + item.w > b.pz);
   for (let x = floor.l - item.l; x >= 0; x -= step) {
@@ -317,22 +346,13 @@ function uncanonBox<T extends PlannerBox>(edge: DockEdge, f: Floor, b: T): T {
   }
 }
 
-const uncanonPoint = (edge: DockEdge, f: Floor, p: { x: number; z: number }) => {
-  switch (edge) {
-    case 'E': return p;
-    case 'W': return { x: f.l - p.x, z: p.z };
-    case 'S': return { x: p.z, z: p.x };
-    case 'N': return { x: p.z, z: f.w - p.x };
-  }
-};
 
 /** Reachability with dock-edge choice; obstacles are never flagged (they need no access). */
 export function checkReachabilityD(
-  floor: Floor, boxes: PlannerBox[], aisle: number, edge: DockEdge = 'E', cell = 10,
+  floor: Floor, boxes: PlannerBox[], aisle: number, edge: DockEdge | DockEdge[] = 'E', cell = 10,
 ): ReachResult {
-  const cf = canonFloor(edge, floor);
-  const cb = boxes.map((b) => canonBox(edge, floor, b));
-  const res = checkReachability(cf, cb, aisle, cell);
+  const edges = Array.isArray(edge) ? edge : [edge];
+  const res = checkReachability(floor, boxes, aisle, cell, edges);
   const obstacleIds = new Set(boxes.filter((b) => (b as any).kind === 'obstacle').map((b) => b.id));
   const unreachable = res.unreachable.filter((id) => !obstacleIds.has(id));
   return { ...res, unreachable, reachableCount: boxes.length - obstacleIds.size - unreachable.length };
@@ -340,12 +360,10 @@ export function checkReachabilityD(
 
 /** Forklift route with dock-edge choice. */
 export function forkliftPathD(
-  floor: Floor, boxes: PlannerBox[], aisle: number, targetId: string, edge: DockEdge = 'E', cell = 10,
+  floor: Floor, boxes: PlannerBox[], aisle: number, targetId: string, edge: DockEdge | DockEdge[] = 'E', cell = 10,
 ): { x: number; z: number }[] | null {
-  const cf = canonFloor(edge, floor);
-  const cb = boxes.map((b) => canonBox(edge, floor, b));
-  const p = forkliftPath(cf, cb, aisle, targetId, cell);
-  return p ? p.map((pt) => uncanonPoint(edge, floor, pt)) : null;
+  const edges = Array.isArray(edge) ? edge : [edge];
+  return forkliftPath(floor, boxes, aisle, targetId, cell, edges);
 }
 
 /** Auto-arrange CARGO ONLY (racks/obstacles are placed by hand), any dock edge. */
@@ -365,8 +383,14 @@ export function autoArrangeFloorD(
 
 /** Free spot near the chosen dock edge. */
 export function placeNearDockD(
-  floor: Floor, boxes: PlannerBox[], item: { l: number; w: number }, edge: DockEdge = 'E', step = 10,
+  floor: Floor, boxes: PlannerBox[], item: { l: number; w: number; kind?: string }, edge: DockEdge = 'E', step = 10,
 ): { px: number; pz: number } | null {
+  // zones are walkable overlays — they may land on top of anything
+  if (item.kind === 'zone') {
+    const px = Math.max(0, (edge === 'W' ? 0 : edge === 'E' ? floor.l - item.l : (floor.l - item.l) / 2));
+    const pz = Math.max(0, (edge === 'N' ? 0 : edge === 'S' ? floor.w - item.w : (floor.w - item.w) / 2));
+    return { px: Math.min(px, Math.max(0, floor.l - item.l)), pz: Math.min(pz, Math.max(0, floor.w - item.w)) };
+  }
   const cf = canonFloor(edge, floor);
   const cb = boxes.map((b) => canonBox(edge, floor, b));
   const cItem = edge === 'E' || edge === 'W' ? item : { l: item.w, w: item.l };
@@ -382,6 +406,7 @@ export function positionCapacity(boxes: PlannerBox[]): { floorCargo: number; rac
   let rackPositions = 0;
   for (const b of boxes) {
     const kind = (b as any).kind ?? 'cargo';
+    if (kind === 'zone') continue;
     if (kind === 'cargo') floorCargo++;
     else if (kind === 'rack') {
       const levels = Math.max(1, Math.round((b as any).levels ?? 4));
@@ -389,4 +414,40 @@ export function positionCapacity(boxes: PlannerBox[]): { floorCargo: number; rac
     }
   }
   return { floorCargo, rackPositions };
+}
+
+
+export interface ZoneStat {
+  id: string;
+  label: string;
+  cargo: number;
+  rackPositions: number;
+  coverage: number; // % of the zone's area covered by cargo/rack footprints
+}
+
+/** Stats for each kind:'zone' box: what lives inside it (by centroid). */
+export function zoneStats(boxes: PlannerBox[]): ZoneStat[] {
+  const zones = boxes.filter((b) => (b as any).kind === 'zone');
+  return zones.map((z) => {
+    let cargo = 0;
+    let rackPositions = 0;
+    let covered = 0;
+    for (const b of boxes) {
+      const kind = (b as any).kind ?? 'cargo';
+      if (kind === 'zone') continue;
+      const cx = b.px + b.l / 2, cz = b.pz + b.w / 2;
+      const inside = cx >= z.px && cx <= z.px + z.l && cz >= z.pz && cz <= z.pz + z.w;
+      if (!inside) continue;
+      if (kind === 'cargo') cargo++;
+      if (kind === 'rack') {
+        const levels = Math.max(1, Math.round((b as any).levels ?? 4));
+        rackPositions += Math.max(1, Math.floor(Math.max(b.l, b.w) / 135)) * levels;
+      }
+      covered += b.l * b.w;
+    }
+    return {
+      id: z.id, label: z.label, cargo, rackPositions,
+      coverage: (covered / (z.l * z.w)) * 100,
+    };
+  });
 }

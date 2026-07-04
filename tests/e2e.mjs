@@ -31,7 +31,11 @@ async function test(name, fn, page) {
   }
 }
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+// PW_BROWSER=chromium on CI (playwright-managed); defaults to system Chrome locally
+const browser = await chromium.launch({
+  ...(process.env.PW_BROWSER === 'chromium' ? {} : { channel: 'chrome' }),
+  headless: true,
+});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 // grant clipboard so share-link copy works
 await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -96,10 +100,13 @@ await test('warehouse: tutorial shows and dismisses', async () => {
 await test('warehouse: place one → route readout + buttons live', async () => {
   await page.getByRole('button', { name: /place one near the dock/i }).first().click();
   await page.getByText(/forklift route to|no route exists/i).waitFor();
-  const rotate = page.getByRole('button', { name: /rotate 90/i });
-  if (await rotate.isDisabled()) throw new Error('rotate disabled after place-one (selection sync broken)');
-  const del = page.getByRole('button', { name: /^delete$/i });
-  if (await del.isDisabled()) throw new Error('delete disabled after place-one');
+  // poll: enablement lands one React flush after the readout appears
+  await page.waitForFunction(() => {
+    const btns = [...document.querySelectorAll('button')];
+    const rot = btns.find((b) => /rotate 90/i.test(b.textContent ?? ''));
+    const del = btns.find((b) => /^delete$/i.test((b.textContent ?? '').trim()));
+    return rot && !rot.disabled && del && !del.disabled;
+  }, undefined, { timeout: 5000 });
 }, page);
 
 await test('warehouse: delete removes and undo restores', async () => {
@@ -155,6 +162,43 @@ await test('plans: sign-in gate renders', async () => {
   await page.getByText(/sign in to keep your plans|accounts are not configured/i).waitFor();
 }, page);
 
+// ---------- new production features ----------
+await test('planner: pallet & truck vessels selectable', async () => {
+  await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /eur pallet/i }).click();
+  await page.getByText(/120 × 80 × 165/).waitFor();
+  await page.getByRole('button', { name: /53' trailer/i }).click();
+  await page.getByText(/1602 × 254 × 269/).waitFor();
+}, page);
+
+await test('warehouse: multi-dock toggle keeps at least one', async () => {
+  await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
+  await page.getByRole('button', { name: /^left$/i }).click();   // add W
+  await page.getByRole('button', { name: /^right$/i }).click();  // remove E → W only
+  await page.getByText(/forklift access/i).waitFor();
+}, page);
+
+await test('warehouse: zone quick-add shows per-zone stats', async () => {
+  await page.getByRole('button', { name: /\+ zone/i }).click();
+  await page.getByRole('button', { name: /place one near the dock/i }).last().click();
+  await page.getByText(/rack pos ·/i).waitFor(); // zone stat row
+}, page);
+
+await test('editor: keyboard shortcuts (R rotate, ⌘Z undo) do not crash', async () => {
+  await page.getByRole('button', { name: /place one near the dock/i }).first().click();
+  await page.locator('canvas').first().click({ position: { x: 400, y: 300 } }).catch(() => {});
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('r');
+  await page.keyboard.press((process.platform === 'darwin' ? 'Meta' : 'Control') + '+z');
+  await page.getByText(/forklift access/i).waitFor();
+}, page);
+
+await test('api-docs: page renders with curl example', async () => {
+  await page.goto(`${BASE}/api-docs`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/api\/pack/i).first().waitFor();
+}, page);
+
 // ---------- live-only API flows ----------
 if (IS_LIVE) {
   await test('LIVE share: create link and reopen it', async () => {
@@ -181,6 +225,29 @@ if (IS_LIVE) {
     await page.goto(`${BASE}/warehouse?share=${id}`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
     await page.getByText(/forklift access/i).waitFor();
+  }, page);
+
+  await test('LIVE /api/pack: engine returns placements', async () => {
+    const res = await ctx.request.post(`${BASE}/api/pack`, {
+      data: {
+        container: { l: 589, w: 235, h: 239, maxWeight: 28200 },
+        items: [
+          { label: 'A', l: 60, w: 40, h: 40, weight: 18, qty: 50 },
+          { label: 'Fragile', l: 45, w: 35, h: 25, weight: 6, qty: 10, maxStack: 0 },
+        ],
+      },
+    });
+    if (!res.ok()) throw new Error(`pack ${res.status()}`);
+    const j = await res.json();
+    if (!Array.isArray(j.boxes) || j.boxes.length !== 60) throw new Error(`boxes ${j.boxes?.length}`);
+    if (!(j.stats?.volumeUtil > 0)) throw new Error('no stats');
+  }, page);
+
+  await test('LIVE /api/pack: GET returns usage, bad input rejected', async () => {
+    const g = await ctx.request.get(`${BASE}/api/pack`);
+    if (!g.ok()) throw new Error(`GET ${g.status()}`);
+    const bad = await ctx.request.post(`${BASE}/api/pack`, { data: { items: [] } });
+    if (bad.status() !== 400) throw new Error(`bad input got ${bad.status()}`);
   }, page);
 
   await test('LIVE analytics: /api/hit accepts events', async () => {

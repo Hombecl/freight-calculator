@@ -10,6 +10,7 @@ export default function Footer() {
     { to: '/packing', label: T('Carton Packing Calculator', '產品裝箱計算器') },
     { to: '/container', label: T('Container Quick-Calc', '貨櫃快速計算') },
     { to: '/fba', label: T('Amazon FBA Size & Fees', 'FBA 尺寸與費用') },
+    { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
   ];
 
   const guides = [

@@ -12,6 +12,7 @@ import MyPlansPage from './pages/MyPlansPage';
 import ReviewPage from './pages/ReviewPage';
 import ComparePage from './pages/ComparePage';
 import WarehousePage from './pages/WarehousePage';
+import ApiDocsPage from './pages/ApiDocsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import GuidesPage from './pages/guides/GuidesPage';
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="plans" element={<MyPlansPage />} />
         <Route path="review/:id" element={<ReviewPage />} />
         <Route path="compare/:slug" element={<ComparePage />} />
+        <Route path="api-docs" element={<ApiDocsPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />

@@ -17,10 +17,10 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Warehouse auto-arrange (rows + aisles + dock strip) | ✅ | `lib/warehouse.ts` |
 | Forklift reachability (erode + flood-fill from dock) | ✅ | " |
 | Forklift shortest route + clearance band | ✅ | " |
-| Obstacles (walls/columns/office) in reachability | 🔨 | " |
-| Dock edge selection | 🔨 | " |
-| Rack levels → pallet-position capacity | 🔨 | " |
-| Pallet-stacking rules on floor (double-stack limits) | 🗺 1 | |
+| Obstacles (walls/columns/office) in reachability | ✅ | " |
+| Dock edge selection (multi-dock, any of 4 edges) | ✅ | " |
+| Rack levels → pallet-position capacity | ✅ | " |
+| Pallet double-stacking on floor | ✅ | |
 | Pick-path optimization (order → route) | 🗺 4 | |
 | Multi-container/truck fleet split optimization | 🗺 5 | |
 
@@ -40,7 +40,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | WebGL-unavailable graceful fallback | ✅ |
 | PNG snapshot for PDF export | ✅ |
 | Multi-select / marquee drag | 🗺 2 |
-| Keyboard nudge (arrows) + shortcuts (R, Del, ⌘Z) | 🗺 1 |
+| Keyboard nudge (arrows) + shortcuts (R, Del, ⌘Z) | ✅ |
 | Touch pinch-zoom (mobile polish) | 🗺 2 |
 | Measurement tool (click two points → distance) | 🗺 3 |
 
@@ -48,12 +48,12 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 ### /planner — container load planner (flagship)
 ✅ 3 container types w/ payloads · mixed carton inputs · fragile/upright/group/unload-order · live stats (util/weight/CoG) · zones strip · Excel/CSV/paste import (EN+ZH headers) · CSV packing list · PDF plan (3D snapshot + zones + table) · share links (exact layout, 1yr) · save to account · example presets (`?demo=`)
-🗺: truck & pallet as first-class vessels in the UI (engine ready) (1) · multi-container auto-split (5) · carton library per account (2)
+✅ truck & pallet vessels in the UI (7 vessel types) · 🗺: carton library per account (1) · multi-container auto-split (3)
 
 ### /warehouse — warehouse floor planner (beta → production)
 ✅ floor size · aisle presets (2.7/3.0/3.5m) · auto-arrange w/ aisles · live reachability (red) · forklift route + clearance sim · place-one · first-run tutorial · coach tips · examples (3PL, cross-dock) · beta waitlist
-🔨 obstacles (walls/columns/office) · dock edge choice · rack levels/capacity · save/share layouts · PDF floor plan + reachability report
-🗺: named zones w/ per-zone stats (1) · multiple docks (2) · pallet double-stacking rules (2) · slotting by velocity/ABC (3) · pick-path sim (4) · DXF floor-plan import (5) · multi-user live cursors (6)
+✅ obstacles (walls/columns/office) · multi-dock (4 edges) · rack levels/capacity · named zones w/ per-zone stats · cargo double-stack · save/share layouts · PDF floor plan + reachability report · place-one feedback
+🗺: velocity/ABC slotting (1) · pick-path sim (2) · DXF floor-plan import (3) · multi-user live cursors (4)
 
 ### /packing · /container · /fba
 ✅ shipped (product→carton w/ freight cost; container quick-calc; FBA 2025 tiers+fees). 🗺: FBA fee auto-update pipeline (3) · dim-weight per-carrier presets (3)
@@ -86,7 +86,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Email lead capture + warehouse waitlist (KV) | ✅ |
 | Secure Pro paywall scaffold (Lemon Squeezy, BILLING-SETUP.md) | ✅ code / 🗺 activate on demand signal |
 | Workspaces/teams (multi-member) | 🗺 1 |
-| Public API + keys (license the engine) | 🗺 2 |
+| Public API `/api/pack` + /api-docs (free beta; keys later) | ✅ |
 | ERP/WMS connectors (per-client, paid) | 🗺 3 |
 | SSO / audit-log export / SLA page | 🗺 4 (first enterprise deal) |
 
@@ -94,9 +94,9 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 | Item | Status |
 |---|---|
-| Engine unit tests (bin-packing, import parser, warehouse, path) | ✅ ad-hoc scripts / 🔨 formalize into repo `tests/` |
-| Playwright E2E suite | 🔨 |
-| CI (GitHub Actions build+deploy) | 🗺 1 |
+| Engine unit tests — `npm test` (16 tests, tests/unit.mjs) | ✅ |
+| Playwright E2E — `npm run e2e <url>` (22 local / 25 live) | ✅ |
+| CI (GitHub Actions: unit + build + E2E on push) | ✅ |
 | Uptime/status page | 🗺 2 |
 | Error tracking (Sentry-class) | 🗺 2 |
 

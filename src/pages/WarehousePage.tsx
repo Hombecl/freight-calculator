@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, Route, Share2, FileText, Save, Check } fro
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import {
   autoArrangeFloorD, checkReachabilityD, forkliftPathD, placeNearDockD,
-  positionCapacity, type FloorItemSpec, type DockEdge,
+  positionCapacity, zoneStats, type FloorItemSpec, type DockEdge,
 } from '../lib/warehouse';
 import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
@@ -23,7 +23,7 @@ import { useAuth } from '../hooks/useAuth';
  */
 
 const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xa78bfa, 0xf472b6];
-const KIND_COLORS: Record<string, number> = { rack: 0x8b5cf6, obstacle: 0x64748b };
+const KIND_COLORS: Record<string, number> = { rack: 0x8b5cf6, obstacle: 0x64748b, zone: 0x0ea5e9 };
 
 const AISLES = [
   { label: 'Counterbalance forklift · 3.5 m', value: 350 },
@@ -50,24 +50,26 @@ const QUICK_ADD: { label: string; spec: Omit<FloorItemSpec, 'id'> }[] = [
   { label: '+ Column', spec: { label: 'Column', l: 40, w: 40, h: 350, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
   { label: '+ Wall', spec: { label: 'Wall section', l: 400, w: 20, h: 300, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
   { label: '+ Office', spec: { label: 'Office block', l: 500, w: 400, h: 280, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
+  { label: '+ Zone', spec: { label: 'Zone A', l: 600, w: 400, h: 3, qty: 1, color: KIND_COLORS.zone, kind: 'zone' } },
 ];
 
 const KIND_CHIP: Record<string, { label: string; cls: string }> = {
   cargo: { label: 'cargo', cls: 'bg-amber-100 text-amber-700' },
   rack: { label: 'rack', cls: 'bg-purple-100 text-purple-700' },
   obstacle: { label: 'structure', cls: 'bg-slate-200 text-slate-600' },
+  zone: { label: 'zone', cls: 'bg-sky-100 text-sky-700' },
 };
 
 const isStructure = (b: PlannerBox) => {
   const k = (b as PlannerBox & { kind?: string }).kind;
-  return k === 'rack' || k === 'obstacle';
+  return k === 'rack' || k === 'obstacle' || k === 'zone';
 };
 
 export default function WarehousePage() {
   const [floorL, setFloorL] = useState(2000); // cm
   const [floorW, setFloorW] = useState(1200);
   const [aisle, setAisle] = useState(300);
-  const [dock, setDock] = useState<DockEdge>('E');
+  const [dock, setDock] = useState<DockEdge[]>(['E']); // one or more dock edges
   const [items, setItems] = useState<FloorItemSpec[]>(DEFAULT_ITEMS);
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
   const [baseline, setBaseline] = useState<PlannerBox[] | null>(null);
@@ -82,20 +84,27 @@ export default function WarehousePage() {
   const boxes = liveBoxes ?? base;
   const reach = useMemo(() => checkReachabilityD(floor, boxes, aisle, dock), [floor, boxes, aisle, dock]);
   const capacity = useMemo(() => positionCapacity(boxes), [boxes]);
+  const zStats = useMemo(() => zoneStats(boxes), [boxes]);
 
   const totalQty = items.filter((i) => (i.kind ?? 'cargo') === 'cargo').reduce((s, x) => s + x.qty, 0);
 
   /** Re-run the row layout, KEEPING hand-placed racks/obstacles in place. */
-  const regen = (dockEdge: DockEdge = dock) => {
+  const regen = (dockEdges: DockEdge[] = dock) => {
     const structures = boxes.filter(isStructure);
-    const rows = autoArrangeFloorD(floor, items, aisle, dockEdge, structures);
+    const rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
     setBaseline([...structures, ...rows]);
     setLiveBoxes(null);
     setSelectedId(null);
     track('warehouse_arrange');
   };
 
-  const changeDock = (edge: DockEdge) => { setDock(edge); regen(edge); };
+  const changeDock = (edge: DockEdge) => {
+    const next = dock.includes(edge)
+      ? (dock.length > 1 ? dock.filter((d) => d !== edge) : dock) // keep at least one
+      : [...dock, edge];
+    setDock(next);
+    regen(next);
+  };
 
   // forklift route + clearance for the selected item
   const path = useMemo(
@@ -126,9 +135,14 @@ export default function WarehousePage() {
   }, []);
 
   /** Drop ONE unit of a spec near the dock, selected and ready to drag. */
+  const [placeMsg, setPlaceMsg] = useState<string | null>(null);
   const placeOne = (spec: FloorItemSpec) => {
-    const spot = placeNearDockD(floor, boxes, spec, dock);
-    if (!spot) return;
+    const spot = placeNearDockD(floor, boxes, spec, dock[0] ?? 'E');
+    if (!spot) {
+      setPlaceMsg(`No free spot for ${spec.label} (${spec.l}×${spec.w} cm) — clear an area or shrink it.`);
+      setTimeout(() => setPlaceMsg(null), 4000);
+      return;
+    }
     const nb: PlannerBox & { kind?: string; levels?: number } = {
       id: `${spec.id}-m${Date.now() % 100000}`,
       label: spec.label,
@@ -148,7 +162,7 @@ export default function WarehousePage() {
   const loadExample = (key: 'threepl' | 'crossdock') => {
     if (key === 'threepl') {
       const fl = { l: 2400, w: 1400 };
-      setFloorL(fl.l); setFloorW(fl.w); setAisle(300); setDock('E');
+      setFloorL(fl.l); setFloorW(fl.w); setAisle(300); setDock(['E']);
       const its: FloorItemSpec[] = [
         { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 60, color: PALETTE[0], kind: 'cargo' },
         { id: 'gma', label: 'GMA pallet', l: 122, w: 102, h: 150, qty: 24, color: PALETTE[1], kind: 'cargo' },
@@ -163,7 +177,7 @@ export default function WarehousePage() {
       setBaseline([...racks, ...rows]);
     } else {
       const fl = { l: 1800, w: 1000 };
-      setFloorL(fl.l); setFloorW(fl.w); setAisle(350); setDock('E');
+      setFloorL(fl.l); setFloorW(fl.w); setAisle(350); setDock(['E']);
       const its: FloorItemSpec[] = [
         { id: 'out', label: 'Outbound pallets', l: 120, w: 80, h: 150, qty: 24, color: PALETTE[0], kind: 'cargo' },
         { id: 'in', label: 'Inbound pallets', l: 122, w: 102, h: 150, qty: 12, color: PALETTE[2], kind: 'cargo' },
@@ -203,7 +217,7 @@ export default function WarehousePage() {
     if (!p) return;
     if (p.floor?.l) { setFloorL(p.floor.l); setFloorW(p.floor.w); }
     if (p.aisle) setAisle(p.aisle);
-    if (p.dock) setDock(p.dock);
+    if (p.dock) setDock(Array.isArray(p.dock) ? p.dock : [p.dock]);
     if (Array.isArray(p.items) && p.items.length) setItems(p.items);
     if (Array.isArray(p.boxes) && p.boxes.length) { setBaseline(p.boxes); setLiveBoxes(null); }
   };
@@ -247,7 +261,7 @@ export default function WarehousePage() {
   const exportPdf = () => {
     track('export_pdf', 'warehouse');
     openWarehousePrintable({
-      floor, aisle, dock, boxes,
+      floor, aisle, dock: dock.join('+'), boxes,
       stats: { floorUtil: reach.floorUtil, unreachable: reach.unreachable, ...capacity },
       imageDataUrl: snapshotFn.current?.() ?? null,
       date: new Date().toLocaleDateString(),
@@ -313,12 +327,12 @@ export default function WarehousePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">Dock side <span className="text-slate-400 font-normal">(green edge)</span></label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">Dock sides <span className="text-slate-400 font-normal">(green edges — toggle multiple)</span></label>
             <div className="flex gap-1">
               {DOCKS.map((d) => (
                 <button key={d.key} onClick={() => changeDock(d.key)}
                   className={`flex-1 px-2 py-1.5 rounded text-xs font-semibold transition-colors ${
-                    dock === d.key ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                    dock.includes(d.key) ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                   {d.label}
                 </button>
@@ -354,6 +368,7 @@ export default function WarehousePage() {
                 </button>
               ))}
             </div>
+            {placeMsg && <p className="text-xs text-red-500">{placeMsg}</p>}
             {items.map((s) => (
               <div key={s.id} className="p-2 rounded-lg border border-slate-200 space-y-2">
                 <div className="flex items-center gap-2">
@@ -377,6 +392,11 @@ export default function WarehousePage() {
                       <label className="block text-[10px] uppercase text-slate-400">qty</label>
                       <input type="number" min={1} value={s.qty} onChange={(e) => updateItem(s.id, { qty: Math.max(1, +e.target.value || 0) })}
                         className="w-full text-sm px-1 py-0.5 rounded border border-slate-200" />
+                      <label className="flex items-center gap-1 mt-1 text-[10px] text-slate-500">
+                        <input type="checkbox" checked={(s.stack ?? 1) >= 2}
+                          onChange={(e) => updateItem(s.id, { stack: e.target.checked ? 2 : 1 })} />
+                        stack ×2
+                      </label>
                     </div>
                   ) : s.kind === 'rack' ? (
                     <div>
@@ -447,6 +467,17 @@ export default function WarehousePage() {
             {reach.unreachable.length > 0 && (
               <p className="text-xs text-red-500">Red items can't be reached from the dock with a {(aisle / 100).toFixed(1)} m aisle — clear a path or widen the aisle.</p>
             )}
+            {zStats.length > 0 && (
+              <div className="pt-2">
+                <span className="text-xs font-semibold text-slate-500">Zones</span>
+                {zStats.map((z) => (
+                  <div key={z.id} className="flex justify-between text-xs mt-1">
+                    <span className="text-sky-700 font-medium">{z.label}</span>
+                    <span className="text-slate-600">{z.cargo} cargo · {z.rackPositions} rack pos · {z.coverage.toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* beta waitlist */}
@@ -499,7 +530,7 @@ export default function WarehousePage() {
             grid={10}
             unitLabel="cm"
             showDoor
-            doorEdge={dock}
+            doorEdges={dock}
             autoSpin
             hintOverlay
             hintText="Drag a pallet to move it · click one to see the forklift route"

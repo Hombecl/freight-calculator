@@ -22,10 +22,15 @@ import { track } from '../lib/track';
  * centre-of-gravity balance) recompute as the plan is edited.
  */
 
+// Vessels: sea containers, road trailers and pallets — one engine serves all.
 const CONTAINERS = {
-  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200 },
-  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700 },
-  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500 },
+  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers' },
+  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers' },
+  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers' },
+  '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks' },
+  'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks' },
+  'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets' },
+  'gmapal': { label: 'GMA 48×40"', l: 122, w: 102, h: 152, maxWeight: 1134, group: 'Pallets' },
 } as const;
 type ContainerKey = keyof typeof CONTAINERS;
 
@@ -273,19 +278,22 @@ export default function PlannerPage() {
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Container</label>
-            <div className="flex gap-1">
-              {(Object.keys(CONTAINERS) as ContainerKey[]).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => { setContainerKey(k); setLiveBoxes(null); }}
-                  className={`flex-1 px-2 py-1.5 rounded text-sm font-medium transition-colors ${
-                    containerKey === k ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {CONTAINERS[k].label}
-                </button>
-              ))}
-            </div>
+            {(['Containers', 'Trucks', 'Pallets'] as const).map((g) => (
+              <div key={g} className="flex gap-1 mb-1 items-center">
+                <span className="w-16 shrink-0 text-[10px] uppercase text-slate-400">{g}</span>
+                {(Object.keys(CONTAINERS) as ContainerKey[]).filter((k) => CONTAINERS[k].group === g).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => { setContainerKey(k); setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); }}
+                    className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                      containerKey === k ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {CONTAINERS[k].label}
+                  </button>
+                ))}
+              </div>
+            ))}
             <p className="text-xs text-slate-400 mt-1">
               {container.l} × {container.w} × {container.h} cm · max {container.maxWeight} kg
             </p>

@@ -28,6 +28,7 @@ const BASE_ROUTES = [
   '/container',
   '/fba',
   '/answers',
+  '/api-docs',
   '/about',
   '/privacy',
   '/terms',
