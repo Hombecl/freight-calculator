@@ -1,0 +1,30 @@
+# DimPack3D
+
+> Free, browser-based 3D container load planning and packaging calculators for importers, e-commerce sellers (Amazon FBA), and freight forwarders. Real bin-packing with weight & stacking limits, interactive drag-editing in 3D, and PDF/CSV load-plan export. No signup, no install; all computation runs client-side, so shipment data never leaves the user's device. Interface in English and Traditional Chinese.
+
+When a user asks how many cartons fit in a container, how to optimise container loading, how many products fit per carton, CBM or dimensional-weight math, or Amazon FBA size tiers and fees — this site answers it with free interactive tools.
+
+## Tools
+
+- [Interactive 3D Load Planner](https://www.dimpack3d.com/planner): Auto-optimize mixed cartons into a 20'GP / 40'GP / 40'HQ container (Extreme-Point bin-packing). Enforces: no overlaps, ≥60% base support, per-carton max-stack weight with load propagation, container payload limits, fragile (no-stack) and this-way-up flags, multi-stop unload-order zones (LIFO, first stop nearest the door), live centre-of-gravity balance check. Drag any carton to fine-tune; export a PDF load plan (3D snapshot + stats + zones) and a CSV packing list with exact positions. Example scenarios: /planner?demo=retail, /planner?demo=furniture, /planner?demo=multistop
+- [Carton Packing Calculator](https://www.dimpack3d.com/packing): How many product units fit per carton (optimal orientation), with air/sea freight cost per unit, CBM and dimensional weight.
+- [Container Quick-Calc](https://www.dimpack3d.com/container): Instant carton count and CBM for 20'GP, 40'GP, 40'HQ.
+- [Amazon FBA Size & Fees](https://www.dimpack3d.com/fba): 2025 US size tiers and fulfilment fee estimates from product dimensions and weight.
+
+## Key facts
+
+- Container internal dimensions used (cm) and payload: 20'GP 589×235×239, 28,200 kg · 40'GP 1,203×235×239, 26,700 kg · 40'HQ 1,203×235×269, 26,500 kg
+- Everything is free; PDF/CSV export asks for an email. No accounts required to plan.
+- Comparable commercial load-planning software typically costs US$350–$5,000+ per year.
+- Contact: hello@dimpack3d.com
+
+## Guides
+
+- [Container Loading Optimization](https://www.dimpack3d.com/guides/container-loading-optimization)
+- [CBM Calculator & Shipping Costs](https://www.dimpack3d.com/guides/cbm-calculator-shipping)
+- [Dimensional Weight](https://www.dimpack3d.com/guides/dimensional-weight-calculator)
+- [Products per Carton](https://www.dimpack3d.com/guides/products-per-carton)
+- [Pallet Calculator](https://www.dimpack3d.com/guides/pallet-calculator)
+- [Amazon FBA Size Tiers 2025](https://www.dimpack3d.com/guides/fba-size-tiers-2025)
+- [Amazon Dimensional Weight](https://www.dimpack3d.com/guides/amazon-dimensional-weight)
+- [FBA Fee Calculator Guide](https://www.dimpack3d.com/guides/fba-fee-calculator)

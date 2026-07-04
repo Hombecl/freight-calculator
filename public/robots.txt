@@ -1,11 +1,55 @@
-# DimPack3D Robots.txt
-# https://www.dimpack3d.com
+# DimPack3D — https://www.dimpack3d.com
+# All crawlers welcome, including AI/LLM crawlers. Every page is served as
+# prerendered static HTML, so no JavaScript execution is required to read it.
+# Machine-readable site guide for LLMs: https://www.dimpack3d.com/llms.txt
 
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://www.dimpack3d.com/sitemap.xml
+# --- AI / LLM crawlers (explicitly allowed) ---
+User-agent: GPTBot
+Allow: /
 
-# Crawl delay (optional, be respectful)
-Crawl-delay: 1
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+Sitemap: https://www.dimpack3d.com/sitemap.xml
