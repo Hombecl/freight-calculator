@@ -5,6 +5,7 @@ import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoa
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
+import { useAuth } from '../hooks/useAuth';
 import PaywallModal from '../components/PaywallModal';
 
 /**
@@ -96,12 +97,13 @@ export default function PlannerPage() {
       imageDataUrl: snapshotFn.current?.() ?? null,
     });
 
-  // export gate (see entitlement.ts — lead-capture layer, not a secure paywall)
+  // export gate: secure Pro (Supabase-verified) OR free email lead-capture
   const ent = useEntitlement();
+  const auth = useAuth();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const pending = useRef<null | (() => void)>(null);
   const guardExport = (run: () => void) => {
-    if (ent.canExport) { run(); return; }
+    if (auth.isPro || ent.canExport) { run(); return; }
     pending.current = run;
     setPaywallOpen(true);
   };
@@ -309,7 +311,20 @@ export default function PlannerPage() {
         </div>
       </div>
 
-      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} onSubmit={onUnlock} />
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onSubmit={onUnlock}
+        auth={auth.enabled ? {
+          enabled: true,
+          isSignedIn: !!auth.userId,
+          email: auth.email,
+          isPro: auth.isPro,
+          onSignIn: auth.signInWithEmail,
+          onUpgrade: auth.startCheckout,
+          onSignOut: auth.signOut,
+        } : undefined}
+      />
     </div>
   );
 }
