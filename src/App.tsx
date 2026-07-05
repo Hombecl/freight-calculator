@@ -1,32 +1,37 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import HomePage from './pages/HomePage';
-import PackingPage from './pages/PackingPage';
-import ContainerPage from './pages/ContainerPage';
-import FbaPage from './pages/FbaPage';
-import PlannerPage from './pages/PlannerPage';
-import AnswersHub from './pages/AnswersHub';
-import AnswerPage from './pages/AnswerPage';
-import AboutPage from './pages/AboutPage';
-import MyPlansPage from './pages/MyPlansPage';
-import ReviewPage from './pages/ReviewPage';
-import ComparePage from './pages/ComparePage';
-import WarehousePage from './pages/WarehousePage';
-import ApiDocsPage from './pages/ApiDocsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
-import GuidesPage from './pages/guides/GuidesPage';
-import FbaSizeTiersGuide from './pages/guides/FbaSizeTiersGuide';
-import CbmCalculatorGuide from './pages/guides/CbmCalculatorGuide';
-import ContainerLoadingGuide from './pages/guides/ContainerLoadingGuide';
-import DimensionalWeightGuide from './pages/guides/DimensionalWeightGuide';
-import ProductsPerCartonGuide from './pages/guides/ProductsPerCartonGuide';
-import AmazonDimensionalWeightGuide from './pages/guides/AmazonDimensionalWeightGuide';
-import FbaFeeCalculatorGuide from './pages/guides/FbaFeeCalculatorGuide';
-import PalletCalculatorGuide from './pages/guides/PalletCalculatorGuide';
+
+// Route-level code-splitting: each page is its own chunk, so the homepage
+// doesn't pay for supabase/xlsx/guides it never uses.
+const HomePage = lazy(() => import('./pages/HomePage'));
+const PackingPage = lazy(() => import('./pages/PackingPage'));
+const ContainerPage = lazy(() => import('./pages/ContainerPage'));
+const FbaPage = lazy(() => import('./pages/FbaPage'));
+const PlannerPage = lazy(() => import('./pages/PlannerPage'));
+const AnswersHub = lazy(() => import('./pages/AnswersHub'));
+const AnswerPage = lazy(() => import('./pages/AnswerPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const MyPlansPage = lazy(() => import('./pages/MyPlansPage'));
+const ReviewPage = lazy(() => import('./pages/ReviewPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const WarehousePage = lazy(() => import('./pages/WarehousePage'));
+const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
+const FbaSizeTiersGuide = lazy(() => import('./pages/guides/FbaSizeTiersGuide'));
+const CbmCalculatorGuide = lazy(() => import('./pages/guides/CbmCalculatorGuide'));
+const ContainerLoadingGuide = lazy(() => import('./pages/guides/ContainerLoadingGuide'));
+const DimensionalWeightGuide = lazy(() => import('./pages/guides/DimensionalWeightGuide'));
+const ProductsPerCartonGuide = lazy(() => import('./pages/guides/ProductsPerCartonGuide'));
+const AmazonDimensionalWeightGuide = lazy(() => import('./pages/guides/AmazonDimensionalWeightGuide'));
+const FbaFeeCalculatorGuide = lazy(() => import('./pages/guides/FbaFeeCalculatorGuide'));
+const PalletCalculatorGuide = lazy(() => import('./pages/guides/PalletCalculatorGuide'));
 
 export default function App() {
   return (
+    <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-sm">Loading…</div>}>
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
@@ -55,5 +60,6 @@ export default function App() {
         <Route path="guides/pallet-calculator" element={<PalletCalculatorGuide />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 }

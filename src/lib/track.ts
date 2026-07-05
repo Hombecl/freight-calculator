@@ -8,6 +8,9 @@
 
 export function track(event: string, meta?: string) {
   try {
+    // keep the data clean: never record automated browsers (Playwright, our
+    // own E2E/visual QA, most scrapers set navigator.webdriver)
+    if ((navigator as Navigator & { webdriver?: boolean }).webdriver) return;
     // mirror to GA4 when its lazy-loaded tag is present (see index.html)
     (window as any).gtag?.(
       'event',

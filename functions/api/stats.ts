@@ -22,6 +22,7 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   const byRef: Record<string, number> = {};
   const byCountry: Record<string, number> = {};
   const leads: unknown[] = [];
+  let shares = 0;
 
   let cursor: string | undefined;
   let scanned = 0;
@@ -33,6 +34,10 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
       if (!raw) continue;
       let v: any;
       try { v = JSON.parse(raw); } catch { continue; }
+      if (k.name.startsWith('share_')) {
+        shares++;
+        continue;
+      }
       if (k.name.startsWith('ev_')) {
         const day = k.name.slice(3, 13);
         byDay[day] = (byDay[day] ?? 0) + 1;
@@ -51,7 +56,7 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
     Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n);
 
   return new Response(
-    JSON.stringify({ scanned, byDay, byEvent: top(byEvent, 50), topPaths: top(byPath), topReferrers: top(byRef), byCountry: top(byCountry), leads }, null, 2),
+    JSON.stringify({ scanned, shares, byDay, byEvent: top(byEvent, 50), topPaths: top(byPath), topReferrers: top(byRef), byCountry: top(byCountry), leads }, null, 2),
     { headers: { 'Content-Type': 'application/json' } },
   );
 };
