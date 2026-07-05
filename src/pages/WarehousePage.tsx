@@ -129,7 +129,12 @@ export default function WarehousePage() {
       rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
       flash(`Laid out ${rows.length} pallets from the palette with ${(aisle / 100).toFixed(1)} m aisles.`);
     }
-    setBaseline([...structures, ...rows]);
+    const next = [...structures, ...rows];
+    const after = checkReachabilityD(floor, next, aisle, dockEdges);
+    if (after.unreachable.length > 0) {
+      flash(`⚠ After arranging, ${after.unreachable.length} item(s) are NOT forklift-reachable (shown red) — drag rows aside, widen the aisle, or add a dock.`);
+    }
+    setBaseline(next);
     setLiveBoxes(null);
     setSelectedId(null);
     track('warehouse_arrange');
@@ -205,10 +210,10 @@ export default function WarehousePage() {
   // example layouts
   const loadExample = (key: 'threepl' | 'crossdock') => {
     if (key === 'threepl') {
-      const fl = { l: 2400, w: 1400 };
+      const fl = { l: 2400, w: 1700 };
       setFloorL(fl.l); setFloorW(fl.w); setAisle(300); setDock(['E']);
       const its: FloorItemSpec[] = [
-        { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 60, color: PALETTE[0], kind: 'cargo' },
+        { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 48, color: PALETTE[0], kind: 'cargo' },
         { id: 'gma', label: 'GMA pallet', l: 122, w: 102, h: 150, qty: 24, color: PALETTE[1], kind: 'cargo' },
         { id: 'rack', label: 'Rack bay', l: 270, w: 110, h: 300, qty: 1, color: KIND_COLORS.rack, kind: 'rack', levels: 4 },
       ];
@@ -593,7 +598,9 @@ export default function WarehousePage() {
             }`}>
               <Route size={16} />
               {path
-                ? <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m from the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
+                ? pathLen < 0.5
+                  ? <>Forklift route to <b>{selectedBox.label}</b>: right at the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
+                  : <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m from the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
                 : diagnosis?.passableAt
                   ? <>🚫 <b>{selectedBox.label}</b> is cut off: the gaps around it only allow ≈{(diagnosis.passableAt / 100).toFixed(1)} m, but your forklift needs {(aisle / 100).toFixed(1)} m. Move a neighbour to widen the gap{diagnosis.passableAt >= 270 ? ', or switch to a reach truck (2.7 m)' : ''}.</>
                   : <>🚫 <b>{selectedBox.label}</b> is fully enclosed — no route exists at ANY width. Clear a path toward a dock, or add a dock on another edge.</>}
