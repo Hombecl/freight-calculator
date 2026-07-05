@@ -451,3 +451,22 @@ export function zoneStats(boxes: PlannerBox[]): ZoneStat[] {
     };
   });
 }
+
+/**
+ * WHY is this item unreachable? Re-runs reachability at narrower clearances to
+ * find the widest forklift that COULD get there. null = fully enclosed.
+ * This turns a red box from "something's wrong" into an actionable message.
+ */
+export function explainUnreachable(
+  floor: Floor,
+  boxes: PlannerBox[],
+  targetId: string,
+  edges: DockEdge[] = ['E'],
+  widths: number[] = [270, 220, 180, 140, 100, 60],
+): { passableAt: number | null } {
+  for (const w of widths) {
+    const r = checkReachability(floor, boxes, w, 10, edges);
+    if (!r.unreachable.includes(targetId)) return { passableAt: w };
+  }
+  return { passableAt: null };
+}

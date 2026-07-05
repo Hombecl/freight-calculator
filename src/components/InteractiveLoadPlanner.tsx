@@ -155,8 +155,17 @@ export default function InteractiveLoadPlanner({
 
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
 
-  // Reset local state whenever the incoming plan changes (e.g. inputs recomputed).
+  // Reset local state whenever the incoming plan ACTUALLY changes. Guarded by
+  // identity+value so an unstable parent prop (new object, same content) can
+  // never wipe in-progress edits — that bug made drags "snap back" and flags
+  // flicker. Seeding pushes the outgoing state into history so Undo steps
+  // back through page-level actions (place-one, arrange, dock) too.
+  const lastSeedRef = useRef<{ boxes: PlannerBox[] | null; dims: string }>({ boxes: null, dims: '' });
   useEffect(() => {
+    const dims = `${container.l}x${container.w}x${container.h}`;
+    if (lastSeedRef.current.boxes === boxes && lastSeedRef.current.dims === dims) return;
+    lastSeedRef.current = { boxes, dims };
+    if (boxesRef.current.length) pushHistoryRef.current(); // make the seed undoable
     boxesRef.current = boxes.map((b) => ({ ...b }));
     setUtil(utilizationOf(boxesRef.current, container));
     setSelectedId(null);

@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, Route, Share2, FileText, Save, Check } fro
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import {
   autoArrangeFloorD, checkReachabilityD, forkliftPathD, placeNearDockD,
-  positionCapacity, zoneStats, type FloorItemSpec, type DockEdge,
+  positionCapacity, zoneStats, explainUnreachable, type FloorItemSpec, type DockEdge,
 } from '../lib/warehouse';
 import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
@@ -76,6 +76,7 @@ export default function WarehousePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const floor = useMemo(() => ({ l: floorL, w: floorW }), [floorL, floorW]);
+  const vessel = useMemo(() => ({ l: floorL, w: floorW, h: 350 }), [floorL, floorW]);
   const initial = useMemo(
     () => autoArrangeFloorD({ l: 2000, w: 1200 }, DEFAULT_ITEMS, 300, 'E'),
     [],
@@ -88,10 +89,46 @@ export default function WarehousePage() {
 
   const totalQty = items.filter((i) => (i.kind ?? 'cargo') === 'cargo').reduce((s, x) => s + x.qty, 0);
 
-  /** Re-run the row layout, KEEPING hand-placed racks/obstacles in place. */
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const flash = (msg: string) => { setActionMsg(msg); setTimeout(() => setActionMsg(null), 6000); };
+
+  /**
+   * Auto-arrange = TIDY. If pallets are on the floor, it re-rows exactly those
+   * pallets (nothing is deleted; the count is stated). On an empty floor it
+   * fills from the palette quantities. Structures/zones always stay put.
+   */
   const regen = (dockEdges: DockEdge[] = dock) => {
     const structures = boxes.filter(isStructure);
-    const rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
+    const cargo = boxes.filter((b) => !isStructure(b));
+    let rows;
+    if (cargo.length > 0) {
+      // group the CURRENT cargo into specs so the same pallets get re-rowed
+      const groups = new Map<string, FloorItemSpec>();
+      for (const b of cargo) {
+        const key = `${b.label}|${b.l}x${b.w}x${b.h}`;
+        const g = groups.get(key);
+        if (g) g.qty++;
+        else groups.set(key, { id: `t${groups.size}`, label: b.label, l: b.l, w: b.w, h: b.h, qty: 1, color: b.color, kind: 'cargo' });
+      }
+      rows = autoArrangeFloorD(floor, [...groups.values()], aisle, dockEdges[0] ?? 'E', structures);
+      // anything that didn't fit the rows is KEPT — parked near the dock
+      let parked = 0;
+      let lost = 0;
+      const leftovers = cargo.slice(rows.length);
+      for (const b of leftovers) {
+        const spot = placeNearDockD(floor, [...structures, ...rows], b, dockEdges[0] ?? 'E');
+        if (spot) { rows.push({ ...b, px: spot.px, py: 0, pz: spot.pz }); parked++; }
+        else lost++;
+      }
+      flash(lost > 0
+        ? `Re-arranged ${cargo.length - lost} pallets (${parked} parked near the dock) — ${lost} could not fit ANYWHERE and were removed. Widen the floor or reduce quantities.`
+        : parked > 0
+          ? `Re-arranged ${rows.length} pallets: ${rows.length - parked} in aisled rows + ${parked} parked near the dock (rows were full). Structures and zones stayed put.`
+          : `Re-arranged all ${rows.length} pallets into aisled rows. Structures and zones stayed put.`);
+    } else {
+      rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
+      flash(`Laid out ${rows.length} pallets from the palette with ${(aisle / 100).toFixed(1)} m aisles.`);
+    }
     setBaseline([...structures, ...rows]);
     setLiveBoxes(null);
     setSelectedId(null);
@@ -118,7 +155,14 @@ export default function WarehousePage() {
     return len / 100;
   }, [path]);
   const selectedBox = selectedId ? boxes.find((b) => b.id === selectedId) : null;
+  const diagnosis = useMemo(() => {
+    if (!selectedId || path || !selectedBox) return null;
+    if (!reach.unreachable.includes(selectedId)) return null;
+    return explainUnreachable(floor, boxes, selectedId, dock);
+  }, [selectedId, path, selectedBox, reach, floor, boxes, dock]);
   useEffect(() => { if (selectedId) track('warehouse_route'); }, [selectedId]);
+  // E2E hook: real box state, verifiable from tests
+  useEffect(() => { (window as unknown as { __dpBoxes?: PlannerBox[] }).__dpBoxes = boxes; }, [boxes]);
 
   // rotating coach tips
   const TIPS = [
@@ -417,8 +461,9 @@ export default function WarehousePage() {
           </div>
 
           <button onClick={() => regen()} className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">
-            Auto-arrange pallets (keeps structures)
+            Auto-arrange: tidy pallets into aisled rows
           </button>
+          {actionMsg && <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg p-2">{actionMsg}</p>}
 
           <div className="flex gap-2">
             <button onClick={sharePlan} disabled={shareState === 'busy'}
@@ -525,7 +570,7 @@ export default function WarehousePage() {
           )}
           <InteractiveLoadPlanner
             key={`${floorL}-${floorW}`}
-            container={{ l: floorL, w: floorW, h: 350 }}
+            container={vessel}
             boxes={base}
             grid={10}
             unitLabel="cm"
@@ -549,7 +594,9 @@ export default function WarehousePage() {
               <Route size={16} />
               {path
                 ? <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m from the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
-                : <>No route exists — <b>{selectedBox.label}</b> is cut off from the dock at this aisle width.</>}
+                : diagnosis?.passableAt
+                  ? <>🚫 <b>{selectedBox.label}</b> is cut off: the gaps around it only allow ≈{(diagnosis.passableAt / 100).toFixed(1)} m, but your forklift needs {(aisle / 100).toFixed(1)} m. Move a neighbour to widen the gap{diagnosis.passableAt >= 270 ? ', or switch to a reach truck (2.7 m)' : ''}.</>
+                  : <>🚫 <b>{selectedBox.label}</b> is fully enclosed — no route exists at ANY width. Clear a path toward a dock, or add a dock on another edge.</>}
             </div>
           )}
           <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">

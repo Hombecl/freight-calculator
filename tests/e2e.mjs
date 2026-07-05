@@ -162,6 +162,64 @@ await test('plans: sign-in gate renders', async () => {
   await page.getByText(/sign in to keep your plans|accounts are not configured/i).waitFor();
 }, page);
 
+// ---------- regression: the manual-testing bug reports ----------
+const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
+const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);
+
+await test('warehouse REGRESSION: drag sticks and survives re-renders', async () => {
+  await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
+  await page.locator('canvas').first().waitFor();
+  await page.waitForTimeout(1500); // three.js scene up
+  const before = await dpBoxes();
+  const canvas = page.locator('canvas').first();
+  const bb = await canvas.boundingBox();
+  // try several grab points — pallet rows sit at different screen spots
+  let after = before;
+  outer: for (const fy of [0.55, 0.45, 0.65, 0.5]) {
+    for (const fx of [0.45, 0.55, 0.35, 0.6]) {
+      const gx = bb.x + bb.width * fx, gy = bb.y + bb.height * fy;
+      await page.mouse.move(gx, gy);
+      await page.mouse.down();
+      for (let i = 1; i <= 10; i++) await page.mouse.move(gx + i * 12, gy, { steps: 1 });
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+      after = await dpBoxes();
+      if (after !== before) break outer;
+    }
+  }
+  if (after === before) throw new Error('drag did not move any box');
+  // the tips interval re-renders every 7s — the old bug snapped boxes back
+  await page.waitForTimeout(8000);
+  const later = await dpBoxes();
+  if (later !== after) throw new Error('layout REVERTED after idle re-render (reset bug)');
+}, page);
+
+await test('warehouse REGRESSION: undo steps back through 3 place-one actions', async () => {
+  const n0 = await dpCount();
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: /place one near the dock/i }).first().click();
+    await page.waitForTimeout(250);
+  }
+  if (await dpCount() !== n0 + 3) throw new Error('place x3 failed');
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: /undo/i }).click();
+    await page.waitForTimeout(250);
+  }
+  const n3 = await dpCount();
+  if (n3 !== n0) throw new Error(`after 3 undos expected ${n0} boxes, got ${n3}`);
+}, page);
+
+await test('warehouse REGRESSION: auto-arrange keeps every pallet (never deletes)', async () => {
+  await page.getByRole('button', { name: /place one near the dock/i }).first().click();
+  await page.waitForTimeout(250);
+  const before = await dpCount();
+  await page.getByRole('button', { name: /auto-arrange/i }).click();
+  await page.getByText(/re-arranged/i).waitFor();
+  const after = await dpCount();
+  if (after < before) throw new Error(`arrange dropped boxes: ${before} -> ${after}`);
+}, page);
+
 // ---------- new production features ----------
 await test('planner: pallet & truck vessels selectable', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
