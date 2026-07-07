@@ -103,6 +103,7 @@ export default function HomePage() {
     { q: T('Do I need to install anything?', '要安裝嘢嗎?'), a: T('No. It runs in your browser, desktop or tablet.', '唔使,瀏覽器直接用。') },
     { q: T('Where does my data go?', '數據去咗邊?'), a: T('Nowhere — everything computes on your device. Shipment data never leaves your browser.', '邊度都冇去 — 全部喺你部機計,數據唔會離開瀏覽器。') },
     { q: T('Mixed carton sizes? Weight limits?', '混合尺寸?重量限制?'), a: T('Yes. Mixed sizes, payload limits, per-carton stacking limits, fragile cartons and unload order are all supported.', '支援。混合尺寸、載重、逐箱堆疊上限、易碎、落貨順序全部有。') },
+    { q: T('What is the maximum pallet height for a container?', '貨櫃卡板最高可以砌幾高?'), a: T("Plan against the door, not the ceiling. A standard container's door header is ~2.28 m — about 10 cm below the 2.39 m interior — and the forklift needs room to lift and tilt, so loaded pallets are typically planned at 2.15–2.20 m (high-cube doors: ~2.58 m). The planner checks every carton against the door aperture automatically.", '要對住「門」規劃,唔係天花。標準櫃門楣約 2.28 米 — 比 2.39 米內籠低成 10cm — 鏟車仲要位抬高側入,所以卡板一般砌到 2.15–2.20 米(高櫃門約 2.58 米)。Planner 會自動逐箱對照門口檢查。') },
   ];
 
   return (
@@ -122,7 +123,8 @@ export default function HomePage() {
               { "@type": "Question", "name": "Is DimPack3D really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The planner, optimizer and calculators are free. Exporting a PDF or CSV asks for your email." } },
               { "@type": "Question", "name": "Do I need to install anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs in the browser with no download or signup." } },
               { "@type": "Question", "name": "Where does my shipment data go?", "acceptedAnswer": { "@type": "Answer", "text": "Nowhere. All calculations run on your device; carton lists and load plans never leave your browser." } },
-              { "@type": "Question", "name": "Can it handle mixed carton sizes and weight limits?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Mixed sizes, container payload limits, per-carton stacking limits, fragile cartons and unload order are supported." } }
+              { "@type": "Question", "name": "Can it handle mixed carton sizes and weight limits?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Mixed sizes, container payload limits, per-carton stacking limits, fragile cartons and unload order are supported." } },
+              { "@type": "Question", "name": "What is the maximum pallet height for a container?", "acceptedAnswer": { "@type": "Answer", "text": "Plan against the door, not the ceiling. A standard container's door header is about 2.28 m, roughly 10 cm below the 2.39 m interior, and the forklift needs lift-and-tilt room, so loaded pallets are typically planned at 2.15 to 2.20 m. High-cube doors are about 2.58 m. DimPack3D checks every carton against the door aperture automatically." } }
             ]
           }
         `}</script>
@@ -239,28 +241,28 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-4">
             {[
               {
-                scene: T('"The container is at the dock — and the crate won\'t go through the door."', '「個櫃已經喺碼頭 — 個木箱入唔到櫃門。」'),
-                cost: T('Repack crew + detention charges + a missed vessel.', '重新執貨 + 滯箱費 + 趕唔切班船。'),
-                fix: T('The door aperture is smaller than the interior. We check every carton against it while you plan.', '櫃門開口細過內籠。我哋喺規劃時逐箱檢查。'),
-                to: '/planner', label: T('Door check', '櫃門檢查'),
+                scene: T('"The pallets were planned against the container\'s internal height — they don\'t clear the door header."', '「啲卡板用內籠高度嚟砌 — 過唔到門楣。」'),
+                cost: T('Restuffing at the port, per-diem charges, a missed vessel.', '碼頭重新入櫃、滯期費、趕唔切班船。'),
+                fix: T('The door opening sits ~10 cm below the ceiling (2.28 m vs 2.39 m), and the forklift still needs room to lift and tilt. We check every carton against the DOOR while you plan.', '櫃門開口比天花低成 10cm(2.28 對 2.39 米),鏟車仲要位抬高側入。我哋規劃時逐箱對住「門」檢查,唔係天花。'),
+                to: '/planner', label: T('Door clearance', '櫃門淨空'),
               },
               {
-                scene: T('"The truck got weighed — the rear axle group is over."', '「架車過磅 — 後軸超咗。」'),
-                cost: T('A roadside fine, and re-loading the trailer on the shoulder.', '路邊罰款,仲要喺路肩重新裝過。'),
-                fix: T('Every carton\'s weight splits front/rear by the lever rule, live, against legal limits.', '每箱重量按槓桿原理實時拆分前後軸,對照法定上限。'),
+                scene: T('"The truck is legal on gross weight — and still gets cited. The rear axle group is over."', '「架車總重完全合法 — 照樣食牛肉乾:後軸組超咗。」'),
+                cost: T('A weigh-station citation, then offloading at a transload yard to redistribute.', '地磅告票,仲要拉去轉運場卸貨重新分配。'),
+                fix: T('Axle-group violations are among the most common weigh-station citations. Every carton\'s weight splits kingpin vs tandems by the lever rule, live, as you drag.', '軸組超載係地磅最常見告票之一。每箱重量按槓桿原理實時拆分牽引銷/後軸 — 你一路拖,佢一路計。'),
                 to: '/planner', label: T('Axle loads', '車軸配重'),
               },
               {
-                scene: T('"The goods arrived — the bottom layer is crushed."', '「貨到咗 — 最底嗰層壓爛晒。」'),
-                cost: T('Damage claims, refused stock, an unhappy customer.', '索償、拒收、客戶反面。'),
-                fix: T('Crush limits from the board grade (McKee), enforced down the stack — plus heavy-over-light warnings.', '由紙板等級(McKee)推算抗壓上限,沿堆疊執行,仲有重壓輕警告。'),
+                scene: T('"The consignee filed a damage claim — the bottom layer buckled somewhere at sea."', '「收貨人索償 — 最底嗰層喺海上唔知幾時已經冧咗。」'),
+                cost: T('Industry analyses trace roughly two-thirds of intermodal cargo claims to poor packing — and Amazon rejects overhanging pallets outright.', '行業分析指出 intermodal 貨損索償約三分之二源於裝載不當 — Amazon 更加係見到卡板懸出就直接拒收。'),
+                fix: T('Crush limits per carton from the board grade (McKee), heavy-over-light warnings, and pallet-overhang flags — all live while you plan.', '每箱按紙板等級(McKee)計抗壓上限、重壓輕警告、卡板懸出標記 — 規劃時全部實時檢查。'),
                 to: '/planner', label: T('Crush & stacking', '抗壓與堆疊'),
               },
               {
-                scene: T('"New floor layout, day one — the forklift can\'t make the corner."', '「新倉佈局第一日 — 鏟車轉唔到個彎。」'),
+                scene: T('"The aisle was measured for straight travel — the truck can\'t make the right-angle turn into the rack bay."', '「條通道係按直行量嘅 — 鏟車轉唔到直角彎入貨架。」'),
                 cost: T('Re-slotting a live warehouse with full racks.', '貨架全滿嘅倉,要成個重新排過。'),
-                fix: T('Straight width AND the 90° turn box are checked separately — tight corners turn red before you commit.', '直行闊度同 90° 轉彎淨空分開檢查 — 未落實之前,窄彎已經標紅。'),
-                to: '/warehouse', label: T('Turn geometry', '轉彎幾何'),
+                fix: T('Right-angle stacking needs more room than straight travel — a classic layout mistake. We check the straight width AND the 90° turn box separately; tight corners flag red before you commit.', '直角入位所需空間大過直行 — 經典佈局失誤。我哋直行闊度同 90° 轉彎淨空分開檢查,未落實之前窄彎已經標紅。'),
+                to: '/warehouse', label: T('Right-angle turns', '直角轉彎'),
               },
             ].map((c, i) => (
               <Link key={i} to={c.to} className="group rounded-2xl bg-white border border-slate-200 p-5 hover:border-red-300 hover:shadow-lg transition-all">
@@ -486,12 +488,12 @@ export default function HomePage() {
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
               {[
-                { icon: '🚪', title: T('Door aperture', '櫃門開口'), body: T("ISO doors are smaller than the interior (234×228 vs 239 high). A carton that fits inside but can't get IN is flagged.", 'ISO 櫃門細過內籠(234×228 vs 內高 239)。「放得入但入唔到門」嘅箱即時標紅。'), where: '/planner' },
+                { icon: '🚪', title: T('Door clearance', '櫃門淨空'), body: T("The most common loading mistake: planning against the 239 cm interior when the door header is 228 cm. Cartons that can't pass the door are flagged while you plan.", '最常見裝櫃失誤:用 239cm 內籠規劃,但門楣只有 228cm。過唔到門嘅箱,規劃時已經標紅。'), where: '/planner' },
                 { icon: '↩️', title: T('90° turn box', '90° 轉彎淨空'), body: T('Straight aisle width and the square a forklift needs to TURN are different numbers. Straight-line reachable but corner-blocked pallets turn red.', '直行闊度同轉彎所需嘅方形淨空係兩個數。直線去到但彎位太窄嘅卡板會標紅。'), where: '/warehouse' },
                 { icon: '⚖️', title: T('Axle loads', '車軸配重'), body: T("Every carton's weight splits kingpin vs rear axles by the lever rule — live totals against legal limits, with fix direction.", '每箱重量按槓桿原理拆分牽引銷/後軸,實時對照法定上限,超載提示推前定推後。'), where: '/planner' },
                 { icon: '🧱', title: T('Crush strength', '紙箱抗壓'), body: T('Max load on top per carton — estimable from ECT board grade (McKee formula), enforced down through the stack.', '每款箱「頂部最大承重」— 可由 ECT 紙板等級用 McKee 公式估算,並沿堆疊向下執行。'), where: '/planner' },
                 { icon: '🏗️', title: T('Floor slab rating', '地台承重'), body: T('A 4-level rack bay is 2.4 t on 3 m². Pick your slab rating (mezzanine to heavy slab) — overloaded spots turn red.', '4 層貨架一格 = 2.4 噸壓 3 平米。揀好地台等級(閣樓至重型),超壓位置即時標紅。'), where: '/warehouse' },
-                { icon: '📦', title: T('Pallet overhang', '卡板懸出'), body: T("Allow 2.5 or 5 cm per side — we pack the extra space AND warn you: overhang costs ~30% compression strength.", '容許每邊懸出 2.5/5 cm — 幫你裝盡之餘同時警告:懸出令抗壓強度跌約 30%。'), where: '/planner' },
+                { icon: '📦', title: T('Pallet overhang', '卡板懸出'), body: T("Overhang costs ~30% compression strength, and Amazon rejects overhanging pallets outright. Allow 2.5 or 5 cm per side — we pack it AND warn you.", '懸出令抗壓強度跌約 30%,Amazon 見到直接拒收。容許每邊 2.5/5 cm — 幫你裝盡之餘同時警告。'), where: '/planner' },
                 { icon: '🧊', title: T('Zone segregation', '溫控/危險品分區'), body: T('Chilled, frozen or hazmat cargo outside its matching zone turns red the moment you drop it.', '凍櫃/冷藏/危險品貨物一旦擺出對應分區,落地嗰刻即變紅。'), where: '/warehouse' },
                 { icon: '⚠️', title: T('Top-heavy & heavy-on-light', '重心過高/重壓輕'), body: T('CoG height over 55% or a carton ≥25% heavier than the one beneath it — the loader\'s instinct, codified.', '重心高過 55%、或重箱壓住輕箱(≥25%)— 老師傅嘅本能,寫成規則。'), where: '/planner' },
                 { icon: '📋', title: T('Loading sequence', '裝櫃順序表'), body: T('The PDF numbers every carton in loading order — #1 first, back of the container, floor level. Tape it at the door.', 'PDF 將每箱按裝櫃次序編號 — #1 先入、最入最底。打印貼喺閘口,工人照住裝。'), where: '/planner' },

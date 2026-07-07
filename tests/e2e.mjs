@@ -212,7 +212,7 @@ await test('warehouse: chilled pallet without a chilled zone is flagged', async 
 await test('home: reality-checks showcase renders all nine cards', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/reality checks — what the floor actually fights with/i).waitFor();
-  for (const c of [/door aperture/i, /90° turn box/i, /axle loads/i, /loading sequence/i]) {
+  for (const c of [/door clearance/i, /90° turn box/i, /axle loads/i, /loading sequence/i]) {
     await page.getByText(c).first().waitFor();
   }
 }, page);
