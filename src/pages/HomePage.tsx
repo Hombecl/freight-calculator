@@ -399,6 +399,43 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+
+          {/* ============ REALITY CHECKS: the operator-grade moat ============ */}
+          <div className="mt-14 border-t border-slate-800 pt-12">
+            <h3 className="text-xl md:text-2xl font-black mb-1.5">
+              {T('Reality checks — what the floor actually fights with', '現實檢查 — 現場真正搏鬥嘅嘢')}
+            </h3>
+            <p className="text-sm text-slate-400 mb-7 max-w-3xl">
+              {T('A plan that ignores the door, the corner, the axle or the slab is a drawing, not a plan. These checks run live on every layout — most tools don\'t have them.',
+                 '一個唔理櫃門、彎位、車軸同地台嘅方案只係圖畫,唔係方案。以下檢查喺每個佈局實時運行 — 大部分工具根本冇。')}
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              {[
+                { icon: '🚪', title: T('Door aperture', '櫃門開口'), body: T("ISO doors are smaller than the interior (234×228 vs 239 high). A carton that fits inside but can't get IN is flagged.", 'ISO 櫃門細過內籠(234×228 vs 內高 239)。「放得入但入唔到門」嘅箱即時標紅。'), where: '/planner' },
+                { icon: '↩️', title: T('90° turn box', '90° 轉彎淨空'), body: T('Straight aisle width and the square a forklift needs to TURN are different numbers. Straight-line reachable but corner-blocked pallets turn red.', '直行闊度同轉彎所需嘅方形淨空係兩個數。直線去到但彎位太窄嘅卡板會標紅。'), where: '/warehouse' },
+                { icon: '⚖️', title: T('Axle loads', '車軸配重'), body: T("Every carton's weight splits kingpin vs rear axles by the lever rule — live totals against legal limits, with fix direction.", '每箱重量按槓桿原理拆分牽引銷/後軸,實時對照法定上限,超載提示推前定推後。'), where: '/planner' },
+                { icon: '🧱', title: T('Crush strength', '紙箱抗壓'), body: T('Max load on top per carton — estimable from ECT board grade (McKee formula), enforced down through the stack.', '每款箱「頂部最大承重」— 可由 ECT 紙板等級用 McKee 公式估算,並沿堆疊向下執行。'), where: '/planner' },
+                { icon: '🏗️', title: T('Floor slab rating', '地台承重'), body: T('A 4-level rack bay is 2.4 t on 3 m². Pick your slab rating (mezzanine to heavy slab) — overloaded spots turn red.', '4 層貨架一格 = 2.4 噸壓 3 平米。揀好地台等級(閣樓至重型),超壓位置即時標紅。'), where: '/warehouse' },
+                { icon: '📦', title: T('Pallet overhang', '卡板懸出'), body: T("Allow 2.5 or 5 cm per side — we pack the extra space AND warn you: overhang costs ~30% compression strength.", '容許每邊懸出 2.5/5 cm — 幫你裝盡之餘同時警告:懸出令抗壓強度跌約 30%。'), where: '/planner' },
+                { icon: '🧊', title: T('Zone segregation', '溫控/危險品分區'), body: T('Chilled, frozen or hazmat cargo outside its matching zone turns red the moment you drop it.', '凍櫃/冷藏/危險品貨物一旦擺出對應分區,落地嗰刻即變紅。'), where: '/warehouse' },
+                { icon: '⚠️', title: T('Top-heavy & heavy-on-light', '重心過高/重壓輕'), body: T('CoG height over 55% or a carton ≥25% heavier than the one beneath it — the loader\'s instinct, codified.', '重心高過 55%、或重箱壓住輕箱(≥25%)— 老師傅嘅本能,寫成規則。'), where: '/planner' },
+                { icon: '📋', title: T('Loading sequence', '裝櫃順序表'), body: T('The PDF numbers every carton in loading order — #1 first, back of the container, floor level. Tape it at the door.', 'PDF 將每箱按裝櫃次序編號 — #1 先入、最入最底。打印貼喺閘口,工人照住裝。'), where: '/planner' },
+              ].map((c, i) => (
+                <div key={i} className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-lg leading-none">{c.icon}</span>
+                    <span className="font-bold text-slate-100">{c.title}</span>
+                    <span className="ml-auto text-[10px] font-semibold text-blue-400/80">{c.where}</span>
+                  </div>
+                  <p className="text-slate-400 text-[13px] leading-relaxed">{c.body}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-xs text-slate-500">
+              {T('Engine honesty: 80% average fill on the Bischoff–Ratcliff academic benchmark (300 instances) with full stability constraints — reproducible from the repo.',
+                 '引擎誠實數據:Bischoff–Ratcliff 學術基準(300 個 instance)平均 80% 裝載率,連全套穩定性約束 — 可由 repo 復現。')}
+            </p>
+          </div>
         </div>
       </section>
 

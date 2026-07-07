@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 const { packContainer, packWithConstraints, computeStats } = await import('../src/lib/binPacking.ts');
 const { parseText, rowsToSpecs } = await import('../src/lib/importCartons.ts');
-const { axleLoads, mckeeSafeLoad, floorOverloads, palletOverhang, zoneViolations } = await import('../src/lib/realism.ts');
+const { axleLoads, mckeeSafeLoad, floorOverloads, palletOverhang, zoneViolations, heavyOverLight, cogHeight, loadingSequence } = await import('../src/lib/realism.ts');
 const {
   autoArrangeFloor, autoArrangeFloorD, checkReachability, checkReachabilityD,
   forkliftPath, forkliftPathD, placeNearDockD, positionCapacity, zoneStats, gridFitCheck,
@@ -216,6 +216,36 @@ test('realism: chilled cargo outside its zone is a violation', () => {
   const v = zoneViolations([zone, inside, outside]);
   assert.deepEqual(v.map((x) => x.id), ['out']);
   assert.equal(v[0].need, 'chilled');
+});
+
+test('realism: heavy box on a light box is flagged; equal weights are not', () => {
+  const light = { id: 'lo', label: '', l: 60, w: 40, h: 40, px: 0, py: 0, pz: 0, color: 1, weight: 5 };
+  const heavy = { id: 'hi', label: '', l: 60, w: 40, h: 40, px: 0, py: 40, pz: 0, color: 1, weight: 20 };
+  assert.deepEqual(heavyOverLight([light, heavy]), ['hi']);
+  const same = { ...heavy, weight: 5 };
+  assert.deepEqual(heavyOverLight([light, same]), []);
+});
+
+test('realism: top-heavy stack has CoG above 55%', () => {
+  const r = cogHeight([
+    { id: 'a', label: '', l: 60, w: 40, h: 50, px: 0, py: 0, pz: 0, color: 1, weight: 2 },
+    { id: 'b', label: '', l: 60, w: 40, h: 50, px: 0, py: 50, pz: 0, color: 1, weight: 30 },
+  ]);
+  assert.ok(r && r.pct > 55, `pct=${r?.pct}`);
+  const low = cogHeight([
+    { id: 'a', label: '', l: 60, w: 40, h: 50, px: 0, py: 0, pz: 0, color: 1, weight: 30 },
+    { id: 'b', label: '', l: 60, w: 40, h: 50, px: 0, py: 50, pz: 0, color: 1, weight: 2 },
+  ]);
+  assert.ok(low && low.pct < 45);
+});
+
+test('realism: loading sequence goes back-first, bottom-first', () => {
+  const seq = loadingSequence([
+    { id: 'front-top', label: '', l: 50, w: 50, h: 50, px: 500, py: 50, pz: 0, color: 1 },
+    { id: 'back-bottom', label: '', l: 50, w: 50, h: 50, px: 0, py: 0, pz: 0, color: 1 },
+    { id: 'back-top', label: '', l: 50, w: 50, h: 50, px: 0, py: 50, pz: 0, color: 1 },
+  ]);
+  assert.deepEqual(seq.map((b) => b.id), ['back-bottom', 'back-top', 'front-top']);
 });
 
 // ---------- turn-aware forklift model ----------

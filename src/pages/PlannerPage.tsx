@@ -7,7 +7,7 @@ import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
-import { axleLoads, mckeeSafeLoad, palletOverhang, type AxleConfig } from '../lib/realism';
+import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, type AxleConfig } from '../lib/realism';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
@@ -28,9 +28,9 @@ import { track } from '../lib/track';
 // (ISO door ≈ 234×228, high-cube 234×258). Tools that skip this let you plan
 // loads that physically cannot enter the box.
 const CONTAINERS = {
-  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers', door: { w: 234, h: 228 } },
-  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers', door: { w: 234, h: 228 } },
-  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers', door: { w: 234, h: 258 } },
+  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers', door: { w: 234, h: 228 }, tare: 2300 },
+  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers', door: { w: 234, h: 228 }, tare: 3750 },
+  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers', door: { w: 234, h: 258 }, tare: 3900 },
   '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks', door: { w: 254, h: 269 }, axles: { frontPos: 90, rearPos: 1450, frontLimit: 13600, rearLimit: 15400 } as AxleConfig },
   'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks', door: { w: 245, h: 270 }, axles: { frontPos: 120, rearPos: 1050, frontLimit: 12000, rearLimit: 24000 } as AxleConfig },
   'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets', door: null },
@@ -135,6 +135,9 @@ export default function PlannerPage() {
     () => (container.group === 'Pallets' && overhangCm > 0 ? palletOverhang(shownBoxes, { l: container.l, w: container.w }) : null),
     [shownBoxes, container, overhangCm],
   );
+  const stackWarn = useMemo(() => heavyOverLight(shownBoxes as (PlannerBox & { weight?: number })[]), [shownBoxes]);
+  const cogH = useMemo(() => cogHeight(shownBoxes as (PlannerBox & { weight?: number })[]), [shownBoxes]);
+  const topHeavy = cogH != null && cogH.pct > 55;
   // real-world check other tools skip: the door aperture is SMALLER than the interior
   const doorBlocked = useMemo(
     () => specs.filter((s) => s.qty > 0 && !fitsDoor(s, CONTAINERS[containerKey].door)),
@@ -540,6 +543,22 @@ export default function PlannerPage() {
                 {balanceWarn ? 'Off-centre' : 'Balanced'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
               </span>
             </div>
+            {'tare' in container && container.tare != null && (
+              <div className="flex justify-between" title="SOLAS Verified Gross Mass = cargo + container tare. Required on shipping docs; misdeclaration is fined.">
+                <span>VGM (cargo + {container.tare.toLocaleString()} kg tare)</span>
+                <span className="font-semibold">{(stats.totalWeight + container.tare).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg</span>
+              </div>
+            )}
+            {topHeavy && cogH && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                ⚠️ <b>Top-heavy load:</b> centre of gravity sits at {cogH.pct.toFixed(0)}% of the load height — braking and cornering work on a long lever. Move heavy cartons to the floor.
+              </div>
+            )}
+            {stackWarn.length > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                🧱 <b>{stackWarn.length} heavy-on-light stack{stackWarn.length === 1 ? '' : 's'}:</b> a carton ≥25% heavier than the one beneath it crushes goods. Re-order the stack — heavy at the bottom.
+              </div>
+            )}
             {axles && 'axles' in container && container.axles && (
               <>
                 <div className="flex justify-between">

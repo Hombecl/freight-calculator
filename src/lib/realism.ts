@@ -157,3 +157,60 @@ export function zoneViolations(
   }
   return out;
 }
+
+// -------------------------------------------------- 6. heavy-over-light
+
+/**
+ * The loader's instinct, codified: a box noticeably heavier than what it
+ * stands on crushes goods and raises the stack's centre of gravity. Flags
+ * boxes ≥25% heavier than the lightest box directly beneath them.
+ */
+export function heavyOverLight(
+  boxes: (PlannerBox & { weight?: number })[],
+): string[] {
+  const out: string[] = [];
+  for (const b of boxes) {
+    if (b.py <= 0 || !b.weight) continue;
+    let minUnder = Infinity;
+    for (const u of boxes) {
+      if (u === b || u.weight == null) continue;
+      const topTouches = Math.abs(u.py + u.h - b.py) < 0.5;
+      const overlaps = b.px < u.px + u.l && b.px + b.l > u.px && b.pz < u.pz + u.w && b.pz + b.w > u.pz;
+      if (topTouches && overlaps) minUnder = Math.min(minUnder, u.weight);
+    }
+    if (minUnder !== Infinity && b.weight > minUnder * 1.25) out.push(b.id);
+  }
+  return out;
+}
+
+/**
+ * Tip-over risk: centre of gravity height as % of the loaded height.
+ * Above ~55% the load is top-heavy — braking and cornering forces work on a
+ * long lever arm.
+ */
+export function cogHeight(
+  boxes: (PlannerBox & { weight?: number })[],
+): { cogY: number; loadedH: number; pct: number } | null {
+  let m = 0, my = 0, top = 0;
+  for (const b of boxes) {
+    const w = b.weight ?? 0;
+    m += w;
+    my += w * (b.py + b.h / 2);
+    top = Math.max(top, b.py + b.h);
+  }
+  if (!m || !top) return null;
+  const cogY = my / m;
+  return { cogY, loadedH: top, pct: (cogY / top) * 100 };
+}
+
+// -------------------------------------------------- 7. loading sequence
+
+/**
+ * The crew-facing order: which box goes in FIRST. Back of the container
+ * first (low x), bottom before top, then across. The printable version of
+ * the plan — the sheet that actually gets taped to the door frame.
+ */
+export function loadingSequence(boxes: PlannerBox[]): PlannerBox[] {
+  return [...boxes].sort((a, b) =>
+    (a.px - b.px) || (a.py - b.py) || (a.pz - b.pz));
+}

@@ -37,8 +37,12 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Floor load limit kg/m² (slab rating select; stacks + rack bays vs rating) | ✅ `floorOverloads` |
 | Pallet overhang (allowance 0/2.5/5 cm per side; packs it AND warns: −30% compression) | ✅ `palletOverhang` |
 | Temperature/hazmat segregation zones (typed zones + cargo zone requirements) | ✅ `zoneViolations` |
-| Forklift swept-path arcs (beyond turn box: true turning radius sweep) | 🗺 next |
-| Load securing (lashing points, tip-over risk from CoG height) | 🗺 next |
+| Heavy-over-light + top-heavy CoG-height warnings (loader's instinct, codified) | ✅ `heavyOverLight` / `cogHeight` |
+| Loading sequence — PDF/CSV numbered in crew loading order (back-first, floor-first) | ✅ `loadingSequence` |
+| SOLAS VGM line (cargo + container tare) on container plans | ✅ PlannerPage |
+| Homepage "Reality checks" showcase — all 9 operator checks, bilingual | ✅ HomePage |
+| Forklift swept-path arcs (true turning radius sweep) | 🗺 evaluate demand first — turn box covers most of the pain |
+| Rack beam capacity per level | 🗺 needs pallet-in-rack assignment model |
 
 ## 2. Interactive 3D editor (`components/InteractiveLoadPlanner.tsx`)
 
@@ -110,7 +114,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 | Item | Status |
 |---|---|
-| Engine unit tests — `npm test` (24 tests, tests/unit.mjs) | ✅ |
+| Engine unit tests — `npm test` (27 tests, tests/unit.mjs) | ✅ |
 | Academic benchmark (`npx tsx scripts/benchmark.mjs`) — 80.2% avg on BR 300 instances | ✅ |
 | Playwright E2E — `npm run e2e <url>` (22 local / 25 live) | ✅ |
 | CI (GitHub Actions: unit + build + E2E on push) | ✅ |

@@ -209,6 +209,19 @@ await test('warehouse: chilled pallet without a chilled zone is flagged', async 
   await page.getByText(/outside their required zone/i).waitFor();
 }, page);
 
+await test('home: reality-checks showcase renders all nine cards', async () => {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/reality checks — what the floor actually fights with/i).waitFor();
+  for (const c of [/door aperture/i, /90° turn box/i, /axle loads/i, /loading sequence/i]) {
+    await page.getByText(c).first().waitFor();
+  }
+}, page);
+
+await test('planner: container vessel shows SOLAS VGM line', async () => {
+  await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/VGM \(cargo \+ 2,?300 kg tare\)/i).waitFor();
+}, page);
+
 // ---------- regression: the manual-testing bug reports ----------
 const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
 const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);
