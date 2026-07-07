@@ -48,6 +48,6 @@ node scripts/indexnow.mjs                  # tell the AI engines
 discovering it live is exactly the failure mode this runbook exists to prevent.
 
 ## Known-good baselines
-- unit 27/27 · local E2E 33/33 · live E2E 38/38 · visual pass 2026-07-05
+- unit 28/28 · local E2E 35/35 · live E2E 40/40 · visual pass 2026-07-05
 - engine benchmark: 80.2% avg fill on Bischoff–Ratcliff (300 instances) — `npx tsx scripts/benchmark.mjs`
 - perf: hero pack 280 boxes ≈136ms · /api/pack 60 boxes ≈41ms · prerender 344 snapshots ≈5min

@@ -7,7 +7,7 @@ import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
-import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, type AxleConfig } from '../lib/realism';
+import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, loadVoids, type AxleConfig } from '../lib/realism';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
@@ -35,6 +35,9 @@ const CONTAINERS = {
   'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks', door: { w: 245, h: 270 }, axles: { frontPos: 120, rearPos: 1050, frontLimit: 12000, rearLimit: 24000 } as AxleConfig },
   'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets', door: null },
   'gmapal': { label: 'GMA 48×40"', l: 122, w: 102, h: 152, maxWeight: 1134, group: 'Pallets', door: null },
+  // Amazon FBA LTL: 40×48 GMA, 72" total incl ~15 cm pallet → 167 cm cargo,
+  // 1,500 lb (680 kg), zero overhang — Amazon rejects overhanging pallets
+  'fbapal': { label: 'FBA pallet', l: 122, w: 102, h: 167, maxWeight: 680, group: 'Pallets', door: null },
 } as const;
 
 /**
@@ -104,9 +107,11 @@ export default function PlannerPage() {
   // cuts carton compression strength ~30%, so we pack it AND warn about it
   const [overhangCm, setOverhangCm] = useState(0);
   const packSpace = useMemo(() => {
-    const ov = container.group === 'Pallets' ? overhangCm : 0;
+    // FBA locks overhang to zero — Amazon rejects overhanging pallets outright
+    const ov = container.group === 'Pallets' && containerKey !== 'fbapal' ? overhangCm : 0;
     return ov > 0 ? { ...container, l: container.l + 2 * ov, w: container.w + 2 * ov } : container;
-  }, [container, overhangCm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container, overhangCm, containerKey]);
 
   const result = useMemo(
     () => packWithConstraints(packSpace, specs),
@@ -135,6 +140,11 @@ export default function PlannerPage() {
     () => (container.group === 'Pallets' && overhangCm > 0 ? palletOverhang(shownBoxes, { l: container.l, w: container.w }) : null),
     [shownBoxes, container, overhangCm],
   );
+  const voids = useMemo(
+    () => (container.group !== 'Pallets' ? loadVoids(shownBoxes, packSpace) : null),
+    [shownBoxes, container, packSpace],
+  );
+  const voidWarn = voids != null && (voids.doorSlack > 15 || voids.biggestGap > 15);
   const stackWarn = useMemo(() => heavyOverLight(shownBoxes as (PlannerBox & { weight?: number })[]), [shownBoxes]);
   const cogH = useMemo(() => cogHeight(shownBoxes as (PlannerBox & { weight?: number })[]), [shownBoxes]);
   const topHeavy = cogH != null && cogH.pct > 55;
@@ -343,7 +353,10 @@ export default function PlannerPage() {
             <p className="text-xs text-slate-400 mt-1">
               {container.l} × {container.w} × {container.h} cm · max {container.maxWeight} kg
             </p>
-            {container.group === 'Pallets' && (
+            {containerKey === 'fbapal' && (
+              <p className="text-xs text-amber-600 mt-1">Amazon FBA: 72" total height, 680 kg, zero overhang — allowance locked to none. Amazon rejects hundreds of pallets a day for bad stacking.</p>
+            )}
+            {container.group === 'Pallets' && containerKey !== 'fbapal' && (
               <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                 <span>Overhang allowance</span>
                 {[0, 2.5, 5].map((ov) => (
@@ -583,6 +596,11 @@ export default function PlannerPage() {
             {overhang && overhang.ids.length > 0 && (
               <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
                 📦 <b>{overhang.ids.length} carton{overhang.ids.length === 1 ? '' : 's'} overhang</b> the pallet by up to {overhang.maxCm.toFixed(1)} cm — stretch-wrap tightly; overhang cuts carton compression strength ≈ 30%.
+              </div>
+            )}
+            {voidWarn && voids && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                🚚 <b>Load-shift risk:</b> {voids.doorSlack > 15 ? `${voids.doorSlack.toFixed(0)} cm free run at the door` : ''}{voids.doorSlack > 15 && voids.biggestGap > 15 ? ' + ' : ''}{voids.biggestGap > 15 ? `a ${voids.biggestGap.toFixed(0)} cm gap mid-stow` : ''}. Brace the last rows or fill the gap with dunnage airbags — slack is where cargo slams during braking and sea motion.
               </div>
             )}
             {result.zones.length > 1 && (

@@ -114,7 +114,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 | Item | Status |
 |---|---|
-| Engine unit tests — `npm test` (27 tests, tests/unit.mjs) | ✅ |
+| Engine unit tests — `npm test` (28 tests, tests/unit.mjs) | ✅ |
 | Academic benchmark (`npx tsx scripts/benchmark.mjs`) — 80.2% avg on BR 300 instances | ✅ |
 | Playwright E2E — `npm run e2e <url>` (22 local / 25 live) | ✅ |
 | CI (GitHub Actions: unit + build + E2E on push) | ✅ |

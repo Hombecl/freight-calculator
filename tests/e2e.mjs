@@ -230,6 +230,20 @@ await test('home: pain-first sections render (surprises + system story)', async 
   await page.getByText(/the loading crew/i).first().waitFor();
 }, page);
 
+await test('reality-checks: package page lists all 11 checks', async () => {
+  await page.goto(`${BASE}/reality-checks`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: /^reality checks/i }).waitFor();
+  for (const c of [/door clearance/i, /load-shift voids/i, /solas vgm/i, /loading sequence/i]) {
+    await page.getByText(c).first().waitFor();
+  }
+}, page);
+
+await test('planner: FBA pallet preset locks overhang and shows the rule', async () => {
+  await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /fba pallet/i }).click();
+  await page.getByText(/zero overhang — allowance locked/i).waitFor();
+}, page);
+
 // ---------- regression: the manual-testing bug reports ----------
 const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
 const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 const { packContainer, packWithConstraints, computeStats } = await import('../src/lib/binPacking.ts');
 const { parseText, rowsToSpecs } = await import('../src/lib/importCartons.ts');
-const { axleLoads, mckeeSafeLoad, floorOverloads, palletOverhang, zoneViolations, heavyOverLight, cogHeight, loadingSequence } = await import('../src/lib/realism.ts');
+const { axleLoads, mckeeSafeLoad, floorOverloads, palletOverhang, zoneViolations, heavyOverLight, cogHeight, loadingSequence, loadVoids } = await import('../src/lib/realism.ts');
 const {
   autoArrangeFloor, autoArrangeFloorD, checkReachability, checkReachabilityD,
   forkliftPath, forkliftPathD, placeNearDockD, positionCapacity, zoneStats, gridFitCheck,
@@ -246,6 +246,19 @@ test('realism: loading sequence goes back-first, bottom-first', () => {
     { id: 'back-top', label: '', l: 50, w: 50, h: 50, px: 0, py: 50, pz: 0, color: 1 },
   ]);
   assert.deepEqual(seq.map((b) => b.id), ['back-bottom', 'back-top', 'front-top']);
+});
+
+test('realism: load voids — door slack and internal gap detected', () => {
+  const v = loadVoids([
+    { id: 'a', label: '', l: 100, w: 50, h: 50, px: 0, py: 0, pz: 0, color: 1 },
+    { id: 'b', label: '', l: 100, w: 50, h: 50, px: 160, py: 0, pz: 0, color: 1 }, // 60cm gap after a
+  ], { l: 589 });
+  assert.ok(Math.abs(v.biggestGap - 60) < 0.1, `gap=${v.biggestGap}`);
+  assert.ok(Math.abs(v.doorSlack - (589 - 260)) < 0.1, `slack=${v.doorSlack}`);
+  // tight stow: no slack
+  const tight = loadVoids([{ id: 'a', label: '', l: 589, w: 50, h: 50, px: 0, py: 0, pz: 0, color: 1 }], { l: 589 });
+  assert.equal(tight.doorSlack, 0);
+  assert.equal(tight.biggestGap, 0);
 });
 
 // ---------- turn-aware forklift model ----------

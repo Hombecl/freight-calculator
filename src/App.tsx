@@ -17,6 +17,7 @@ const ReviewPage = lazy(() => import('./pages/ReviewPage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
 const WarehousePage = lazy(() => import('./pages/WarehousePage'));
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
+const RealityChecksPage = lazy(() => import('./pages/RealityChecksPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="review/:id" element={<ReviewPage />} />
         <Route path="compare/:slug" element={<ComparePage />} />
         <Route path="api-docs" element={<ApiDocsPage />} />
+        <Route path="reality-checks" element={<RealityChecksPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />

@@ -508,10 +508,15 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-            <p className="mt-6 text-xs text-slate-500">
-              {T('Engine honesty: 80% average fill on the Bischoff–Ratcliff academic benchmark (300 instances) with full stability constraints — reproducible from the repo.',
-                 '引擎誠實數據:Bischoff–Ratcliff 學術基準(300 個 instance)平均 80% 裝載率,連全套穩定性約束 — 可由 repo 復現。')}
-            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Link to="/reality-checks" className="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                {T('See all 11 checks, with the industry facts behind them', '睇晒 11 項檢查同背後嘅行業事實')} <ArrowRight size={15} />
+              </Link>
+              <span className="text-xs text-slate-500">
+                {T('Engine: 80% avg fill on the Bischoff–Ratcliff benchmark (300 instances), full stability constraints.',
+                   '引擎:Bischoff–Ratcliff 基準(300 instances)平均 80% 裝載率,連全套穩定性約束。')}
+              </span>
+            </div>
           </div>
         </div>
       </section>

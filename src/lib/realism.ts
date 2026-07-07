@@ -214,3 +214,30 @@ export function loadingSequence(boxes: PlannerBox[]): PlannerBox[] {
   return [...boxes].sort((a, b) =>
     (a.px - b.px) || (a.py - b.py) || (a.pz - b.pz));
 }
+
+// -------------------------------------------------- 8. load voids / shift
+
+/**
+ * Slack in the stow: free run between the last cargo face and the door, plus
+ * the biggest internal gap along the container length. Slack is where load
+ * shift lives — braking and sea motion slam cargo across it. The industry
+ * answer is blocking/bracing or dunnage airbags sized to the gap.
+ */
+export function loadVoids(
+  boxes: PlannerBox[],
+  space: { l: number },
+): { doorSlack: number; biggestGap: number } {
+  if (!boxes.length) return { doorSlack: 0, biggestGap: 0 };
+  // merge occupied x-intervals (footprints projected onto the length axis)
+  const iv = boxes.map((b) => [b.px, b.px + b.l] as [number, number]).sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [s, e] of iv) {
+    const last = merged[merged.length - 1];
+    if (last && s <= last[1] + 0.5) last[1] = Math.max(last[1], e);
+    else merged.push([s, e]);
+  }
+  let biggestGap = merged[0][0]; // gap at the front wall, if any
+  for (let i = 1; i < merged.length; i++) biggestGap = Math.max(biggestGap, merged[i][0] - merged[i - 1][1]);
+  const doorSlack = Math.max(0, space.l - merged[merged.length - 1][1]);
+  return { doorSlack, biggestGap };
+}

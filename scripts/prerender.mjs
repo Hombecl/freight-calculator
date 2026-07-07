@@ -33,6 +33,7 @@ const BASE_ROUTES = [
   '/privacy',
   '/terms',
   '/guides',
+  '/reality-checks',
   '/guides/fba-size-tiers-2025',
   '/guides/cbm-calculator-shipping',
   '/guides/container-loading-optimization',
