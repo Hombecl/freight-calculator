@@ -470,3 +470,168 @@ export function explainUnreachable(
   }
   return { passableAt: null };
 }
+
+// ============================================================
+// Turn-aware forklift model: straight corridors need the truck's working
+// width, but CORNERS need a bigger clear square (the right-angle turn box —
+// turning radius + load length). Most tools ignore this; real forklifts
+// don't. State-space BFS over (cell, travel-axis).
+// ============================================================
+
+export interface TruckSpec {
+  aisle: number; // straight working width, cm
+  turn: number;  // clear square needed to make a 90° turn, cm
+}
+
+function buildMasks(floor: Floor, boxes: PlannerBox[], truck: TruckSpec, cell: number) {
+  const nx = Math.max(1, Math.ceil(floor.l / cell));
+  const nz = Math.max(1, Math.ceil(floor.w / cell));
+  const occ = new Uint8Array(nx * nz);
+  for (const b of boxes) {
+    if ((b as any).kind === 'zone') continue;
+    const x0 = Math.max(0, Math.floor(b.px / cell));
+    const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1);
+    const z0 = Math.max(0, Math.floor(b.pz / cell));
+    const z1 = Math.min(nz - 1, Math.ceil((b.pz + b.w) / cell) - 1);
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) occ[z * nx + x] = 1;
+  }
+  const P = new Int32Array((nx + 1) * (nz + 1));
+  for (let z = 0; z < nz; z++) for (let x = 0; x < nx; x++) {
+    P[(z + 1) * (nx + 1) + (x + 1)] =
+      occ[z * nx + x] + P[z * (nx + 1) + (x + 1)] + P[(z + 1) * (nx + 1) + x] - P[z * (nx + 1) + x];
+  }
+  const winFree = (x: number, z: number, r: number, clipAtWalls: boolean) => {
+    if (!clipAtWalls && (x - r < 0 || x + r >= nx || z - r < 0 || z + r >= nz)) return false;
+    const x0 = Math.max(0, x - r), x1 = Math.min(nx - 1, x + r);
+    const z0 = Math.max(0, z - r), z1 = Math.min(nz - 1, z + r);
+    return (P[(z1 + 1) * (nx + 1) + (x1 + 1)] - P[z0 * (nx + 1) + (x1 + 1)]
+      - P[(z1 + 1) * (nx + 1) + x0] + P[z0 * (nx + 1) + x0]) === 0;
+  };
+  const rS = Math.max(1, Math.floor((truck.aisle / cell - 1) / 2));
+  const rT = Math.max(rS, Math.floor((truck.turn / cell - 1) / 2));
+  return {
+    nx, nz,
+    // straight windows clip at edges (the dock edge must be enterable);
+    // TURN boxes must fit fully inside the floor — the boundary is a wall,
+    // and a forklift cannot swing its load through a wall
+    straight: (x: number, z: number) => winFree(x, z, rS, true),
+    turnOk: (x: number, z: number) => winFree(x, z, rT, false),
+    rS,
+  };
+}
+
+/**
+ * BFS over (cell, axis) — axis 0 = travelling along X, 1 = along Z.
+ * Straight moves need the width window at the next cell; switching axis needs
+ * the TURN window at the current cell. Returns visited states + parents.
+ */
+function turnBFS(
+  floor: Floor, boxes: PlannerBox[], truck: TruckSpec, edges: DockEdge[], cell: number,
+) {
+  const { nx, nz, straight, turnOk } = buildMasks(floor, boxes, truck, cell);
+  const N = nx * nz;
+  const visited = new Uint8Array(N * 2);
+  const parent = new Int32Array(N * 2).fill(-2);
+  const queue: number[] = [];
+  const seed = (x: number, z: number, axis: number) => {
+    const s = (z * nx + x) * 2 + axis;
+    if (parent[s] === -2 && straight(x, z)) { parent[s] = -1; visited[s] = 1; queue.push(s); }
+  };
+  for (const e of edges) {
+    if (e === 'E') for (let z = 0; z < nz; z++) seed(nx - 1, z, 0);
+    if (e === 'W') for (let z = 0; z < nz; z++) seed(0, z, 0);
+    if (e === 'S') for (let x = 0; x < nx; x++) seed(x, nz - 1, 1);
+    if (e === 'N') for (let x = 0; x < nx; x++) seed(x, 0, 1);
+  }
+  let head = 0;
+  while (head < queue.length) {
+    const s = queue[head++];
+    const axis = s & 1;
+    const c = s >> 1;
+    const x = c % nx, z = (c / nx) | 0;
+    // straight steps along the current axis
+    const steps = axis === 0 ? [[x - 1, z], [x + 1, z]] : [[x, z - 1], [x, z + 1]];
+    for (const [xx, zz] of steps) {
+      if (xx < 0 || xx >= nx || zz < 0 || zz >= nz) continue;
+      const ns = (zz * nx + xx) * 2 + axis;
+      if (parent[ns] !== -2 || !straight(xx, zz)) continue;
+      parent[ns] = s; visited[ns] = 1; queue.push(ns);
+    }
+    // 90° turn in place (needs the bigger clear square here)
+    const ts = c * 2 + (1 - axis);
+    if (parent[ts] === -2 && turnOk(x, z)) { parent[ts] = s; visited[ts] = 1; queue.push(ts); }
+  }
+  return { nx, nz, visited, parent };
+}
+
+/** Turn-aware reachability. Obstacles exempt; zones ignored (walkable). */
+export function checkReachabilityTurn(
+  floor: Floor, boxes: PlannerBox[], truck: TruckSpec, edge: DockEdge | DockEdge[] = 'E', cell = 10,
+): ReachResult {
+  const edges = Array.isArray(edge) ? edge : [edge];
+  const { nx, nz, visited } = turnBFS(floor, boxes, truck, edges, cell);
+  const r = Math.max(1, Math.floor((truck.aisle / cell - 1) / 2));
+  const margin = r + 1;
+  const unreachable: string[] = [];
+  for (const b of boxes) {
+    const kind = (b as any).kind ?? 'cargo';
+    if (kind === 'zone' || kind === 'obstacle') continue;
+    const x0 = Math.max(0, Math.floor(b.px / cell) - margin);
+    const x1 = Math.min(nx - 1, Math.ceil((b.px + b.l) / cell) - 1 + margin);
+    const z0 = Math.max(0, Math.floor(b.pz / cell) - margin);
+    const z1 = Math.min(nz - 1, Math.ceil((b.pz + b.w) / cell) - 1 + margin);
+    let ok = false;
+    for (let z = z0; z <= z1 && !ok; z++) for (let x = x0; x <= x1 && !ok; x++) {
+      if (visited[(z * nx + x) * 2] || visited[(z * nx + x) * 2 + 1]) ok = true;
+    }
+    if (!ok) unreachable.push(b.id);
+  }
+  const covered = boxes.reduce((s, b) => ((b as any).kind === 'zone' ? s : s + b.l * b.w), 0);
+  const obstacles = boxes.filter((b) => ['zone', 'obstacle'].includes((b as any).kind)).length;
+  return {
+    unreachable,
+    reachableCount: boxes.length - obstacles - unreachable.length,
+    floorUtil: (covered / (floor.l * floor.w)) * 100,
+  };
+}
+
+/** Turn-aware route (dock → pallet); also returns the number of 90° turns. */
+export function forkliftPathTurn(
+  floor: Floor, boxes: PlannerBox[], truck: TruckSpec, targetId: string,
+  edge: DockEdge | DockEdge[] = 'E', cell = 10,
+): { points: { x: number; z: number }[]; turns: number } | null {
+  const target = boxes.find((b) => b.id === targetId);
+  if (!target) return null;
+  const edges = Array.isArray(edge) ? edge : [edge];
+  const { nx, nz, parent } = turnBFS(floor, boxes, truck, edges, cell);
+  const r = Math.max(1, Math.floor((truck.aisle / cell - 1) / 2));
+  const margin = r + 1;
+  const gx0 = Math.max(0, Math.floor(target.px / cell) - margin);
+  const gx1 = Math.min(nx - 1, Math.ceil((target.px + target.l) / cell) - 1 + margin);
+  const gz0 = Math.max(0, Math.floor(target.pz / cell) - margin);
+  const gz1 = Math.min(nz - 1, Math.ceil((target.pz + target.w) / cell) - 1 + margin);
+  let goal = -1;
+  outer: for (let z = gz0; z <= gz1; z++) for (let x = gx0; x <= gx1; x++) {
+    for (const axis of [0, 1]) {
+      const s = (z * nx + x) * 2 + axis;
+      if (parent[s] !== -2) { goal = s; break outer; }
+    }
+  }
+  if (goal < 0) return null;
+  const cells: { x: number; z: number; axis: number }[] = [];
+  for (let s = goal; s !== -1; s = parent[s]) {
+    const c = s >> 1;
+    cells.push({ x: (c % nx) * cell + cell / 2, z: ((c / nx) | 0) * cell + cell / 2, axis: s & 1 });
+  }
+  cells.reverse();
+  let turns = 0;
+  for (let i = 1; i < cells.length; i++) if (cells[i].axis !== cells[i - 1].axis) turns++;
+  const pts: { x: number; z: number }[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (i === 0 || i === cells.length - 1) { pts.push({ x: cells[i].x, z: cells[i].z }); continue; }
+    const a = cells[i - 1], b = cells[i], c = cells[i + 1];
+    const collinear = (b.x - a.x) * (c.z - b.z) === (b.z - a.z) * (c.x - b.x);
+    if (!collinear) pts.push({ x: b.x, z: b.z });
+  }
+  return { points: pts, turns };
+}

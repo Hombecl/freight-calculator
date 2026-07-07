@@ -1,7 +1,7 @@
 # DimPack3D — Complete System Map
 
 _The full production inventory: every module, every feature, its status._
-_Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last updated 2026-07-05._
+_Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last updated 2026-07-07._
 
 ## 1. Core engines (pure TypeScript, testable, API-ready)
 
@@ -21,8 +21,22 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Dock edge selection (multi-dock, any of 4 edges) | ✅ | " |
 | Rack levels → pallet-position capacity | ✅ | " |
 | Pallet double-stacking on floor | ✅ | |
+| **Turn-aware forklift model** (straight width vs 90° turn box, per-truck spec) | ✅ | `checkReachabilityTurn` / `forkliftPathTurn` |
+| **Door aperture check** (ISO door < interior; flags cartons that can't enter) | ✅ | `PlannerPage fitsDoor` |
+| Benchmark harness — Bischoff–Ratcliff instances (`scripts/benchmark.mjs`): **80% avg fill, 300 instances, full stability** | ✅ | run to reproduce |
 | Pick-path optimization (order → route) | 🗺 4 | |
 | Multi-container/truck fleet split optimization | 🗺 5 | |
+
+### Physical-realism ladder (the moat: checks real operators feel instantly)
+| Check | Status |
+|---|---|
+| Door aperture (container/trailer) | ✅ |
+| Forklift 90° turn box (vs straight width) | ✅ |
+| Truck axle weight distribution (front/rear limits from CoG) | 🗺 1 |
+| Carton crush strength (max stack by compression, not just count) | 🗺 2 |
+| Floor load limit kg/m² (slab rating vs stacked weight) | 🗺 2 |
+| Pallet overhang (cartons past pallet edge → transport damage flag) | 🗺 3 |
+| Temperature/hazmat segregation zones | 🗺 4 |
 
 ## 2. Interactive 3D editor (`components/InteractiveLoadPlanner.tsx`)
 
@@ -94,7 +108,8 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 | Item | Status |
 |---|---|
-| Engine unit tests — `npm test` (16 tests, tests/unit.mjs) | ✅ |
+| Engine unit tests — `npm test` (19 tests, tests/unit.mjs) | ✅ |
+| Academic benchmark (`npx tsx scripts/benchmark.mjs`) — 80.2% avg on BR 300 instances | ✅ |
 | Playwright E2E — `npm run e2e <url>` (22 local / 25 live) | ✅ |
 | CI (GitHub Actions: unit + build + E2E on push) | ✅ |
 | Uptime/status page | 🗺 2 |

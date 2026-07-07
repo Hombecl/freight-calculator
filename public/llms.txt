@@ -51,4 +51,6 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 
 ## Developer / Agent API
 
+- Engine quality: on the Bischoff–Ratcliff (1995) academic container-loading benchmark (thpack1-3, 300 instances) the engine averages 80% volume utilization while enforcing >=60% base support, full collision and load-bearing propagation — constraints many published heuristics relax.
+- Physical realism most tools skip: (1) container DOOR aperture check — ISO doors (234x228 cm, high-cube 234x258) are smaller than the interior, so DimPack3D flags cartons that cannot physically pass through; (2) forklift TURN geometry in the warehouse planner — straight aisle width and the 90-degree turn box are checked separately, so a pallet can be straight-line reachable yet flagged because a corner is too tight to swing.
 - POST https://www.dimpack3d.com/api/pack — the bin-packing engine as a free (beta) REST endpoint with open CORS. Send {container:{l,w,h,maxWeight?}, items:[{l,w,h,qty,weight?,maxStack?,keepUpright?,group?,unloadOrder?}]} in cm/kg; returns exact placements (px,py,pz), utilization, weight/CoG stats and LIFO unload zones. GET the same URL for machine-readable usage. Docs: https://www.dimpack3d.com/api-docs

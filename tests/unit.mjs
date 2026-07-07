@@ -11,6 +11,7 @@ const { parseText, rowsToSpecs } = await import('../src/lib/importCartons.ts');
 const {
   autoArrangeFloor, autoArrangeFloorD, checkReachability, checkReachabilityD,
   forkliftPath, forkliftPathD, placeNearDockD, positionCapacity, zoneStats, gridFitCheck,
+  checkReachabilityTurn, forkliftPathTurn,
 } = await import('../src/lib/warehouse.ts').then((m) => ({ ...m, gridFitCheck: null }));
 const { gridFit } = await import('../src/lib/answers.ts');
 
@@ -165,6 +166,33 @@ test('warehouse: placeNearDockD lands in bounds without collision', () => {
     const overlap = spot.px < b.px + b.l && spot.px + 120 > b.px && spot.pz < b.pz + b.w && spot.pz + 80 > b.pz;
     assert.ok(!overlap, 'collides');
   }
+});
+
+// ---------- turn-aware forklift model ----------
+// L-corridor: 300cm legs, sharp elbow. A truck that FITS the corridor width
+// can still be unable to TURN the corner — the check other tools don't have.
+const ELBOW_FLOOR = { l: 2000, w: 1200 };
+const ELBOW = [
+  { id: 'wA', label: 'W', l: 1700, w: 450, h: 300, px: 300, py: 0, pz: 0, color: 3, kind: 'obstacle' },
+  { id: 'wB', label: 'W', l: 1700, w: 450, h: 300, px: 300, py: 0, pz: 750, color: 3, kind: 'obstacle' },
+  { id: 'c', label: 'C', l: 100, w: 100, h: 150, px: 100, py: 0, pz: 60, color: 1, kind: 'cargo' },
+];
+
+test('warehouse turn: straight-width model passes the elbow', () => {
+  const r = checkReachability(ELBOW_FLOOR, ELBOW, 300, 10, ['E']);
+  assert.ok(!r.unreachable.includes('c'));
+});
+
+test('warehouse turn: 3.5m turn box is blocked by a 3.0m corner', () => {
+  const r = checkReachabilityTurn(ELBOW_FLOOR, ELBOW, { aisle: 300, turn: 350 }, 'E');
+  assert.ok(r.unreachable.includes('c'), 'corner should be too tight');
+});
+
+test('warehouse turn: smaller truck turns the corner, route has a turn', () => {
+  const r = checkReachabilityTurn(ELBOW_FLOOR, ELBOW, { aisle: 280, turn: 290 }, 'E');
+  assert.ok(!r.unreachable.includes('c'));
+  const p = forkliftPathTurn(ELBOW_FLOOR, ELBOW, { aisle: 280, turn: 290 }, 'c', 'E');
+  assert.ok(p && p.turns >= 1, 'route should include at least one 90-degree turn');
 });
 
 // ---------- answers grid math ----------

@@ -4,8 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { AlertTriangle, CheckCircle2, Route, Share2, FileText, Save, Check } from 'lucide-react';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import {
-  autoArrangeFloorD, checkReachabilityD, forkliftPathD, placeNearDockD,
-  positionCapacity, zoneStats, explainUnreachable, type FloorItemSpec, type DockEdge,
+  autoArrangeFloorD, checkReachabilityD, checkReachabilityTurn, forkliftPathTurn,
+  placeNearDockD, positionCapacity, zoneStats, explainUnreachable,
+  type FloorItemSpec, type DockEdge, type TruckSpec,
 } from '../lib/warehouse';
 import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
@@ -25,10 +26,12 @@ import { useAuth } from '../hooks/useAuth';
 const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xa78bfa, 0xf472b6];
 const KIND_COLORS: Record<string, number> = { rack: 0x8b5cf6, obstacle: 0x64748b, zone: 0x0ea5e9 };
 
-const AISLES = [
-  { label: 'Counterbalance forklift · 3.5 m', value: 350 },
-  { label: 'Compact forklift · 3.0 m', value: 300 },
-  { label: 'Reach truck · 2.7 m', value: 270 },
+// aisle = straight working width; turn = clear square needed for a 90° turn
+// (turning radius + load). Typical figures — verify against your truck spec.
+const TRUCKS: { label: string; value: number; spec: TruckSpec }[] = [
+  { label: 'Counterbalance forklift · 3.5 m aisle · 4.0 m turns', value: 350, spec: { aisle: 350, turn: 400 } },
+  { label: 'Compact forklift · 3.0 m aisle · 3.5 m turns', value: 300, spec: { aisle: 300, turn: 350 } },
+  { label: 'Reach truck · 2.7 m aisle · 3.2 m turns', value: 270, spec: { aisle: 270, turn: 320 } },
 ];
 
 const DOCKS: { key: DockEdge; label: string }[] = [
@@ -76,6 +79,10 @@ export default function WarehousePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const floor = useMemo(() => ({ l: floorL, w: floorW }), [floorL, floorW]);
+  const truck = useMemo<TruckSpec>(
+    () => TRUCKS.find((t) => t.value === aisle)?.spec ?? { aisle, turn: aisle + 50 },
+    [aisle],
+  );
   const vessel = useMemo(() => ({ l: floorL, w: floorW, h: 350 }), [floorL, floorW]);
   const initial = useMemo(
     () => autoArrangeFloorD({ l: 2000, w: 1200 }, DEFAULT_ITEMS, 300, 'E'),
@@ -83,7 +90,7 @@ export default function WarehousePage() {
   );
   const base = baseline ?? initial;
   const boxes = liveBoxes ?? base;
-  const reach = useMemo(() => checkReachabilityD(floor, boxes, aisle, dock), [floor, boxes, aisle, dock]);
+  const reach = useMemo(() => checkReachabilityTurn(floor, boxes, truck, dock), [floor, boxes, truck, dock]);
   const capacity = useMemo(() => positionCapacity(boxes), [boxes]);
   const zStats = useMemo(() => zoneStats(boxes), [boxes]);
 
@@ -130,7 +137,7 @@ export default function WarehousePage() {
       flash(`Laid out ${rows.length} pallets from the palette with ${(aisle / 100).toFixed(1)} m aisles.`);
     }
     const next = [...structures, ...rows];
-    const after = checkReachabilityD(floor, next, aisle, dockEdges);
+    const after = checkReachabilityTurn(floor, next, truck, dockEdges);
     if (after.unreachable.length > 0) {
       flash(`⚠ After arranging, ${after.unreachable.length} item(s) are NOT forklift-reachable (shown red) — drag rows aside, widen the aisle, or add a dock.`);
     }
@@ -149,10 +156,11 @@ export default function WarehousePage() {
   };
 
   // forklift route + clearance for the selected item
-  const path = useMemo(
-    () => (selectedId ? forkliftPathD(floor, boxes, aisle, selectedId, dock) : null),
-    [floor, boxes, aisle, selectedId, dock],
+  const route = useMemo(
+    () => (selectedId ? forkliftPathTurn(floor, boxes, truck, selectedId, dock) : null),
+    [floor, boxes, truck, selectedId, dock],
   );
+  const path = route?.points ?? null;
   const pathLen = useMemo(() => {
     if (!path || path.length < 2) return 0;
     let len = 0;
@@ -163,8 +171,13 @@ export default function WarehousePage() {
   const diagnosis = useMemo(() => {
     if (!selectedId || path || !selectedBox) return null;
     if (!reach.unreachable.includes(selectedId)) return null;
-    return explainUnreachable(floor, boxes, selectedId, dock);
-  }, [selectedId, path, selectedBox, reach, floor, boxes, dock]);
+    // reachable ignoring turn geometry? then the problem is a CORNER, not a gap
+    const straightOnly = checkReachabilityD(floor, boxes, truck.aisle, dock);
+    if (!straightOnly.unreachable.includes(selectedId)) {
+      return { kind: 'corner' as const, passableAt: null };
+    }
+    return { kind: 'gap' as const, ...explainUnreachable(floor, boxes, selectedId, dock) };
+  }, [selectedId, path, selectedBox, reach, floor, boxes, dock, truck]);
   useEffect(() => { if (selectedId) track('warehouse_route'); }, [selectedId]);
   // E2E hook: real box state, verifiable from tests
   useEffect(() => { (window as unknown as { __dpBoxes?: PlannerBox[] }).__dpBoxes = boxes; }, [boxes]);
@@ -392,7 +405,7 @@ export default function WarehousePage() {
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Forklift aisle width</label>
             <select value={aisle} onChange={(e) => setAisle(+e.target.value)} className="w-full text-sm px-2 py-1.5 rounded border border-slate-200">
-              {AISLES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+              {TRUCKS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
             </select>
           </div>
 
@@ -599,11 +612,13 @@ export default function WarehousePage() {
               <Route size={16} />
               {path
                 ? pathLen < 0.5
-                  ? <>Forklift route to <b>{selectedBox.label}</b>: right at the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
-                  : <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m from the dock — the band shows the {(aisle / 100).toFixed(1)} m clearance.</>
-                : diagnosis?.passableAt
-                  ? <>🚫 <b>{selectedBox.label}</b> is cut off: the gaps around it only allow ≈{(diagnosis.passableAt / 100).toFixed(1)} m, but your forklift needs {(aisle / 100).toFixed(1)} m. Move a neighbour to widen the gap{diagnosis.passableAt >= 270 ? ', or switch to a reach truck (2.7 m)' : ''}.</>
-                  : <>🚫 <b>{selectedBox.label}</b> is fully enclosed — no route exists at ANY width. Clear a path toward a dock, or add a dock on another edge.</>}
+                  ? <>Forklift route to <b>{selectedBox.label}</b>: right at the dock — band shows the {(aisle / 100).toFixed(1)} m working width.</>
+                  : <>Forklift route to <b>{selectedBox.label}</b>: {pathLen.toFixed(1)} m, {route?.turns ?? 0} turn{(route?.turns ?? 0) === 1 ? '' : 's'} — each turn checked against the {(truck.turn / 100).toFixed(1)} m turn box.</>
+                : diagnosis?.kind === 'corner'
+                  ? <>🚫 <b>{selectedBox.label}</b> is straight-line reachable, but a CORNER on the way is too tight to turn — this truck needs a {(truck.turn / 100).toFixed(1)} m clear square to swing 90°. Widen the junction or pick a smaller truck.</>
+                  : diagnosis?.passableAt
+                    ? <>🚫 <b>{selectedBox.label}</b> is cut off: the gaps around it only allow ≈{(diagnosis.passableAt / 100).toFixed(1)} m, but your forklift needs {(aisle / 100).toFixed(1)} m. Move a neighbour to widen the gap{diagnosis.passableAt >= 270 ? ', or switch to a reach truck (2.7 m)' : ''}.</>
+                    : <>🚫 <b>{selectedBox.label}</b> is fully enclosed — no route exists at ANY width. Clear a path toward a dock, or add a dock on another edge.</>}
             </div>
           )}
           <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">

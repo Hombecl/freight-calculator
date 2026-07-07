@@ -23,15 +23,36 @@ import { track } from '../lib/track';
  */
 
 // Vessels: sea containers, road trailers and pallets — one engine serves all.
+// door = the aperture cargo must PASS THROUGH — smaller than the interior
+// (ISO door ≈ 234×228, high-cube 234×258). Tools that skip this let you plan
+// loads that physically cannot enter the box.
 const CONTAINERS = {
-  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers' },
-  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers' },
-  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers' },
-  '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks' },
-  'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks' },
-  'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets' },
-  'gmapal': { label: 'GMA 48×40"', l: 122, w: 102, h: 152, maxWeight: 1134, group: 'Pallets' },
+  '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers', door: { w: 234, h: 228 } },
+  '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers', door: { w: 234, h: 228 } },
+  '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers', door: { w: 234, h: 258 } },
+  '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks', door: { w: 254, h: 269 } },
+  'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks', door: { w: 245, h: 270 } },
+  'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets', door: null },
+  'gmapal': { label: 'GMA 48×40"', l: 122, w: 102, h: 152, maxWeight: 1134, group: 'Pallets', door: null },
 } as const;
+
+/**
+ * Can this carton pass through the door in ANY allowed orientation? Moving
+ * along the container axis, its cross-section (two of its dims) must fit the
+ * door aperture. keepUpright pins the h-dimension vertical.
+ */
+function fitsDoor(s: Spec, door: { w: number; h: number } | null): boolean {
+  if (!door) return true; // pallets are open — no aperture
+  const dims = [s.l, s.w, s.h];
+  if (s.keepUpright) return Math.min(s.l, s.w) <= door.w && s.h <= door.h;
+  for (let vert = 0; vert < 3; vert++) {
+    for (let across = 0; across < 3; across++) {
+      if (across === vert) continue;
+      if (dims[across] <= door.w && dims[vert] <= door.h) return true;
+    }
+  }
+  return false;
+}
 type ContainerKey = keyof typeof CONTAINERS;
 
 const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xf472b6, 0xa78bfa, 0xf87171];
@@ -97,6 +118,11 @@ export default function PlannerPage() {
 
   const totalQty = specs.reduce((s, x) => s + x.qty, 0);
   const balanceWarn = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15;
+  // real-world check other tools skip: the door aperture is SMALLER than the interior
+  const doorBlocked = useMemo(
+    () => specs.filter((s) => s.qty > 0 && !fitsDoor(s, CONTAINERS[containerKey].door)),
+    [specs, containerKey],
+  );
 
   const updateSpec = (id: string, patch: Partial<Spec>) =>
     setSpecs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -445,6 +471,11 @@ export default function PlannerPage() {
           )}
 
           <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
+            {doorBlocked.length > 0 && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
+                🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.
+              </div>
+            )}
             <div className="flex justify-between"><span>Packed</span><span className="font-semibold">{result.boxes.length} / {totalQty}</span></div>
             <div className="flex justify-between"><span>Volume utilization</span><span className="font-semibold">{stats.volumeUtil.toFixed(1)}%</span></div>
             <div className="flex justify-between">

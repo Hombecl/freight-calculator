@@ -162,6 +162,27 @@ await test('plans: sign-in gate renders', async () => {
   await page.getByText(/sign in to keep your plans|accounts are not configured/i).waitFor();
 }, page);
 
+// ---------- physical realism (turn model + door aperture) ----------
+await test('planner: door-aperture warning flags a too-tall carton', async () => {
+  await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/Volume utilization/i).waitFor();
+  // make the first carton 235cm in every axis: fits the 20GP interior (239h)
+  // but NOT the 234x228 door in any orientation
+  const dims = page.locator('input[type="number"]');
+  for (const i of [0, 1, 2]) await dims.nth(i).fill('235');
+  await page.getByText(/won't fit through the door/i).waitFor();
+  // restore ALL three dims — 60x235x235 still cannot pass (cross-section 235x235)
+  for (const [i, v] of [[0, '60'], [1, '50'], [2, '45']]) await dims.nth(i).fill(v);
+  await page.getByText(/won't fit through the door/i).waitFor({ state: 'hidden' });
+}, page);
+
+await test('warehouse: route readout reports 90° turns vs the turn box', async () => {
+  await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
+  await page.getByRole('button', { name: /place one near the dock/i }).first().click();
+  await page.getByText(/turn box|right at the dock/i).waitFor();
+}, page);
+
 // ---------- regression: the manual-testing bug reports ----------
 const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
 const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);

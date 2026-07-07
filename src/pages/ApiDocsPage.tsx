@@ -61,8 +61,8 @@ export default function ApiDocsPage() {
       </h1>
       <p className="text-slate-600 mb-8">
         {T(
-          'The same Extreme-Point engine that powers the planner, as one HTTP call. Weight limits, stacking rules, fragile cartons, keep-together groups and multi-stop unload zones — all enforced server-side. CORS is open: call it from browsers, scripts, or AI agents.',
-          '同規劃器一樣嘅 Extreme-Point 引擎,一個 HTTP call 用到。重量限制、堆疊規則、易碎、同組聚集、多站卸貨分區 — 全部服務端執行。CORS 開放:瀏覽器、腳本、AI agent 都可以調用。',
+          'The same Extreme-Point engine that powers the planner, as one HTTP call. Weight limits, stacking rules, fragile cartons, keep-together groups and multi-stop unload zones — all enforced server-side. On the Bischoff–Ratcliff academic benchmark (300 container-loading instances) the engine averages 80% volume utilization with full stability constraints — run scripts/benchmark.mjs to reproduce. CORS is open: call it from browsers, scripts, or AI agents.',
+          '同規劃器一樣嘅 Extreme-Point 引擎,一個 HTTP call 用到。重量限制、堆疊規則、易碎、同組聚集、多站卸貨分區 — 全部服務端執行。喺 Bischoff–Ratcliff 學術基準(300 個貨櫃裝載 instance)引擎平均 80% 容積利用率,連全套穩定性約束。CORS 開放:瀏覽器、腳本、AI agent 都可以調用。',
         )}
       </p>
 
