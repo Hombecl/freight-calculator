@@ -78,6 +78,13 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 ### /packing · /container · /fba
 ✅ shipped (product→carton w/ freight cost; container quick-calc; FBA 2025 tiers+fees). 🗺: FBA fee auto-update pipeline (3) · dim-weight per-carrier presets (3)
 
+### Lead-gen tools (warehouse audience; URL-state = bookmarkable)
+| Tool | Status |
+|---|---|
+| /warehouse-space-calculator — pallets → m²/sq ft by storage/levels/aisle system | ✅ |
+| /forklift-aisle-width-calculator — Ast = R + head + load + clearance, truck presets | ✅ |
+| Product clips (Playwright-recorded, real engine) on homepage | ✅ `scripts/clips.mjs` |
+
 ## 4. Growth surface
 
 | Feature | Status |

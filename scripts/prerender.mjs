@@ -34,6 +34,8 @@ const BASE_ROUTES = [
   '/terms',
   '/guides',
   '/reality-checks',
+  '/warehouse-space-calculator',
+  '/forklift-aisle-width-calculator',
   '/guides/fba-size-tiers-2025',
   '/guides/cbm-calculator-shipping',
   '/guides/container-loading-optimization',
@@ -136,7 +138,8 @@ try {
   // hang-proof renderer: own profile dir (no lock contention with the user's
   // running Chrome), process-group SIGKILL on a hard 45s timer (execFileSync's
   // timeout can block forever on a pipe held open by an orphaned Chrome helper)
-  const CONCURRENCY = 4;
+  // high machine load starves parallel Chromes into timeouts — tunable
+  const CONCURRENCY = Math.max(1, Number(process.env.PRERENDER_WORKERS) || 4);
   const profiles = Array.from({ length: CONCURRENCY }, () => mkdtempSync(join(tmpdir(), 'prerender-profile-')));
   const renderRoute = (url, profile) => new Promise((resolve) => {
     const child = spawn(chrome, [

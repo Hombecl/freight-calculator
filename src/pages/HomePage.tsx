@@ -380,6 +380,47 @@ export default function HomePage() {
       </section>
 
       {/* ============ EXAMPLE PLANS ============ */}
+      {/* ============ SEE IT MOVE — real product clips, real engine ============ */}
+      <section className="bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('Watch the checks fire', '睇住啲檢查即時發火')}
+          </h2>
+          <p className="text-slate-600 mb-8 max-w-3xl">
+            {T('Real product, real engine — recorded straight from the browser, no staging. Every drag re-runs the physics.',
+               '真產品、真引擎 — 直接由瀏覽器錄製,冇擺拍。每一下拖動都重新計一次物理。')}
+          </p>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div>
+              <video
+                src="/media/warehouse-checks.webm"
+                autoPlay muted loop playsInline
+                className="rounded-2xl border border-slate-200 shadow-xl w-full"
+                aria-label={T('Warehouse floor planner: forklift route simulation and live reachability flags', '倉庫規劃器:鏟車路線模擬與實時可達性標記')}
+              />
+              <p className="text-sm text-slate-600 mt-3">
+                <b>{T('Warehouse:', '倉庫:')}</b>{' '}
+                {T('click a pallet — the forklift route and clearance band draw themselves; drag it across an aisle and cut-off stock flags red instantly.',
+                   '點一下卡板 — 鏟車路線同淨空帶自動畫出;拖過通道,被截斷嘅貨即刻標紅。')}
+              </p>
+            </div>
+            <div>
+              <video
+                src="/media/planner-drag.webm"
+                autoPlay muted loop playsInline
+                className="rounded-2xl border border-slate-200 shadow-xl w-full"
+                aria-label={T('Container planner: dragging cartons with live re-checking', '貨櫃規劃器:拖動紙箱,實時重新檢查')}
+              />
+              <p className="text-sm text-slate-600 mt-3">
+                <b>{T('Container:', '貨櫃:')}</b>{' '}
+                {T('a packed 20\' GP — drag any carton and collisions, stacking rules and stats re-check on every move.',
+                   '裝滿嘅 20\' GP — 拖任何一箱,碰撞、堆疊規則同統計每一步重新檢查。')}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="max-w-6xl mx-auto px-4 py-14 md:py-20">
         <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
           {T('Or start from a real scenario', '或者由真實場景開始')}

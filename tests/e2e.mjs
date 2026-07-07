@@ -244,6 +244,33 @@ await test('planner: FBA pallet preset locks overhang and shows the rule', async
   await page.getByText(/zero overhang — allowance locked/i).waitFor();
 }, page);
 
+await test('home: product clips render and load', async () => {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/watch the checks fire/i).waitFor();
+  const vids = page.locator('video');
+  if (await vids.count() < 2) throw new Error('expected 2 product clips');
+  // both video files must actually be served (not 404-masked)
+  for (const src of ['/media/warehouse-checks.webm', '/media/planner-drag.webm']) {
+    const r = await page.request.get(`${BASE}${src}`);
+    const ct = r.headers()['content-type'] ?? '';
+    if (!r.ok() || ct.includes('text/html')) throw new Error(`${src}: ${r.status()} ${ct}`);
+  }
+}, page);
+
+await test('tools: warehouse space calculator computes and keeps URL state', async () => {
+  await page.goto(`${BASE}/warehouse-space-calculator?p=1000&s=selective&a=vna&l=5`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/estimated total footprint/i).waitFor();
+  await page.getByText(/m²/).first().waitFor();
+  const url = page.url();
+  if (!url.includes('p=1000') || !url.includes('a=vna')) throw new Error(`URL state lost: ${url}`);
+}, page);
+
+await test('tools: aisle width calculator shows the Ast formula result', async () => {
+  await page.goto(`${BASE}/forklift-aisle-width-calculator?t=reach&ll=122&c=30`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/right-angle stacking aisle/i).first().waitFor();
+  await page.getByText(/3\.47 m/).waitFor(); // 170+25+122+30 = 347
+}, page);
+
 // ---------- regression: the manual-testing bug reports ----------
 const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
 const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);

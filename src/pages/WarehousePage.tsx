@@ -392,6 +392,10 @@ export default function WarehousePage() {
         90° turn box, and slab pressure + zone rules flag violations instantly.
       </p>
 
+      <p className="text-xs text-slate-400 -mt-2 mb-4">
+        Quick tools: <a href="/warehouse-space-calculator" className="text-blue-600 font-semibold hover:underline">Warehouse space calculator</a> · <a href="/forklift-aisle-width-calculator" className="text-blue-600 font-semibold hover:underline">Forklift aisle width calculator</a>
+      </p>
+
       <div className="grid lg:grid-cols-[320px_1fr] gap-6">
         {/* left: inputs */}
         <div className="space-y-4">
