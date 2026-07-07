@@ -8,6 +8,7 @@ import {
   placeNearDockD, positionCapacity, zoneStats, explainUnreachable,
   type FloorItemSpec, type DockEdge, type TruckSpec,
 } from '../lib/warehouse';
+import { floorOverloads, zoneViolations } from '../lib/realism';
 import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
 import { savePlan, getPlan } from '../lib/plans';
@@ -24,7 +25,7 @@ import { useAuth } from '../hooks/useAuth';
  */
 
 const PALETTE = [0xfbbf24, 0x60a5fa, 0x34d399, 0xa78bfa, 0xf472b6];
-const KIND_COLORS: Record<string, number> = { rack: 0x8b5cf6, obstacle: 0x64748b, zone: 0x0ea5e9 };
+const KIND_COLORS: Record<string, number> = { rack: 0x8b5cf6, obstacle: 0x64748b, zone: 0x0ea5e9, chilled: 0x38bdf8, frozen: 0x818cf8, hazmat: 0xf59e0b };
 
 // aisle = straight working width; turn = clear square needed for a 90° turn
 // (turning radius + load). Typical figures — verify against your truck spec.
@@ -42,18 +43,22 @@ const DOCKS: { key: DockEdge; label: string }[] = [
 ];
 
 const DEFAULT_ITEMS: FloorItemSpec[] = [
-  { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 40, color: PALETTE[0], kind: 'cargo' },
-  { id: 'gma', label: 'GMA pallet', l: 122, w: 102, h: 150, qty: 20, color: PALETTE[1], kind: 'cargo' },
+  { id: 'eur', label: 'EUR pallet', l: 120, w: 80, h: 150, qty: 40, color: PALETTE[0], kind: 'cargo', weight: 600 },
+  { id: 'gma', label: 'GMA pallet', l: 122, w: 102, h: 150, qty: 20, color: PALETTE[1], kind: 'cargo', weight: 700 },
   { id: 'rack', label: 'Rack bay', l: 270, w: 110, h: 300, qty: 1, color: KIND_COLORS.rack, kind: 'rack', levels: 4 },
 ];
 
 const QUICK_ADD: { label: string; spec: Omit<FloorItemSpec, 'id'> }[] = [
-  { label: '+ Pallet', spec: { label: 'Pallet', l: 120, w: 80, h: 150, qty: 10, color: PALETTE[0], kind: 'cargo' } },
+  { label: '+ Pallet', spec: { label: 'Pallet', l: 120, w: 80, h: 150, qty: 10, color: PALETTE[0], kind: 'cargo', weight: 600 } },
+  { label: '+ Chilled pallet', spec: { label: 'Chilled pallet', l: 120, w: 80, h: 150, qty: 1, color: KIND_COLORS.chilled, kind: 'cargo', weight: 600, zoneReq: 'chilled' } },
+  { label: '+ Hazmat pallet', spec: { label: 'Hazmat pallet', l: 120, w: 80, h: 150, qty: 1, color: KIND_COLORS.hazmat, kind: 'cargo', weight: 600, zoneReq: 'hazmat' } },
   { label: '+ Rack', spec: { label: 'Rack bay', l: 270, w: 110, h: 300, qty: 1, color: KIND_COLORS.rack, kind: 'rack', levels: 4 } },
   { label: '+ Column', spec: { label: 'Column', l: 40, w: 40, h: 350, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
   { label: '+ Wall', spec: { label: 'Wall section', l: 400, w: 20, h: 300, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
   { label: '+ Office', spec: { label: 'Office block', l: 500, w: 400, h: 280, qty: 1, color: KIND_COLORS.obstacle, kind: 'obstacle' } },
   { label: '+ Zone', spec: { label: 'Zone A', l: 600, w: 400, h: 3, qty: 1, color: KIND_COLORS.zone, kind: 'zone' } },
+  { label: '+ Chilled zone', spec: { label: 'Chilled zone', l: 600, w: 400, h: 3, qty: 1, color: KIND_COLORS.chilled, kind: 'zone', zoneType: 'chilled' } },
+  { label: '+ Hazmat zone', spec: { label: 'Hazmat zone', l: 600, w: 400, h: 3, qty: 1, color: KIND_COLORS.hazmat, kind: 'zone', zoneType: 'hazmat' } },
 ];
 
 const KIND_CHIP: Record<string, { label: string; cls: string }> = {
@@ -93,6 +98,14 @@ export default function WarehousePage() {
   const reach = useMemo(() => checkReachabilityTurn(floor, boxes, truck, dock), [floor, boxes, truck, dock]);
   const capacity = useMemo(() => positionCapacity(boxes), [boxes]);
   const zStats = useMemo(() => zoneStats(boxes), [boxes]);
+  // physical realism: slab pressure + zone segregation
+  const [slabRating, setSlabRating] = useState(0); // 0 = no check
+  const slabOver = useMemo(() => floorOverloads(boxes, slabRating), [boxes, slabRating]);
+  const zoneViol = useMemo(() => zoneViolations(boxes), [boxes]);
+  const allFlags = useMemo(
+    () => [...new Set([...reach.unreachable, ...slabOver.map((o) => o.id), ...zoneViol.map((v) => v.id)])],
+    [reach, slabOver, zoneViol],
+  );
 
   const totalQty = items.filter((i) => (i.kind ?? 'cargo') === 'cargo').reduce((s, x) => s + x.qty, 0);
 
@@ -213,6 +226,9 @@ export default function WarehousePage() {
       color: spec.color,
       kind: spec.kind ?? 'cargo',
       levels: spec.levels,
+      ...(spec.weight ? { weight: spec.weight } : {}),
+      ...(spec.zoneReq ? { zoneReq: spec.zoneReq } : {}),
+      ...(spec.zoneType ? { zoneType: spec.zoneType } : {}),
     };
     setBaseline([...boxes, nb]);
     setLiveBoxes(null);
@@ -407,6 +423,19 @@ export default function WarehousePage() {
             <select value={aisle} onChange={(e) => setAisle(+e.target.value)} className="w-full text-sm px-2 py-1.5 rounded border border-slate-200">
               {TRUCKS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
             </select>
+            <label className="block text-xs font-semibold text-slate-500 mt-2 mb-1">Floor slab rating</label>
+            <select
+              value={slabRating}
+              onChange={(e) => setSlabRating(Number(e.target.value))}
+              className="w-full text-sm px-2 py-1.5 rounded border border-slate-200"
+              title="Max ground pressure the slab takes. Racks count levels × 600 kg pallets. Mezzanines are often ~500-1000 kg/m²; ground slabs 3000-5000."
+            >
+              <option value={0}>No slab check</option>
+              <option value={1000}>Mezzanine · 1,000 kg/m²</option>
+              <option value={2000}>Light slab · 2,000 kg/m²</option>
+              <option value={3000}>Standard slab · 3,000 kg/m²</option>
+              <option value={5000}>Heavy slab · 5,000 kg/m²</option>
+            </select>
           </div>
 
           <div className="flex gap-1.5">
@@ -530,6 +559,16 @@ export default function WarehousePage() {
             {reach.unreachable.length > 0 && (
               <p className="text-xs text-red-500">Red items can't be reached from the dock with a {(aisle / 100).toFixed(1)} m aisle — clear a path or widen the aisle.</p>
             )}
+            {slabOver.length > 0 && (
+              <p className="text-xs text-red-500">
+                🏗️ <b>{new Set(slabOver.map((o) => o.id)).size} spot{new Set(slabOver.map((o) => o.id)).size === 1 ? '' : 's'} exceed the slab rating</b> ({slabRating.toLocaleString()} kg/m²) — worst is {Math.round(Math.max(...slabOver.map((o) => o.kgM2))).toLocaleString()} kg/m². Un-stack, spread the load, or verify the slab spec.
+              </p>
+            )}
+            {zoneViol.length > 0 && (
+              <p className="text-xs text-red-500">
+                🧊 <b>{zoneViol.length} item{zoneViol.length === 1 ? '' : 's'} outside their required zone</b> ({[...new Set(zoneViol.map((v) => v.need))].join(', ')}) — drag them fully inside a matching zone, or add one from the palette.
+              </p>
+            )}
             {zStats.length > 0 && (
               <div className="pt-2">
                 <span className="text-xs font-semibold text-slate-500">Zones</span>
@@ -597,7 +636,7 @@ export default function WarehousePage() {
             autoSpin
             hintOverlay
             hintText="Drag a pallet to move it · click one to see the forklift route"
-            flagIds={reach.unreachable}
+            flagIds={allFlags}
             path={path}
             pathWidth={aisle}
             selectId={selectedId}

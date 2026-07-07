@@ -183,6 +183,32 @@ await test('warehouse: route readout reports 90° turns vs the turn box', async 
   await page.getByText(/turn box|right at the dock/i).waitFor();
 }, page);
 
+await test('planner: truck vessel shows live axle loads; est. fills crush limit', async () => {
+  await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByRole('button', { name: /53' trailer/i }).click();
+  await page.getByText(/front axle group/i).waitFor();
+  await page.getByText(/rear axle group/i).waitFor();
+  await page.getByRole('button', { name: /^est\.$/i }).first().click();
+  const v = await page.locator('label:has-text("Max on top") input').first().inputValue();
+  if (!v || Number(v) <= 0) throw new Error(`est. did not fill crush limit: "${v}"`);
+}, page);
+
+await test('planner: pallet vessel offers overhang allowance', async () => {
+  await page.getByRole('button', { name: /eur pallet/i }).click();
+  await page.getByText(/overhang allowance/i).waitFor();
+  await page.getByRole('button', { name: /2\.5 cm\/side/i }).click();
+  await page.getByText(/Volume utilization/i).waitFor();
+}, page);
+
+await test('warehouse: chilled pallet without a chilled zone is flagged', async () => {
+  await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
+  await page.getByRole('button', { name: /\+ chilled pallet/i }).click();
+  await page.getByRole('button', { name: /place one near the dock/i }).last().click();
+  await page.getByText(/outside their required zone/i).waitFor();
+}, page);
+
 // ---------- regression: the manual-testing bug reports ----------
 const dpBoxes = () => page.evaluate(() => (window.__dpBoxes ?? []).map((b) => `${b.id}:${b.px},${b.pz}`).join('|'));
 const dpCount = () => page.evaluate(() => (window.__dpBoxes ?? []).length);

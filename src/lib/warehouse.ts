@@ -32,6 +32,9 @@ export interface FloorItemSpec {
   kind?: 'cargo' | 'rack' | 'obstacle' | 'zone'; // zones are walkable named areas
   levels?: number; // rack levels (capacity math)
   stack?: number; // cargo stacking (1 = single, 2 = double-stacked)
+  weight?: number; // kg per unit — powers slab-pressure checks
+  zoneReq?: 'chilled' | 'frozen' | 'hazmat'; // cargo must sit inside a matching zone
+  zoneType?: 'chilled' | 'frozen' | 'hazmat'; // for kind='zone': what the zone provides
 }
 
 /**
@@ -73,6 +76,8 @@ export function autoArrangeFloor(
         px: x, py: 0, pz: z,
         color: s.color,
         ...(s.kind ? { kind: s.kind } : {}),
+        ...(s.weight ? { weight: s.weight } : {}),
+        ...(s.zoneReq ? { zoneReq: s.zoneReq } : {}),
       } as PlannerBox);
       if ((s.stack ?? 1) >= 2) {
         boxes.push({
@@ -81,6 +86,8 @@ export function autoArrangeFloor(
           px: x, py: s.h, pz: z,
           color: s.color,
           ...(s.kind ? { kind: s.kind } : {}),
+          ...(s.weight ? { weight: s.weight } : {}),
+          ...(s.zoneReq ? { zoneReq: s.zoneReq } : {}),
         } as PlannerBox);
       }
       x += s.l;

@@ -7,6 +7,7 @@ import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
+import { axleLoads, mckeeSafeLoad, palletOverhang, type AxleConfig } from '../lib/realism';
 import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
@@ -30,8 +31,8 @@ const CONTAINERS = {
   '20gp': { label: "20' GP", l: 589, w: 235, h: 239, maxWeight: 28200, group: 'Containers', door: { w: 234, h: 228 } },
   '40gp': { label: "40' GP", l: 1203, w: 235, h: 239, maxWeight: 26700, group: 'Containers', door: { w: 234, h: 228 } },
   '40hq': { label: "40' HQ", l: 1203, w: 235, h: 269, maxWeight: 26500, group: 'Containers', door: { w: 234, h: 258 } },
-  '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks', door: { w: 254, h: 269 } },
-  'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks', door: { w: 245, h: 270 } },
+  '53ft': { label: "53' trailer", l: 1602, w: 254, h: 269, maxWeight: 20000, group: 'Trucks', door: { w: 254, h: 269 }, axles: { frontPos: 90, rearPos: 1450, frontLimit: 13600, rearLimit: 15400 } as AxleConfig },
+  'eusemi': { label: 'EU 13.6m', l: 1360, w: 245, h: 270, maxWeight: 24000, group: 'Trucks', door: { w: 245, h: 270 }, axles: { frontPos: 120, rearPos: 1050, frontLimit: 12000, rearLimit: 24000 } as AxleConfig },
   'eurpal': { label: 'EUR pallet', l: 120, w: 80, h: 165, maxWeight: 1500, group: 'Pallets', door: null },
   'gmapal': { label: 'GMA 48×40"', l: 122, w: 102, h: 152, maxWeight: 1134, group: 'Pallets', door: null },
 } as const;
@@ -99,11 +100,18 @@ export default function PlannerPage() {
   const [seed, setSeed] = useState(0); // bump to re-run the packer
 
   const container = CONTAINERS[containerKey];
+  // pallets may allow a small overhang per side — standard practice, but it
+  // cuts carton compression strength ~30%, so we pack it AND warn about it
+  const [overhangCm, setOverhangCm] = useState(0);
+  const packSpace = useMemo(() => {
+    const ov = container.group === 'Pallets' ? overhangCm : 0;
+    return ov > 0 ? { ...container, l: container.l + 2 * ov, w: container.w + 2 * ov } : container;
+  }, [container, overhangCm]);
 
   const result = useMemo(
-    () => packWithConstraints(container, specs),
+    () => packWithConstraints(packSpace, specs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [containerKey, seed],
+    [containerKey, seed, packSpace],
   );
 
   // live stats reflect manual edits (falls back to the packer's own stats)
@@ -118,6 +126,15 @@ export default function PlannerPage() {
 
   const totalQty = specs.reduce((s, x) => s + x.qty, 0);
   const balanceWarn = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15;
+  const shownBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
+  const axles = useMemo(
+    () => ('axles' in container && container.axles ? axleLoads(shownBoxes as (PlannerBox & { weight?: number })[], container.axles) : null),
+    [shownBoxes, container],
+  );
+  const overhang = useMemo(
+    () => (container.group === 'Pallets' && overhangCm > 0 ? palletOverhang(shownBoxes, { l: container.l, w: container.w }) : null),
+    [shownBoxes, container, overhangCm],
+  );
   // real-world check other tools skip: the door aperture is SMALLER than the interior
   const doorBlocked = useMemo(
     () => specs.filter((s) => s.qty > 0 && !fitsDoor(s, CONTAINERS[containerKey].door)),
@@ -323,6 +340,20 @@ export default function PlannerPage() {
             <p className="text-xs text-slate-400 mt-1">
               {container.l} × {container.w} × {container.h} cm · max {container.maxWeight} kg
             </p>
+            {container.group === 'Pallets' && (
+              <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                <span>Overhang allowance</span>
+                {[0, 2.5, 5].map((ov) => (
+                  <button
+                    key={ov}
+                    onClick={() => { setOverhangCm(ov); setLiveBoxes(null); setSeed((n) => n + 1); }}
+                    className={`px-2 py-0.5 rounded ${overhangCm === ov ? 'bg-teal-600 text-white' : 'bg-slate-100'}`}
+                  >
+                    {ov === 0 ? 'none' : `${ov} cm/side`}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -376,6 +407,24 @@ export default function PlannerPage() {
                       onChange={(e) => updateSpec(s.id, { keepUpright: e.target.checked })}
                     />
                     This way up
+                  </label>
+                  <label className="flex items-center gap-1" title="Crush limit: max total weight resting on ONE carton. 'est.' uses the McKee formula for a single-wall ECT-32 box with safety factor 4 — check your board grade.">
+                    Max on top
+                    <input
+                      type="number"
+                      min={0}
+                      value={s.maxStack === 0 ? '' : s.maxStack ?? ''}
+                      placeholder="∞"
+                      disabled={s.maxStack === 0}
+                      onChange={(e) => updateSpec(s.id, { maxStack: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })}
+                      className="w-14 text-xs px-1 py-0.5 rounded border border-slate-200"
+                    />
+                    kg
+                    <button
+                      onClick={() => updateSpec(s.id, { maxStack: Math.round(mckeeSafeLoad(32, s.l, s.w)) })}
+                      className="px-1 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-[10px]"
+                      title="Estimate from McKee formula (ECT-32 single-wall, SF 4)"
+                    >est.</button>
                   </label>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -491,6 +540,32 @@ export default function PlannerPage() {
                 {balanceWarn ? 'Off-centre' : 'Balanced'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
               </span>
             </div>
+            {axles && 'axles' in container && container.axles && (
+              <>
+                <div className="flex justify-between">
+                  <span>Front axle group</span>
+                  <span className={`font-semibold ${axles.frontOver ? 'text-red-600' : 'text-green-600'}`}>
+                    {(axles.front / 1000).toFixed(1)} t / {(container.axles.frontLimit / 1000).toFixed(1)} t
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Rear axle group</span>
+                  <span className={`font-semibold ${axles.rearOver ? 'text-red-600' : 'text-green-600'}`}>
+                    {(axles.rear / 1000).toFixed(1)} t / {(container.axles.rearLimit / 1000).toFixed(1)} t
+                  </span>
+                </div>
+                {(axles.frontOver || axles.rearOver) && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                    ⚖️ <b>Axle overload:</b> weight sits too far {axles.frontOver ? 'forward' : 'back'} — slide heavy cartons toward the {axles.frontOver ? 'rear' : 'front'} and re-check. Typical legal splits shown; verify your rig's plated limits.
+                  </div>
+                )}
+              </>
+            )}
+            {overhang && overhang.ids.length > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                📦 <b>{overhang.ids.length} carton{overhang.ids.length === 1 ? '' : 's'} overhang</b> the pallet by up to {overhang.maxCm.toFixed(1)} cm — stretch-wrap tightly; overhang cuts carton compression strength ≈ 30%.
+              </div>
+            )}
             {result.zones.length > 1 && (
               <div className="pt-1">
                 <span className="text-xs font-semibold text-slate-500">Load zones (back → door)</span>
@@ -521,7 +596,7 @@ export default function PlannerPage() {
         <div>
           <InteractiveLoadPlanner
             key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
-            container={container}
+            container={packSpace}
             boxes={sharedBoxes ?? result.boxes}
             grid={1}
             unitLabel="cm"

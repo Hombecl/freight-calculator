@@ -32,11 +32,13 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 |---|---|
 | Door aperture (container/trailer) | ✅ |
 | Forklift 90° turn box (vs straight width) | ✅ |
-| Truck axle weight distribution (front/rear limits from CoG) | 🗺 1 |
-| Carton crush strength (max stack by compression, not just count) | 🗺 2 |
-| Floor load limit kg/m² (slab rating vs stacked weight) | 🗺 2 |
-| Pallet overhang (cartons past pallet edge → transport damage flag) | 🗺 3 |
-| Temperature/hazmat segregation zones | 🗺 4 |
+| Truck axle weight distribution (lever rule from each carton's CoG; per-truck kingpin/tandem limits) | ✅ `lib/realism.ts axleLoads` |
+| Carton crush strength (McKee formula from ECT → "Max on top kg" + est. button; engine already propagates load) | ✅ `mckeeSafeLoad` |
+| Floor load limit kg/m² (slab rating select; stacks + rack bays vs rating) | ✅ `floorOverloads` |
+| Pallet overhang (allowance 0/2.5/5 cm per side; packs it AND warns: −30% compression) | ✅ `palletOverhang` |
+| Temperature/hazmat segregation zones (typed zones + cargo zone requirements) | ✅ `zoneViolations` |
+| Forklift swept-path arcs (beyond turn box: true turning radius sweep) | 🗺 next |
+| Load securing (lashing points, tip-over risk from CoG height) | 🗺 next |
 
 ## 2. Interactive 3D editor (`components/InteractiveLoadPlanner.tsx`)
 
@@ -108,7 +110,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 
 | Item | Status |
 |---|---|
-| Engine unit tests — `npm test` (19 tests, tests/unit.mjs) | ✅ |
+| Engine unit tests — `npm test` (24 tests, tests/unit.mjs) | ✅ |
 | Academic benchmark (`npx tsx scripts/benchmark.mjs`) — 80.2% avg on BR 300 instances | ✅ |
 | Playwright E2E — `npm run e2e <url>` (22 local / 25 live) | ✅ |
 | CI (GitHub Actions: unit + build + E2E on push) | ✅ |

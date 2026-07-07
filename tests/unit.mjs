@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 
 const { packContainer, packWithConstraints, computeStats } = await import('../src/lib/binPacking.ts');
 const { parseText, rowsToSpecs } = await import('../src/lib/importCartons.ts');
+const { axleLoads, mckeeSafeLoad, floorOverloads, palletOverhang, zoneViolations } = await import('../src/lib/realism.ts');
 const {
   autoArrangeFloor, autoArrangeFloorD, checkReachability, checkReachabilityD,
   forkliftPath, forkliftPathD, placeNearDockD, positionCapacity, zoneStats, gridFitCheck,
@@ -166,6 +167,55 @@ test('warehouse: placeNearDockD lands in bounds without collision', () => {
     const overlap = spot.px < b.px + b.l && spot.px + 120 > b.px && spot.pz < b.pz + b.w && spot.pz + 80 > b.pz;
     assert.ok(!overlap, 'collides');
   }
+});
+
+// ---------- physical realism ladder ----------
+test('realism: axle lever rule — box over the rear axle loads the rear', () => {
+  const cfg = { frontPos: 100, rearPos: 1100, frontLimit: 10000, rearLimit: 10000 };
+  // CoG exactly at the rear support → 100% rear
+  const r = axleLoads([{ id: 'a', label: '', l: 200, w: 100, h: 100, px: 1000, py: 0, pz: 0, color: 1, weight: 5000 }], cfg);
+  assert.ok(Math.abs(r.rear - 5000) < 1 && Math.abs(r.front) < 1);
+  // CoG at midspan → 50/50; 12t total overloads a 5t front limit
+  const r2 = axleLoads([{ id: 'b', label: '', l: 200, w: 100, h: 100, px: 500, py: 0, pz: 0, color: 1, weight: 12000 }],
+    { ...cfg, frontLimit: 5000 });
+  assert.ok(Math.abs(r2.front - 6000) < 1 && r2.frontOver && !r2.rearOver);
+});
+
+test('realism: McKee crush estimate is in the sane range', () => {
+  // 60x40 single-wall ECT32: McKee BCT ≈ 300 kg fresh → safe ≈ 75 kg at SF4
+  const safe = mckeeSafeLoad(32, 60, 40, 4, 4);
+  assert.ok(safe > 55 && safe < 100, `got ${safe}`);
+  // double-wall is stronger
+  assert.ok(mckeeSafeLoad(48, 60, 40, 7, 4) > safe);
+});
+
+test('realism: floor overload flags a heavy rack, not light cargo', () => {
+  const boxes = [
+    { id: 'rack', label: '', l: 270, w: 110, h: 300, px: 0, py: 0, pz: 0, color: 1, kind: 'rack', levels: 6 },
+    { id: 'pal', label: '', l: 120, w: 80, h: 150, px: 500, py: 0, pz: 0, color: 1, kind: 'cargo', weight: 400 },
+  ];
+  // rack: 6x600=3600kg on 2.97m2 ≈ 1212 kg/m2; pallet: 400/0.96 ≈ 417 kg/m2
+  const over = floorOverloads(boxes, 1000);
+  assert.deepEqual(over.map((o) => o.id), ['rack']);
+  assert.equal(floorOverloads(boxes, 2000).length, 0);
+});
+
+test('realism: pallet overhang measured from the deck edge', () => {
+  const r = palletOverhang(
+    [{ id: 'a', label: '', l: 60, w: 50, h: 40, px: 70, py: 0, pz: 0, color: 1 }],
+    { l: 120, w: 80 });
+  assert.deepEqual(r.ids, ['a']);
+  assert.ok(Math.abs(r.maxCm - 10) < 0.1);
+  assert.equal(palletOverhang([{ id: 'a', label: '', l: 60, w: 50, h: 40, px: 0, py: 0, pz: 0, color: 1 }], { l: 120, w: 80 }).ids.length, 0);
+});
+
+test('realism: chilled cargo outside its zone is a violation', () => {
+  const zone = { id: 'z', label: 'Chilled', l: 400, w: 400, h: 20, px: 0, py: 0, pz: 0, color: 1, kind: 'zone', zoneType: 'chilled' };
+  const inside = { id: 'in', label: '', l: 100, w: 100, h: 100, px: 50, py: 0, pz: 50, color: 1, kind: 'cargo', zoneReq: 'chilled' };
+  const outside = { id: 'out', label: '', l: 100, w: 100, h: 100, px: 600, py: 0, pz: 0, color: 1, kind: 'cargo', zoneReq: 'chilled' };
+  const v = zoneViolations([zone, inside, outside]);
+  assert.deepEqual(v.map((x) => x.id), ['out']);
+  assert.equal(v[0].need, 'chilled');
 });
 
 // ---------- turn-aware forklift model ----------
