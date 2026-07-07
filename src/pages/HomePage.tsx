@@ -146,8 +146,8 @@ export default function HomePage() {
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed mb-8">
                 {T(
-                  'Products into cartons. Cartons into containers. Optimized in 3D, exported as a plan your warehouse can follow.',
-                  '產品入箱、紙箱入櫃 — 3D 優化,導出倉庫照住做嘅方案。',
+                  'And stop finding out at the dock. Plans optimized in 3D and checked against the door, the axles and the crush limits — before the truck leaves, not after.',
+                  '亦都唔好去到碼頭先發現問題。方案 3D 優化之餘,櫃門、車軸、抗壓全部預先檢查 — 喺車開出之前,唔係之後。',
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-4">
@@ -222,6 +222,56 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ THE EXPENSIVE SURPRISES — pain first ============ */}
+      <section className="bg-red-50/60 border-b border-red-100">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('The problems that surface at the last step', '去到最後一步先爆嘅問題')}
+          </h2>
+          <p className="text-slate-600 mb-8 max-w-3xl">
+            {T('None of these are hypothetical. They happen to mature, experienced teams — at the dock, at the weighbridge, at delivery — exactly when fixing them costs the most. Every one is catchable at planning time.',
+               '呢啲唔係憑空想像 — 成熟、有經驗嘅團隊一樣會中,而且爆嘅位置永遠喺碼頭、地磅、收貨嗰刻,即係最貴嘅時候。其實每一單,喺規劃嗰陣已經可以截住。')}
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              {
+                scene: T('"The container is at the dock — and the crate won\'t go through the door."', '「個櫃已經喺碼頭 — 個木箱入唔到櫃門。」'),
+                cost: T('Repack crew + detention charges + a missed vessel.', '重新執貨 + 滯箱費 + 趕唔切班船。'),
+                fix: T('The door aperture is smaller than the interior. We check every carton against it while you plan.', '櫃門開口細過內籠。我哋喺規劃時逐箱檢查。'),
+                to: '/planner', label: T('Door check', '櫃門檢查'),
+              },
+              {
+                scene: T('"The truck got weighed — the rear axle group is over."', '「架車過磅 — 後軸超咗。」'),
+                cost: T('A roadside fine, and re-loading the trailer on the shoulder.', '路邊罰款,仲要喺路肩重新裝過。'),
+                fix: T('Every carton\'s weight splits front/rear by the lever rule, live, against legal limits.', '每箱重量按槓桿原理實時拆分前後軸,對照法定上限。'),
+                to: '/planner', label: T('Axle loads', '車軸配重'),
+              },
+              {
+                scene: T('"The goods arrived — the bottom layer is crushed."', '「貨到咗 — 最底嗰層壓爛晒。」'),
+                cost: T('Damage claims, refused stock, an unhappy customer.', '索償、拒收、客戶反面。'),
+                fix: T('Crush limits from the board grade (McKee), enforced down the stack — plus heavy-over-light warnings.', '由紙板等級(McKee)推算抗壓上限,沿堆疊執行,仲有重壓輕警告。'),
+                to: '/planner', label: T('Crush & stacking', '抗壓與堆疊'),
+              },
+              {
+                scene: T('"New floor layout, day one — the forklift can\'t make the corner."', '「新倉佈局第一日 — 鏟車轉唔到個彎。」'),
+                cost: T('Re-slotting a live warehouse with full racks.', '貨架全滿嘅倉,要成個重新排過。'),
+                fix: T('Straight width AND the 90° turn box are checked separately — tight corners turn red before you commit.', '直行闊度同 90° 轉彎淨空分開檢查 — 未落實之前,窄彎已經標紅。'),
+                to: '/warehouse', label: T('Turn geometry', '轉彎幾何'),
+              },
+            ].map((c, i) => (
+              <Link key={i} to={c.to} className="group rounded-2xl bg-white border border-slate-200 p-5 hover:border-red-300 hover:shadow-lg transition-all">
+                <p className="font-bold text-slate-900 mb-2">{c.scene}</p>
+                <p className="text-sm text-red-600 mb-2.5">💸 {c.cost}</p>
+                <p className="text-sm text-slate-600 mb-3">{c.fix}</p>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 group-hover:gap-2.5 transition-all">
+                  {c.label} <ArrowRight size={14} />
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
@@ -347,6 +397,31 @@ export default function HomePage() {
                 {T('Load example', '載入示範')} <ArrowRight size={14} />
               </span>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ THE SYSTEM: one engine, every layer of the team ============ */}
+      <section className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+        <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+          {T('One engine. One plan. Every layer of your team.', '一個引擎、一個方案,團隊每一層都用得着。')}
+        </h2>
+        <p className="text-slate-600 mb-8 max-w-3xl">
+          {T('The bin-packing engine and its reality checks sit at the core. Around it, the same plan becomes what each person actually needs — nobody re-types anything.',
+             '核心係裝箱引擎同成套現實檢查。同一個方案,自動變成每個崗位真正需要嘅嘢 — 冇人需要重新打過任何資料。')}
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { who: T('The planner', '規劃員'), what: T('Imports the carton list from Excel, optimizes in 3D, drags to fine-tune — every move re-checked live.', '由 Excel 匯入箱單、3D 優化、拖放微調 — 每一步實時重新檢查。'), icon: <Move3d size={20} /> },
+            { who: T('The manager', '主管'), what: T('Gets a review link — approve or request changes, with a full audit trail of who changed what.', '收到審批連結 — 批准或要求修改,邊個改過乜全程有紀錄。'), icon: <ShieldCheck size={20} /> },
+            { who: T('The loading crew', '裝櫃工人'), what: T('Gets the numbered loading sheet — #1 first, back of the container, floor level. Taped at the door.', '攞住編號裝櫃表 — #1 先入、最入最底。貼喺閘口照住裝。'), icon: <Package size={20} /> },
+            { who: T('The paperwork', '文件崗位'), what: T('VGM (cargo + tare), axle splits and weights come off the same plan — no side calculations.', 'VGM(貨重+櫃重)、軸重、總重全部由同一方案直接出 — 唔使另外計。'), icon: <FileText size={20} /> },
+          ].map((c, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200 p-5">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-3">{c.icon}</div>
+              <h3 className="font-bold text-slate-900 mb-1.5">{c.who}</h3>
+              <p className="text-sm text-slate-600">{c.what}</p>
+            </div>
           ))}
         </div>
       </section>

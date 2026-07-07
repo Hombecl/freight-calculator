@@ -385,8 +385,11 @@ export default function WarehousePage() {
         <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full">Beta</span>
       </div>
       <p className="text-slate-500 text-sm -mt-3 mb-5 max-w-2xl">
-        The rule containers don't have: a warehouse can't be packed solid. Anything a forklift
-        can no longer reach from the dock turns <span className="text-red-500 font-semibold">red</span> — structures (racks, walls) block routes without turning red themselves.
+        Every slotting mistake surfaces on day one — a corner the forklift can't turn, a mezzanine
+        the racks overload, chilled goods parked outside the cold zone. This planner runs those checks
+        <b> while you draw</b>: anything a forklift can no longer reach from the dock turns{' '}
+        <span className="text-red-500 font-semibold">red</span>, corners are tested against the truck's
+        90° turn box, and slab pressure + zone rules flag violations instantly.
       </p>
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-6">

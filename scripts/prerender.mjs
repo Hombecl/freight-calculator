@@ -159,14 +159,17 @@ try {
   });
 
   let ok = 0;
+  const failed = [];
   const snapshotOne = async (route, profile) => {
     const html = await renderRoute(`http://localhost:${PORT}${route}`, profile);
     if (!html) {
       console.warn(`[prerender] FAILED ${route}: no output (timeout or crash)`);
+      failed.push(route);
       return;
     }
     if (!html.includes('</body>') || html.length < 5_000) {
       console.warn(`[prerender] ${route} rendered too little — kept as SPA shell`);
+      failed.push(route);
       return;
     }
     const outPath = route === '/'
@@ -186,6 +189,15 @@ try {
       if (route) await snapshotOne(route, profile);
     }
   }));
+  // one serial retry round — Chrome snapshot failures are transient flakes,
+  // and a single lost route means an SPA shell for AI crawlers on that URL
+  if (failed.length) {
+    console.warn(`[prerender] retrying ${failed.length} failed route(s) serially...`);
+    const second = [...failed];
+    failed.length = 0;
+    for (const route of second) await snapshotOne(route, profiles[0]);
+    if (failed.length) console.error(`[prerender] STILL FAILED after retry: ${failed.join(', ')}`);
+  }
   writeSitemap();
   console.log(`[prerender] done: ${ok}/${ROUTES.length} routes snapshotted`);
   if (ok === 0) process.exit(1);

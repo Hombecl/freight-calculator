@@ -180,7 +180,7 @@ await test('warehouse: route readout reports 90° turns vs the turn box', async 
   await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /got it/i }).click().catch(() => {});
   await page.getByRole('button', { name: /place one near the dock/i }).first().click();
-  await page.getByText(/turn box|right at the dock/i).waitFor();
+  await page.getByText(/checked against the .* turn box|right at the dock/i).waitFor();
 }, page);
 
 await test('planner: truck vessel shows live axle loads; est. fills crush limit', async () => {
@@ -220,6 +220,14 @@ await test('home: reality-checks showcase renders all nine cards', async () => {
 await test('planner: container vessel shows SOLAS VGM line', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/VGM \(cargo \+ 2,?300 kg tare\)/i).waitFor();
+}, page);
+
+await test('home: pain-first sections render (surprises + system story)', async () => {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/problems that surface at the last step/i).waitFor();
+  await page.getByText(/the rear axle group is over/i).waitFor();
+  await page.getByText(/one engine\. one plan\. every layer of your team\./i).waitFor();
+  await page.getByText(/the loading crew/i).first().waitFor();
 }, page);
 
 // ---------- regression: the manual-testing bug reports ----------
