@@ -128,4 +128,16 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Uptime/status page | 🗺 2 |
 | Error tracking (Sentry-class) | 🗺 2 |
 
+## 7. UX upgrade backlog (from full audit 2026-07-08, priority order)
+
+| Upgrade | Why (evidence) | Effort |
+|---|---|---|
+| Default planner demo should open Balanced | first impression on /planner shows amber "Off-centre (-8%, -17%)" — packer fills heavy-first along one side; add a z-balance pass to the packer or tune DEFAULT_SPECS | M |
+| Empty/loading states for 3D canvases | brief blank box before three.js boots on slow devices; add skeleton shimmer | S |
+| Warehouse item editor: per-item zoneReq select | today only quick-add presets carry chilled/hazmat; users can't mark their OWN cargo as chilled | S |
+| Planner: labelled load-order overlay in 3D (toggle) | crew sheet exists in PDF; on-screen numbers would help walkthroughs/demos | M |
+| Reality-checks page: add product clips per check | page is text-only; the two recorded clips (and future ones) belong here too | S |
+| Mobile warehouse: bottom-sheet palette | palette pushes canvas below the fold on 390px; visible in mobile screenshots | M |
+| Calculators: "email me this result" (lead capture) | tools are bookmarkable but anonymous; an optional email field turns SEO traffic into leads | S |
+
 _Promotion & funnel playbook: PROMOTION.md. Data locations: DATA.md. Enterprise value ladder: ENTERPRISE.md. Video kit: VIDEO.md._

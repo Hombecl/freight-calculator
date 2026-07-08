@@ -137,8 +137,8 @@ export default function PlannerPage() {
     [shownBoxes, container],
   );
   const overhang = useMemo(
-    () => (container.group === 'Pallets' && overhangCm > 0 ? palletOverhang(shownBoxes, { l: container.l, w: container.w }) : null),
-    [shownBoxes, container, overhangCm],
+    () => (container.group === 'Pallets' ? palletOverhang(shownBoxes, { l: container.l, w: container.w }) : null),
+    [shownBoxes, container],
   );
   const voids = useMemo(
     () => (container.group !== 'Pallets' ? loadVoids(shownBoxes, packSpace) : null),
@@ -194,6 +194,7 @@ export default function PlannerPage() {
         if (plan.containerKey && CONTAINERS[plan.containerKey as ContainerKey]) setContainerKey(plan.containerKey);
         if (Array.isArray(plan.specs) && plan.specs.length) setSpecs(plan.specs);
         if (Array.isArray(plan.boxes) && plan.boxes.length) setSharedBoxes(plan.boxes);
+        else setSeed((n) => n + 1); // specs without boxes: repack for the new specs
         track('share_open');
       } catch { /* leave defaults */ }
     })();
@@ -212,6 +213,7 @@ export default function PlannerPage() {
       if (CONTAINERS[plan.container_key as ContainerKey]) setContainerKey(plan.container_key as ContainerKey);
       if (plan.specs?.length) setSpecs(plan.specs);
       if (plan.boxes?.length) setSharedBoxes(plan.boxes);
+      else setSeed((n) => n + 1); // specs without boxes: repack for the new specs
       track('saved_open');
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -362,7 +364,7 @@ export default function PlannerPage() {
                 {[0, 2.5, 5].map((ov) => (
                   <button
                     key={ov}
-                    onClick={() => { setOverhangCm(ov); setLiveBoxes(null); setSeed((n) => n + 1); }}
+                    onClick={() => { setOverhangCm(ov); setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); }}
                     className={`px-2 py-0.5 rounded ${overhangCm === ov ? 'bg-teal-600 text-white' : 'bg-slate-100'}`}
                   >
                     {ov === 0 ? 'none' : `${ov} cm/side`}

@@ -207,6 +207,9 @@ await test('warehouse: chilled pallet without a chilled zone is flagged', async 
   await page.getByRole('button', { name: /\+ chilled pallet/i }).click();
   await page.getByRole('button', { name: /place one near the dock/i }).last().click();
   await page.getByText(/outside their required zone/i).waitFor();
+  // REGRESSION: auto-arrange must NOT strip zoneReq/weight (checks went silent)
+  await page.getByRole('button', { name: /auto-arrange/i }).first().click();
+  await page.getByText(/outside their required zone/i).waitFor();
 }, page);
 
 await test('home: reality-checks showcase renders all nine cards', async () => {

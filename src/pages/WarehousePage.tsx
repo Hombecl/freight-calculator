@@ -109,6 +109,17 @@ export default function WarehousePage() {
 
   const totalQty = items.filter((i) => (i.kind ?? 'cargo') === 'cargo').reduce((s, x) => s + x.qty, 0);
 
+  // resizing the floor must not strand boxes outside it — clamp them back in
+  useEffect(() => {
+    const next = boxes.map((b) => {
+      const px = Math.min(b.px, Math.max(0, floor.l - b.l));
+      const pz = Math.min(b.pz, Math.max(0, floor.w - b.w));
+      return px !== b.px || pz !== b.pz ? { ...b, px, pz } : b;
+    });
+    if (next.some((b, i) => b !== boxes[i])) { setBaseline(next); setLiveBoxes(null); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floor]);
+
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const flash = (msg: string) => { setActionMsg(msg); setTimeout(() => setActionMsg(null), 6000); };
 
@@ -122,23 +133,38 @@ export default function WarehousePage() {
     const cargo = boxes.filter((b) => !isStructure(b));
     let rows;
     if (cargo.length > 0) {
-      // group the CURRENT cargo into specs so the same pallets get re-rowed
-      const groups = new Map<string, FloorItemSpec>();
+      // group the CURRENT cargo into specs so the same pallets get re-rowed —
+      // carrying weight/zoneReq (the realism checks must survive a tidy)
+      const groups = new Map<string, FloorItemSpec & { sample: PlannerBox }>();
       for (const b of cargo) {
-        const key = `${b.label}|${b.l}x${b.w}x${b.h}`;
+        const bb = b as PlannerBox & { weight?: number; zoneReq?: 'chilled' | 'frozen' | 'hazmat' };
+        const key = `${b.label}|${b.l}x${b.w}x${b.h}|${bb.weight ?? ''}|${bb.zoneReq ?? ''}`;
         const g = groups.get(key);
         if (g) g.qty++;
-        else groups.set(key, { id: `t${groups.size}`, label: b.label, l: b.l, w: b.w, h: b.h, qty: 1, color: b.color, kind: 'cargo' });
+        else groups.set(key, {
+          id: `t${groups.size}`, label: b.label, l: b.l, w: b.w, h: b.h, qty: 1, color: b.color, kind: 'cargo',
+          ...(bb.weight ? { weight: bb.weight } : {}),
+          ...(bb.zoneReq ? { zoneReq: bb.zoneReq } : {}),
+          sample: b,
+        });
       }
-      rows = autoArrangeFloorD(floor, [...groups.values()], aisle, dockEdges[0] ?? 'E', structures);
-      // anything that didn't fit the rows is KEPT — parked near the dock
+      const specs = [...groups.values()];
+      rows = autoArrangeFloorD(floor, specs, aisle, dockEdges[0] ?? 'E', structures);
+      // leftovers per SPEC (placed row ids are `${spec.id}-N`) — slicing the
+      // original array duplicated some pallets and dropped others
       let parked = 0;
       let lost = 0;
-      const leftovers = cargo.slice(rows.length);
-      for (const b of leftovers) {
-        const spot = placeNearDockD(floor, [...structures, ...rows], b, dockEdges[0] ?? 'E');
-        if (spot) { rows.push({ ...b, px: spot.px, py: 0, pz: spot.pz }); parked++; }
-        else lost++;
+      for (const s of specs) {
+        const placed = rows.filter((r) => r.id.startsWith(`${s.id}-`)).length;
+        for (let i = placed; i < s.qty; i++) {
+          const spot = placeNearDockD(floor, [...structures, ...rows], s, dockEdges[0] ?? 'E');
+          if (spot) {
+            rows.push({
+              ...s.sample, id: `${s.id}-p${i}`, px: spot.px, py: 0, pz: spot.pz,
+            } as PlannerBox);
+            parked++;
+          } else lost++;
+        }
       }
       flash(lost > 0
         ? `Re-arranged ${cargo.length - lost} pallets (${parked} parked near the dock) — ${lost} could not fit ANYWHERE and were removed. Widen the floor or reduce quantities.`

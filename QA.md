@@ -44,10 +44,14 @@ node tests/e2e.mjs https://dimpack3d.com   # live green (30/30)
 node tests/visual.mjs && review the images # look at it
 node scripts/indexnow.mjs                  # tell the AI engines
 ```
+⛔ NEVER pipe the build through `| tail` in a && chain — the pipe exit code is
+tail's (0), so a FAILED build silently proceeds and E2E tests the STALE
+previous build (bit us 2026-07-08: Header.tsx syntax error, 38/38 green on old code).
+Use `set -o pipefail` or check for the ✓ built line.
 ⛔ Never skip the LOCAL e2e step to save time — deploying untested code and
 discovering it live is exactly the failure mode this runbook exists to prevent.
 
 ## Known-good baselines
-- unit 28/28 · local E2E 38/38 · live E2E 43/43 · visual pass 2026-07-05 (clips frame-reviewed 2026-07-07)
+- unit 28/28 · local E2E 38/38 · live E2E 43/43 · full audit pass 2026-07-08 (33 visual screenshots reviewed + 2 subagent code reviews → 11 findings, all fixed same-day)
 - engine benchmark: 80.2% avg fill on Bischoff–Ratcliff (300 instances) — `npx tsx scripts/benchmark.mjs`
 - perf: hero pack 280 boxes ≈136ms · /api/pack 60 boxes ≈41ms · prerender 344 snapshots ≈5min

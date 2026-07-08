@@ -490,7 +490,7 @@ export interface TruckSpec {
   turn: number;  // clear square needed to make a 90° turn, cm
 }
 
-function buildMasks(floor: Floor, boxes: PlannerBox[], truck: TruckSpec, cell: number) {
+function buildMasks(floor: Floor, boxes: PlannerBox[], truck: TruckSpec, cell: number, docks: DockEdge[] = []) {
   const nx = Math.max(1, Math.ceil(floor.l / cell));
   const nz = Math.max(1, Math.ceil(floor.w / cell));
   const occ = new Uint8Array(nx * nz);
@@ -508,7 +508,14 @@ function buildMasks(floor: Floor, boxes: PlannerBox[], truck: TruckSpec, cell: n
       occ[z * nx + x] + P[z * (nx + 1) + (x + 1)] + P[(z + 1) * (nx + 1) + x] - P[z * (nx + 1) + x];
   }
   const winFree = (x: number, z: number, r: number, clipAtWalls: boolean) => {
-    if (!clipAtWalls && (x - r < 0 || x + r >= nx || z - r < 0 || z + r >= nz)) return false;
+    if (!clipAtWalls) {
+      // boundaries are walls — EXCEPT dock edges, which are openings a truck
+      // may swing through while turning
+      if (x - r < 0 && !docks.includes('W')) return false;
+      if (x + r >= nx && !docks.includes('E')) return false;
+      if (z - r < 0 && !docks.includes('N')) return false;
+      if (z + r >= nz && !docks.includes('S')) return false;
+    }
     const x0 = Math.max(0, x - r), x1 = Math.min(nx - 1, x + r);
     const z0 = Math.max(0, z - r), z1 = Math.min(nz - 1, z + r);
     return (P[(z1 + 1) * (nx + 1) + (x1 + 1)] - P[z0 * (nx + 1) + (x1 + 1)]
@@ -535,7 +542,7 @@ function buildMasks(floor: Floor, boxes: PlannerBox[], truck: TruckSpec, cell: n
 function turnBFS(
   floor: Floor, boxes: PlannerBox[], truck: TruckSpec, edges: DockEdge[], cell: number,
 ) {
-  const { nx, nz, straight, turnOk } = buildMasks(floor, boxes, truck, cell);
+  const { nx, nz, straight, turnOk } = buildMasks(floor, boxes, truck, cell, edges);
   const N = nx * nz;
   const visited = new Uint8Array(N * 2);
   const parent = new Int32Array(N * 2).fill(-2);

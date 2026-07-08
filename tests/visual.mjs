@@ -87,6 +87,19 @@ async function run(viewport, tag) {
   }
 
   // --- content ---
+  // --- new marketing + tools surface (both viewports) ---
+  await page.goto(`${BASE}/reality-checks`, { waitUntil: 'domcontentloaded' });
+  await snap(page, `${tag}-reality-checks`, { full: true });
+  await page.goto(`${BASE}/warehouse-space-calculator?p=800&s=selective&a=reach&l=4`, { waitUntil: 'domcontentloaded' });
+  await snap(page, `${tag}-tool-space`, { full: true });
+  await page.goto(`${BASE}/forklift-aisle-width-calculator`, { waitUntil: 'domcontentloaded' });
+  await snap(page, `${tag}-tool-aisle`, { full: true });
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/watch the checks fire/i).scrollIntoViewIfNeeded().catch(() => {});
+  await snap(page, `${tag}-home-clips`, { wait: 2000 });
+  await page.getByText(/problems that surface/i).scrollIntoViewIfNeeded().catch(() => {});
+  await snap(page, `${tag}-home-pain`);
+
   if (tag === 'desktop') {
     await page.goto(`${BASE}/api-docs`, { waitUntil: 'domcontentloaded' });
     await snap(page, `${tag}-api-docs`, { full: true });

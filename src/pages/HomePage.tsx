@@ -393,11 +393,15 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-6">
             <div>
               <video
-                src="/media/warehouse-checks.webm"
                 autoPlay muted loop playsInline
-                className="rounded-2xl border border-slate-200 shadow-xl w-full"
+                poster="/media/warehouse-checks-poster.jpg"
+                width={1280} height={720}
+                className="rounded-2xl border border-slate-200 shadow-xl w-full h-auto"
                 aria-label={T('Warehouse floor planner: forklift route simulation and live reachability flags', '倉庫規劃器:鏟車路線模擬與實時可達性標記')}
-              />
+              >
+                <source src="/media/warehouse-checks.webm" type="video/webm" />
+                <source src="/media/warehouse-checks.mp4" type="video/mp4" />
+              </video>
               <p className="text-sm text-slate-600 mt-3">
                 <b>{T('Warehouse:', '倉庫:')}</b>{' '}
                 {T('click a pallet — the forklift route and clearance band draw themselves; drag it across an aisle and cut-off stock flags red instantly.',
@@ -406,11 +410,15 @@ export default function HomePage() {
             </div>
             <div>
               <video
-                src="/media/planner-drag.webm"
                 autoPlay muted loop playsInline
-                className="rounded-2xl border border-slate-200 shadow-xl w-full"
+                poster="/media/planner-drag-poster.jpg"
+                width={1280} height={720}
+                className="rounded-2xl border border-slate-200 shadow-xl w-full h-auto"
                 aria-label={T('Container planner: dragging cartons with live re-checking', '貨櫃規劃器:拖動紙箱,實時重新檢查')}
-              />
+              >
+                <source src="/media/planner-drag.webm" type="video/webm" />
+                <source src="/media/planner-drag.mp4" type="video/mp4" />
+              </video>
               <p className="text-sm text-slate-600 mt-3">
                 <b>{T('Container:', '貨櫃:')}</b>{' '}
                 {T('a packed 20\' GP — drag any carton and collisions, stacking rules and stats re-check on every move.',

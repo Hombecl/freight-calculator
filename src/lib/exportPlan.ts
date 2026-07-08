@@ -94,7 +94,8 @@ export function buildPrintableHTML(opts: PrintablePlanOpts): string {
     </tr>`).join('');
 
   const zoneStrip = zones.length > 1
-    ? `<p><b>Load zones (back → door):</b> ${zones.map((z) => `#${z.unloadOrder} (${z.count})`).join(' · ')}</p>`
+    ? `<p><b>Load zones (back → door):</b> ${zones.map((z) =>
+        `#${z.unloadOrder} (${boxes.filter((b) => zoneOf(b, zones) === z.unloadOrder).length})`).join(' · ')}</p>`
     : '';
 
   const balance = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15 ? 'Off-centre' : 'Balanced';

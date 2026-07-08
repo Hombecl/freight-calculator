@@ -101,7 +101,8 @@ export function floorOverloads(
     const kg = kind === 'rack' ? (b.levels ?? 1) * rackPalletKg : (b.weight ?? 0);
     if (!kg) continue;
     const key = `${b.px},${b.pz}`;
-    const col = columns.get(key) ?? { area: (b.l * b.w) / 10000, kg: 0, ids: [] };
+    const col = columns.get(key) ?? { area: 0, kg: 0, ids: [] };
+    col.area = Math.max(col.area, (b.l * b.w) / 10000); // mixed stacks: pressure over the largest footprint
     col.kg += kg;
     col.ids.push(b.id);
     columns.set(key, col);
@@ -173,7 +174,7 @@ export function heavyOverLight(
     if (b.py <= 0 || !b.weight) continue;
     let minUnder = Infinity;
     for (const u of boxes) {
-      if (u === b || u.weight == null) continue;
+      if (u === b || !u.weight) continue; // 0 kg means "unknown", not "light"
       const topTouches = Math.abs(u.py + u.h - b.py) < 0.5;
       const overlaps = b.px < u.px + u.l && b.px + b.l > u.px && b.pz < u.pz + u.w && b.pz + b.w > u.pz;
       if (topTouches && overlaps) minUnder = Math.min(minUnder, u.weight);

@@ -19,8 +19,10 @@ export default function Header() {
 
   const isHomePage = location.pathname === '/';
 
+  // homepage: absolute over the dark hero, scrolls away with the page —
+  // sticky+transparent followed the scroll and overlapped content
   return (
-    <header className={`sticky top-0 z-40 ${isHomePage ? 'bg-transparent absolute w-full' : 'bg-white border-b border-gray-200 shadow-sm'}`}>
+    <header className={isHomePage ? 'absolute top-0 z-40 w-full bg-transparent' : 'sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm'}>
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-14 md:h-16">
           <Logo size="md" showText={!isHomePage || window.innerWidth >= 768} />
