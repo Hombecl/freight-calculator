@@ -1,0 +1,7 @@
+# /embed is for iframing on other sites, not for search results. The static
+# index.html robots meta says index,follow and the Helmet noindex doesn't
+# survive prerender snapshotting, so enforce it at the header level instead.
+/embed
+  X-Robots-Tag: noindex
+/zh/embed
+  X-Robots-Tag: noindex
