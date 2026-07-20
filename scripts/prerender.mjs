@@ -69,8 +69,11 @@ const competitorsData = JSON.parse(readFileSync('src/data/competitors.json', 'ut
 const COMPARE_ROUTES = competitorsData.competitors.map((c) => `/compare/${c.slug}`);
 
 const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES, ...COMPARE_ROUTES];
+// prerendered but noindex + kept out of the sitemap: without a snapshot the
+// SPA fallback serves the HOMEPAGE snapshot (three.js tag and all) for /embed
+const NOSITEMAP_ROUTES = ['/embed'];
 // every page exists in both locales; /zh/* serves Traditional Chinese
-const ROUTES = [...EN_ROUTES, ...EN_ROUTES.map((r) => (r === '/' ? '/zh' : `/zh${r}`))];
+const ROUTES = [...EN_ROUTES, ...NOSITEMAP_ROUTES].flatMap((r) => [r, r === '/' ? '/zh' : `/zh${r}`]);
 
 // sitemap.xml with hreflang alternates — single source of truth is ROUTES
 function writeSitemap() {
