@@ -38,6 +38,7 @@ const BASE_ROUTES = [
   '/forklift-aisle-width-calculator',
   '/dimensional-weight-calculator',
   '/cbm-calculator',
+  '/pallet-calculator',
   '/guides/fba-size-tiers-2025',
   '/guides/cbm-calculator-shipping',
   '/guides/container-loading-optimization',

@@ -22,6 +22,7 @@ const WarehouseSpaceCalcPage = lazy(() => import('./pages/WarehouseSpaceCalcPage
 const AisleWidthCalcPage = lazy(() => import('./pages/AisleWidthCalcPage'));
 const DimWeightCalcPage = lazy(() => import('./pages/DimWeightCalcPage'));
 const CbmCalcPage = lazy(() => import('./pages/CbmCalcPage'));
+const PalletCalcPage = lazy(() => import('./pages/PalletCalcPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="forklift-aisle-width-calculator" element={<AisleWidthCalcPage />} />
         <Route path="dimensional-weight-calculator" element={<DimWeightCalcPage />} />
         <Route path="cbm-calculator" element={<CbmCalcPage />} />
+        <Route path="pallet-calculator" element={<PalletCalcPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
