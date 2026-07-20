@@ -11,6 +11,7 @@ export default function Footer() {
     { to: '/container', label: T('Container Quick-Calc', '貨櫃快速計算') },
     { to: '/fba', label: T('Amazon FBA Size & Fees', 'FBA 尺寸與費用') },
     { to: '/dimensional-weight-calculator', label: T('Dimensional Weight Calculator', '體積重量計算器') },
+    { to: '/cbm-calculator', label: T('CBM Calculator', 'CBM 計算器') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
   ];
 

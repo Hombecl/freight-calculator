@@ -21,6 +21,7 @@ const RealityChecksPage = lazy(() => import('./pages/RealityChecksPage'));
 const WarehouseSpaceCalcPage = lazy(() => import('./pages/WarehouseSpaceCalcPage'));
 const AisleWidthCalcPage = lazy(() => import('./pages/AisleWidthCalcPage'));
 const DimWeightCalcPage = lazy(() => import('./pages/DimWeightCalcPage'));
+const CbmCalcPage = lazy(() => import('./pages/CbmCalcPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="warehouse-space-calculator" element={<WarehouseSpaceCalcPage />} />
         <Route path="forklift-aisle-width-calculator" element={<AisleWidthCalcPage />} />
         <Route path="dimensional-weight-calculator" element={<DimWeightCalcPage />} />
+        <Route path="cbm-calculator" element={<CbmCalcPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />

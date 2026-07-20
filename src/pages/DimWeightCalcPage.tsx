@@ -279,7 +279,7 @@ export default function DimWeightCalcPage() {
           {' · '}
           <Link to="/guides/amazon-dimensional-weight" className="text-blue-600 hover:underline">{T('Amazon dimensional weight guide', 'Amazon 體積重量指南')}</Link>
           {' · '}
-          <Link to="/guides/cbm-calculator-shipping" className="text-blue-600 hover:underline">{T('CBM & shipping costs', 'CBM 與運費')}</Link>
+          <Link to="/cbm-calculator" className="text-blue-600 hover:underline">{T('CBM calculator', 'CBM 計算器')}</Link>
           {' · '}
           <Link to="/packing" className="text-blue-600 hover:underline">{T('Carton packing calculator', '產品裝箱計算器')}</Link>
         </div>
