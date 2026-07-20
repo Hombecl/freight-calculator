@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 
@@ -69,8 +69,48 @@ export default function WarehouseSpaceCalcPage() {
       <Helmet>
         <title>{T('Warehouse Space Calculator — pallets to m²/sq ft, free | DimPack3D', '倉庫面積計算器 — 卡板數換算 m²/呎 | DimPack3D')}</title>
         <meta name="description" content={T(
-          'How much warehouse space do you need? Convert pallet count to floor area (m² and sq ft) by storage type (selective rack, floor stack), rack levels and forklift aisle system — with every assumption shown. Free, no signup.',
-          '要幾大個倉?按儲存方式(貨架/地面疊放)、貨架層數同鏟車通道系統,將卡板數換算做面積(m² 同平方呎),所有假設逐項列明。免費、唔使註冊。')} />
+          'How to calculate warehouse space: convert pallet count to floor area (m² and sq ft) by storage type (selective rack, floor stack), rack levels and forklift aisle system — with the formula and every assumption shown. Free, no signup.',
+          '點樣計倉庫面積?按儲存方式(貨架/地面疊放)、貨架層數同鏟車通道系統,將卡板數換算做面積(m² 同平方呎),公式同所有假設逐項列明。免費、唔使註冊。')} />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'How do you calculate how much warehouse space you need?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Work from pallets, not products. 1) Ground positions = pallets ÷ rack levels high. 2) Each position needs its own footprint plus a share of the aisle — plan ~1.2 × 1.1 m per pallet position including rack steel, and add half an aisle per rack row (a reach-truck aisle is ~2.9 m, counterbalance ~3.7 m, VNA ~1.8 m). 3) That gives storage + aisle area. 4) Add 30–40% of the building for receiving, shipping, staging, battery charging and offices. Total = storage area ÷ (1 − 0.35). Example: 500 pallets, 4 levels high, reach trucks ≈ 1,100 m² (~11,800 sq ft).',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'How much space does one pallet take in a warehouse?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'A single pallet position occupies about 1.2 × 1.1 m (1.32 m²) of floor including the rack frame, but the usable planning figure is higher once you add the aisle it shares. Racked 4 high with reach-truck aisles, one stored pallet works out to roughly 0.7–0.9 m² of total building area including support space. Floor-stacked (no racking) it is far more, because every pallet needs ground area.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Why is warehouse space more than pallets times pallet size?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Three things inflate it beyond raw pallet footprint: rack height (storing pallets vertically cuts ground positions), aisles (forklifts need 1.8–3.7 m between racks depending on truck type), and support space (receiving, shipping, staging, charging and offices are typically 30–40% of the building). A calculator that ignores aisles and support space undercounts by roughly half.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'How do forklift aisles change the space you need?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Aisle width is set by the forklift, not the rack. Counterbalance trucks need ~3.7 m to turn 90° into a bay, reach trucks ~2.9 m, and VNA (very narrow aisle) turret trucks ~1.8 m — but VNA needs wire or rail guidance and taller mast investment. Narrower aisles store more pallets in the same building, so the aisle system is one of the biggest levers on total space.',
+                },
+              },
+            ],
+          })}
+        </script>
       </Helmet>
 
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Warehouse Space Calculator', '倉庫面積計算器')}</h1>
@@ -140,6 +180,64 @@ export default function WarehouseSpaceCalcPage() {
           </div>
         </div>
       </div>
+
+      {/* How-to (editorial) — matches "how to calculate warehouse space" intent */}
+      <section className="mt-16 max-w-3xl">
+        <h2 className="text-2xl font-black text-slate-900 mb-4">
+          {T('How to calculate warehouse space', '點樣計倉庫面積')}
+        </h2>
+        <p className="text-slate-600 mb-6">
+          {T('The number people get wrong is not the pallet size — it is everything around the pallet. Work in four steps, and always start from pallets stored, not products.',
+             '計錯嘅位好少係卡板尺寸,而係卡板周圍嗰啲。分四步計,而且永遠由「要儲幾多卡板」開始,唔係由產品數。')}
+        </p>
+
+        <ol className="space-y-4 mb-8">
+          {[
+            [T('1. Ground positions = pallets ÷ levels high', '1. 地面位 = 卡板數 ÷ 貨架層數'),
+             T('Racking stores pallets vertically. 500 pallets 4 levels high = 125 ground positions. This is the single biggest lever — one extra rack level cuts your ground footprint by a quarter.',
+               '貨架係向上疊。500 卡板 4 層高 = 125 個地面位。呢個係最大槓桿 — 多一層貨架,地面腳印即減四分一。')],
+            [T('2. Footprint per position + a share of the aisle', '2. 每個位嘅腳印 + 分攤通道'),
+             T('Plan ~1.2 × 1.1 m per pallet position including the rack steel. Then add half an aisle per rack row, because two rows share one aisle. Aisle width is set by the forklift: reach truck ~2.9 m, counterbalance ~3.7 m, VNA ~1.8 m.',
+               '每個卡板位連貨架鋼架約 1.2 × 1.1 米。再每排加半條通道(兩排共用一條)。通道闊度由鏟車決定:前移式 ~2.9 米、平衡重式 ~3.7 米、VNA ~1.8 米。')],
+            [T('3. Storage area = positions × (footprint + aisle share)', '3. 儲存面積 = 位數 × (腳印 + 通道分攤)'),
+             T('This is the racked-and-aisled floor — the part that actually holds inventory.',
+               '呢個係連通道嘅儲存樓面 — 真正裝貨嗰部分。')],
+            [T('4. Add support space (÷ by 1 − 0.35)', '4. 加配套面積(÷ (1 − 0.35))'),
+             T('Receiving, shipping, staging, battery charging and offices are typically 30–40% of the building. Divide storage area by 0.65 to gross up to the total. Skip this and you undercount by roughly a third.',
+               '收貨、出貨、暫存、充電同辦公通常佔全棟 30–40%。儲存面積 ÷ 0.65 得出總面積。唔計呢層就會少計成三分一。')],
+          ].map(([title, body], i) => (
+            <li key={i} className="rounded-xl border border-slate-200 p-5">
+              <p className="font-bold text-slate-900 mb-1 flex items-center gap-2">
+                <CheckCircle size={16} className="text-blue-500 flex-shrink-0" /> {title}
+              </p>
+              <p className="text-sm text-slate-600 pl-6">{body}</p>
+            </li>
+          ))}
+        </ol>
+
+        <div className="rounded-xl bg-slate-900 text-white p-6 mb-8 font-mono text-sm">
+          <p className="text-slate-400 mb-2">// {T('Worked example — 500 pallets, 4 levels, reach trucks', '範例 — 500 卡板、4 層、前移式')}</p>
+          <p className="mb-1">{T('Ground positions', '地面位')} = 500 ÷ 4 = <span className="text-green-400">125</span></p>
+          <p className="mb-1">{T('Per position', '每位')} = (1.2 × 1.1) + (2.9 × 1.2 ÷ 2) = 1.32 + 1.74 = <span className="text-green-400">3.06 m²</span></p>
+          <p className="mb-1">{T('Storage area', '儲存面積')} = 125 × 3.06 = <span className="text-green-400">383 m²</span></p>
+          <p>{T('Total', '總面積')} = 383 ÷ 0.65 ≈ <span className="text-amber-400">590 m² (~6,350 sq ft)</span></p>
+        </div>
+
+        <p className="text-slate-600 text-sm mb-2">
+          {T('The formula gives you a number. Whether that space actually works depends on the layout — can every forklift reach every pallet, turn into every bay, and does the slab carry the load?',
+             '公式俾到你一個數。但嗰個面積用唔用得到,睇佈局 — 每架鏟車去唔去到每個卡板、轉唔轉到入每個格、地台頂唔頂得順?')}
+        </p>
+        <Link to="/warehouse" onClick={() => track('tool_wh_space_howto_cta')} className="inline-flex items-center gap-2 text-blue-600 font-bold text-sm hover:text-blue-500">
+          {T('Draw it in the floor planner and check', '入 floor planner 畫出嚟驗證')} <ArrowRight size={15} />
+        </Link>
+
+        <div className="mt-6 text-sm text-slate-500">
+          {T('Related:', '相關:')}{' '}
+          <Link to="/forklift-aisle-width-calculator" className="text-blue-600 hover:underline">{T('Forklift aisle width calculator', '鏟車通道闊度計算器')}</Link>
+          {' · '}
+          <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
+        </div>
+      </section>
     </div>
   );
 }
