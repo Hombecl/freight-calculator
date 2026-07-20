@@ -369,6 +369,39 @@ await test('api-docs: page renders with curl example', async () => {
   await page.getByText(/api\/pack/i).first().waitFor();
 }, page);
 
+// ---------- embed widget ----------
+await test('embed: chrome-less calculator renders (no site nav) and posts height', async () => {
+  const msgs = [];
+  const embedPage = await ctx.newPage();
+  await embedPage.exposeFunction('__dpMsg', (d) => msgs.push(d));
+  await embedPage.addInitScript(() => {
+    window.addEventListener('message', (e) => window.__dpMsg?.(e.data));
+  });
+  await embedPage.goto(`${BASE}/embed?wid=e2e`, { waitUntil: 'domcontentloaded' });
+  await embedPage.getByText(/Powered by DimPack3D/i).waitFor();
+  // site chrome must be absent
+  if (await embedPage.locator('footer').count() > 0) throw new Error('site footer leaked into embed');
+  // packing result renders (units-per-carton stat present)
+  await embedPage.getByText(/utilization|使用率/i).first().waitFor();
+  await embedPage.close();
+}, page);
+
+await test('embed: /zh/embed serves the Chinese UI', async () => {
+  const embedPage = await ctx.newPage();
+  await embedPage.goto(`${BASE}/zh/embed`, { waitUntil: 'domcontentloaded' });
+  await embedPage.getByText('Powered by DimPack3D').waitFor();
+  await embedPage.getByText(/裝箱/).first().waitFor();
+  await embedPage.close();
+}, page);
+
+await test('embed: widget.js loader is served and builds an iframe', async () => {
+  const res = await ctx.request.get(`${BASE}/widget.js`);
+  if (!res.ok()) throw new Error(`widget.js ${res.status()}`);
+  const body = await res.text();
+  if (!body.includes('/embed?wid=')) throw new Error('loader missing embed URL');
+  if (!body.includes('dp3d:height')) throw new Error('loader missing resize protocol');
+}, page);
+
 // ---------- live-only API flows ----------
 if (IS_LIVE) {
   await test('LIVE share: create link and reopen it', async () => {

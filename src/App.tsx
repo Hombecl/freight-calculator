@@ -31,11 +31,14 @@ const ProductsPerCartonGuide = lazy(() => import('./pages/guides/ProductsPerCart
 const AmazonDimensionalWeightGuide = lazy(() => import('./pages/guides/AmazonDimensionalWeightGuide'));
 const FbaFeeCalculatorGuide = lazy(() => import('./pages/guides/FbaFeeCalculatorGuide'));
 const PalletCalculatorGuide = lazy(() => import('./pages/guides/PalletCalculatorGuide'));
+const EmbedPage = lazy(() => import('./pages/EmbedPage'));
 
 export default function App() {
   return (
     <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-sm">Loading…</div>}>
     <Routes>
+      {/* Chrome-less widget embed — outside Layout on purpose (no header/footer/canonical) */}
+      <Route path="embed" element={<EmbedPage />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="packing" element={<PackingPage />} />

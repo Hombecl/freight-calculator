@@ -830,10 +830,11 @@ const CONTAINER_SPECS: Record<ContainerKey, ContainerSpec> = {
 };
 
 // --- Three.js Helper Hook ---
-const useThree = (): boolean => {
+const useThree = (active: boolean = true): boolean => {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (!active) return; // don't fetch three.js for a modal that isn't open yet
     if (window.THREE) {
       setLoaded(true);
       return;
@@ -846,7 +847,7 @@ const useThree = (): boolean => {
     return () => {
       // Cleanup
     };
-  }, []);
+  }, [active]);
 
   return loaded;
 };
@@ -2778,7 +2779,7 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
   lang
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const threeLoaded = useThree();
+  const threeLoaded = useThree(isOpen);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -3536,9 +3537,11 @@ const FbaSimulationModal: React.FC<FbaSimulationModalProps> = ({
 interface CalculatorProps {
   fixedMode?: Mode;
   hideHeader?: boolean;
+  /** iframe embed: natural height (min-h-screen would ratchet the host iframe) */
+  embed?: boolean;
 }
 
-export default function LogisticsCalculator({ fixedMode, hideHeader = false }: CalculatorProps) {
+export default function LogisticsCalculator({ fixedMode, hideHeader = false, embed = false }: CalculatorProps) {
   // --- Default Values ---
   const defaultUnits: Units = { length: 'cm', weight: 'kg', currency: 'USD' };
   const defaultRates: Rates = { air: 6.5, airCurrency: 'USD', sea: 200, seaCurrency: 'USD', seaUnit: 'cbm' };
@@ -3929,7 +3932,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false }: C
   const simContainer: DimensionsWithWeight = { ...CONTAINER_SPECS[selectedContainerKey], weight: 0 }; // Already metric
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex flex-col">
+    <div className={`${embed ? '' : 'min-h-screen '}bg-slate-50 p-4 font-sans text-slate-800 flex flex-col`}>
       <SettingsModal
         isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)}
         rates={rates} setRates={setRates} dimFactor={dimFactor} setDimFactor={setDimFactor}

@@ -100,7 +100,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | i18n path-based EN/繁中 | ✅ |
 | Demo video + VideoObject schema | 🗺 1 (kit ready: VIDEO.md) |
 | es/de locales | 🗺 2 |
-| Embeddable widget (backlink engine) | 🗺 2 |
+| Embeddable widget (backlink engine) | ✅ `/embed` + `public/widget.js` (one-line `<script>` embed, iframe auto-resize via postMessage, 3D lazy-loads on open; first host: commerce-ops private-label tab) |
 | Programmatic pages: CBM conversions, FBA limits | 🗺 3 (post-GSC data) |
 
 ## 5. Accounts / enterprise (ENTERPRISE.md is the strategy)
