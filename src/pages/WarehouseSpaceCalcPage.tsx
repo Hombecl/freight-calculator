@@ -67,10 +67,10 @@ export default function WarehouseSpaceCalcPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <Helmet>
-        <title>{T('Warehouse Space Calculator — pallets to m²/sq ft, free | DimPack3D', '倉庫面積計算器 — 卡板數換算 m²/呎 | DimPack3D')}</title>
+        <title>{T('Warehouse Space Calculator — square footage, m² & capacity calculation, free | DimPack3D', '倉庫面積計算器 — 平方呎、m² 同容量計算 | DimPack3D')}</title>
         <meta name="description" content={T(
-          'How to calculate warehouse space: convert pallet count to floor area (m² and sq ft) by storage type (selective rack, floor stack), rack levels and forklift aisle system — with the formula and every assumption shown. Free, no signup.',
-          '點樣計倉庫面積?按儲存方式(貨架/地面疊放)、貨架層數同鏟車通道系統,將卡板數換算做面積(m² 同平方呎),公式同所有假設逐項列明。免費、唔使註冊。')} />
+          'How to calculate warehouse space and square footage: convert pallet count to floor area (square feet and m²) by storage type (selective rack, floor stack), rack levels and forklift aisle system — a warehouse space calculation and capacity estimate with the formula and every assumption shown. Free, no signup.',
+          '點樣計倉庫面積同平方呎?按儲存方式(貨架/地面疊放)、貨架層數同鏟車通道系統,將卡板數換算做面積(平方呎同 m²)—倉庫面積同容量計算,公式同所有假設逐項列明。免費、唔使註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -108,6 +108,14 @@ export default function WarehouseSpaceCalcPage() {
                   text: 'Aisle width is set by the forklift, not the rack. Counterbalance trucks need ~3.7 m to turn 90° into a bay, reach trucks ~2.9 m, and VNA (very narrow aisle) turret trucks ~1.8 m — but VNA needs wire or rail guidance and taller mast investment. Narrower aisles store more pallets in the same building, so the aisle system is one of the biggest levers on total space.',
                 },
               },
+              {
+                '@type': 'Question',
+                name: 'How do you calculate warehouse square footage?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Warehouse square footage is the total floor area you need in square feet. Work it out in m² first (storage positions × footprint including aisles, then grossed up ~35% for receiving, shipping and support), then convert: 1 m² = 10.764 sq ft. For example, 500 pallets racked 4 high with reach trucks ≈ 590 m², which is about 6,350 sq ft. This calculator shows both m² and square feet, plus a capacity view of how many pallets a given area holds.',
+                },
+              },
             ],
           })}
         </script>
@@ -115,8 +123,8 @@ export default function WarehouseSpaceCalcPage() {
 
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Warehouse Space Calculator', '倉庫面積計算器')}</h1>
       <p className="text-slate-600 mb-8 max-w-2xl">
-        {T('Pallet count → floor area, using the same aisle and rack math as our floor planner. Your inputs stay in the URL — bookmark the result.',
-           '卡板數 → 樓面面積,用嘅係同我哋 floor planner 一樣嘅通道/貨架數學。輸入會保存喺網址 — 收藏低隨時攞返。')}
+        {T('A warehouse space calculation from pallet count to floor area — square footage and m², plus the storage capacity that area gives you — using the same aisle and rack math as our floor planner. Your inputs stay in the URL — bookmark the result.',
+           '由卡板數計倉庫面積 — 平方呎同 m²,兼睇該面積嘅儲存容量 — 用嘅係同我哋 floor planner 一樣嘅通道/貨架數學。輸入會保存喺網址 — 收藏低隨時攞返。')}
       </p>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-8">

@@ -291,7 +291,7 @@ export default function PalletCalcPage() {
           {T('Related:', '相關:')}{' '}
           <Link to="/planner" className="text-blue-600 hover:underline">{T('3D load planner', '3D 裝載規劃器')}</Link>
           {' · '}
-          <Link to="/cbm-calculator" className="text-blue-600 hover:underline">{T('CBM calculator', 'CBM 計算器')}</Link>
+          <Link to="/pallet-storage-cost-calculator" className="text-blue-600 hover:underline">{T('Pallet storage cost calculator', '卡板倉存費用計算器')}</Link>
           {' · '}
           <Link to="/warehouse-space-calculator" className="text-blue-600 hover:underline">{T('Warehouse space calculator', '倉庫面積計算器')}</Link>
           {' · '}

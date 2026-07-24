@@ -13,6 +13,7 @@ export default function Footer() {
     { to: '/dimensional-weight-calculator', label: T('Dimensional Weight Calculator', '體積重量計算器') },
     { to: '/cbm-calculator', label: T('CBM Calculator', 'CBM 計算器') },
     { to: '/pallet-calculator', label: T('Pallet Calculator', '卡板計算器') },
+    { to: '/pallet-storage-cost-calculator', label: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
   ];
 
