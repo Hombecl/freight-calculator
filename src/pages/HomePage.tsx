@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   ArrowRight, Check, Package, Container, Cuboid, Move3d,
@@ -41,6 +41,15 @@ const CARTON_SCENE = {
 export default function HomePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
+  const location = useLocation();
+
+  // scroll to an in-page section when arriving via a #hash link (e.g. the
+  // header "Calculators" nav from another page) — the app has no global hash router
+  useEffect(() => {
+    if (!location.hash) return;
+    const el = document.getElementById(location.hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, [location.hash]);
 
   const [heroMode, setHeroMode] = useState<'container' | 'carton'>('container');
   const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
@@ -96,6 +105,17 @@ export default function HomePage() {
       title: T('Check Amazon FBA fees', '查 Amazon FBA 費用'),
       body: T('2025 size tiers and fulfilment fee estimates for your product.', '2025 尺寸分級同配送費預估。'),
     },
+  ];
+
+  // standalone single-purpose calculators — surfaced here so the homepage
+  // (the strongest page) links to each one directly
+  const calculators = [
+    { to: '/cbm-calculator', title: T('CBM Calculator', 'CBM 計算器'), body: T('Carton → total cubic meters, container fit & air chargeable weight.', '紙箱 → 總立方米、貨櫃裝載同空運計費重量。') },
+    { to: '/dimensional-weight-calculator', title: T('Dimensional Weight Calculator', '體積重量計算器'), body: T('Billable / DIM weight for FBA, UPS, FedEx, DHL & air freight.', 'FBA、UPS、FedEx、DHL 同空運嘅計費/體積重量。') },
+    { to: '/pallet-calculator', title: T('Pallet Calculator', '卡板計算器'), body: T('Cartons per pallet, layers, and pallets needed for an order.', '每板箱數、層數同訂單所需板數。') },
+    { to: '/pallet-storage-cost-calculator', title: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器'), body: T('Estimate 3PL / warehouse storage cost per pallet, per month.', '估算 3PL/倉庫每板每月倉存費用。') },
+    { to: '/warehouse-space-calculator', title: T('Warehouse Space Calculator', '倉庫面積計算器'), body: T('Pallet count → floor area in square footage and m².', '卡板數 → 樓面面積(平方呎同 m²)。') },
+    { to: '/forklift-aisle-width-calculator', title: T('Forklift Aisle Width Calculator', '鏟車通道闊度計算器'), body: T('The right-angle stacking aisle your forklift really needs.', '你架鏟車真正需要嘅直角入位通道闊度。') },
   ];
 
   const faqs = [
@@ -318,6 +338,30 @@ export default function HomePage() {
           ))}
         </div>
 
+      </section>
+
+      {/* ============ FREE CALCULATORS SUITE — homepage links to every standalone tool ============ */}
+      <section id="calculators" className="bg-slate-50 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('Free shipping & warehouse calculators', '免費運輸同倉庫計算器')}
+          </h2>
+          <p className="text-slate-600 mb-8 max-w-2xl">
+            {T('Quick single-purpose tools — no signup. Every one shows its formula and assumptions, and works in metric or imperial.',
+               '快速單一用途工具,無需註冊。每個都列明公式同假設,支援公制同英制。')}
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {calculators.map((c) => (
+              <Link key={c.to} to={c.to} className="group rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-all">
+                <h3 className="font-bold text-slate-900 text-sm mb-1 flex items-center justify-between gap-2">
+                  {c.title}
+                  <ArrowRight size={14} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">{c.body}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ============ HOW IT WORKS — shown, not told ============ */}
