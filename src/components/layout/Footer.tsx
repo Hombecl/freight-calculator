@@ -16,6 +16,8 @@ export default function Footer() {
     { to: '/pallet-storage-cost-calculator', label: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器') },
     { to: '/freight-class-calculator', label: T('Freight Class Calculator', '運費等級計算機') },
     { to: '/ti-hi-calculator', label: T('TI HI Calculator', 'TI HI 計算機') },
+    { to: '/pallet-builder', label: T('Pallet Builder (3D)', '卡板砌板工具 (3D)') },
+    { to: '/pallets-per-container', label: T('Pallets per Container', '每櫃卡板數') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
   ];
 

@@ -298,6 +298,19 @@ await test('tools: ti-hi calculator computes TI × HI', async () => {
   await page.getByText(/8 × 5/).first().waitFor();
 }, page);
 
+await test('tools: pallets-per-container reproduces published EUR counts', async () => {
+  // EUR mixed-lane: 20'GP = 11 floor, 40' = 25 floor (loadedH 150 → 1 tier)
+  await page.goto(`${BASE}/pallets-per-container?p=eur&h=150&wt=500`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/container internal dimensions/i).waitFor();
+  const row20 = page.locator('tr', { hasText: "20' GP" }).first();
+  await row20.getByText('11', { exact: true }).first().waitFor();
+}, page);
+
+await test('tools: pallet builder landing links the planner pallet demo', async () => {
+  await page.goto(`${BASE}/pallet-builder`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('link', { name: /open the 3d pallet builder/i }).waitFor();
+}, page);
+
 await test('tools: aisle width calculator shows the Ast formula result', async () => {
   await page.goto(`${BASE}/forklift-aisle-width-calculator?t=reach&ll=122&c=30`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/right-angle stacking aisle/i).first().waitFor();

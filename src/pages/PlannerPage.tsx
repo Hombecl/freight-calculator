@@ -85,6 +85,13 @@ const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
       { id: 'p3', label: 'Chair boxes', l: 65, w: 60, h: 55, weight: 14, qty: 60, color: PALETTE[5] },
     ],
   },
+  pallet: {
+    container: 'gmapal',
+    specs: [
+      { id: 'c1', label: 'Case 40×30×25', l: 40, w: 30, h: 25, weight: 12, qty: 45, color: PALETTE[0] },
+      { id: 'c2', label: 'Case 30×25×20', l: 30, w: 25, h: 20, weight: 8, qty: 18, color: PALETTE[1] },
+    ],
+  },
   multistop: {
     container: '20gp',
     specs: [
