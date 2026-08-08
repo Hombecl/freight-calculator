@@ -33,6 +33,18 @@ function perLayer(cl: number, cw: number, pl: number, pw: number) {
   return Math.max(a, b);
 }
 
+// worked examples — common carton sizes, computed with the same perLayer math
+// so the table can never disagree with the calculator. Each row deep-links the
+// calculator with that carton preset.
+const EXAMPLE_SIZES: Array<[number, number, number]> = [
+  [60, 40, 40], [60, 40, 30], [50, 40, 30], [40, 30, 30], [40, 30, 20], [30, 20, 15],
+];
+const exampleFor = (l: number, w: number, h: number, p: (typeof PALLETS)[number]) => {
+  const layer = perLayer(l, w, p.l, p.w);
+  const layers = Math.floor(p.maxH / h);
+  return { layer, layers, total: layer * layers };
+};
+
 export default function PalletCalcPage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
@@ -117,6 +129,22 @@ export default function PalletCalcPage() {
                 acceptedAnswer: {
                   '@type': 'Answer',
                   text: 'Pallets needed = total cartons ÷ cartons per pallet, rounded up. First work out cartons per pallet (layer count × layers, capped by weight), then divide your order quantity by it. This calculator does both at once when you enter an order quantity.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'How many 40×30×30 cm cartons fit on a EUR pallet?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'A 40 × 30 cm carton footprint fits 8 per layer on a 120 × 80 cm EUR pallet (4 × 2 with the 30 cm side along the 120 cm edge). At 30 cm tall under a 165 cm usable load height that is 5 layers — 40 cartons per pallet, provided the total weight stays under the 1,500 kg rating.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'How many 60×40×40 cm cartons fit on a EUR pallet?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'A 60 × 40 cm footprint fits 4 per layer on a 120 × 80 cm EUR pallet (2 × 2 block). At 40 cm tall under a 165 cm load height that is 4 layers — 16 cartons per pallet, weight permitting.',
                 },
               },
               {
@@ -283,6 +311,49 @@ export default function PalletCalcPage() {
               <tr className="border-t border-slate-100"><td className="p-3">EUR / EPAL</td><td className="p-3 text-slate-600">120 × 80 cm</td><td className="p-3 text-slate-600">165 cm</td><td className="p-3 text-slate-600">1,500 kg</td></tr>
               <tr className="border-t border-slate-100 bg-slate-50"><td className="p-3">US GMA</td><td className="p-3 text-slate-600">48 × 40 in</td><td className="p-3 text-slate-600">152 cm</td><td className="p-3 text-slate-600">1,134 kg</td></tr>
               <tr className="border-t border-slate-100"><td className="p-3">Industrial</td><td className="p-3 text-slate-600">120 × 100 cm</td><td className="p-3 text-slate-600">165 cm</td><td className="p-3 text-slate-600">1,500 kg</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 className="text-2xl font-black text-slate-900 mb-4">
+          {T('Worked examples — common carton sizes', '常見箱尺寸範例')}
+        </h2>
+        <p className="text-slate-600 mb-4 text-sm">
+          {T('Computed with the same math as the calculator above (block stack, carton upright, before any weight cap). Click a row to load it into the calculator.',
+             '同上面計算器用同一套數學(整齊排列、箱直放、未計重量上限)。撳任何一行即載入計算器。')}
+        </p>
+        <div className="overflow-x-auto mb-8">
+          <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="text-left p-3 font-bold text-slate-900">{T('Carton (cm)', '紙箱 (cm)')}</th>
+                <th className="text-left p-3 font-bold text-slate-900">EUR 120×80</th>
+                <th className="text-left p-3 font-bold text-slate-900">US GMA 48×40 in</th>
+                <th className="text-left p-3 font-bold text-slate-900">{T('Industrial 120×100', '工業板 120×100')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {EXAMPLE_SIZES.map(([l, w, h], i) => (
+                <tr key={i} className={`border-t border-slate-100 ${i % 2 ? 'bg-slate-50' : ''}`}>
+                  <td className="p-3">
+                    <Link
+                      to={`/pallet-calculator?u=cm&l=${l}&w=${w}&h=${h}&wt=${kgEach}&p=${palletKey}&q=${qty}`}
+                      onClick={() => { setUnit('cm'); setCl(l); setCw(w); setCh(h); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className="text-blue-600 font-semibold hover:underline"
+                    >
+                      {l} × {w} × {h}
+                    </Link>
+                  </td>
+                  {PALLETS.map((p) => {
+                    const ex = exampleFor(l, w, h, p);
+                    return (
+                      <td key={p.key} className="p-3 text-slate-600">
+                        <b className="text-slate-900">{ex.total}</b> {T('ctns', '箱')} <span className="text-slate-400">({ex.layer}/{T('layer', '層')} × {ex.layers})</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

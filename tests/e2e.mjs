@@ -268,6 +268,21 @@ await test('tools: warehouse space calculator computes and keeps URL state', asy
   if (!url.includes('p=1000') || !url.includes('a=vna')) throw new Error(`URL state lost: ${url}`);
 }, page);
 
+await test('tools: warehouse capacity mode computes pallet positions from area', async () => {
+  // 1000 m², reach aisles, 4 levels: floor(650/3.06)=212 footprints × 4 = 848
+  await page.goto(`${BASE}/warehouse-space-calculator?m=cap&ar=1000&au=m2&s=selective&a=reach&l=4`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/estimated pallet capacity/i).waitFor();
+  await page.getByText(/848/).waitFor();
+}, page);
+
+await test('tools: pallet calculator worked-example table matches the engine', async () => {
+  await page.goto(`${BASE}/pallet-calculator`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/worked examples/i).waitFor();
+  // 60×40×40 on EUR: 4/layer × 4 layers = 16 (same figure as the unit test)
+  await page.getByRole('link', { name: /60 × 40 × 40/ }).first().waitFor();
+  await page.getByText(/\(4\/layer × 4\)/).first().waitFor();
+}, page);
+
 await test('tools: aisle width calculator shows the Ast formula result', async () => {
   await page.goto(`${BASE}/forklift-aisle-width-calculator?t=reach&ll=122&c=30`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/right-angle stacking aisle/i).first().waitFor();

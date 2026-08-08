@@ -29,15 +29,18 @@ export default function WarehouseSpaceCalcPage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [params, setParams] = useSearchParams();
 
+  const [mode, setMode] = useState<'space' | 'capacity'>(() => (params.get('m') === 'cap' ? 'capacity' : 'space'));
   const [pallets, setPallets] = useState(() => Math.max(1, Number(params.get('p')) || 500));
+  const [area, setArea] = useState(() => Math.max(1, Number(params.get('ar')) || 1000));
+  const [areaUnit, setAreaUnit] = useState<'m2' | 'sqft'>(() => (params.get('au') === 'sqft' ? 'sqft' : 'm2'));
   const [storage, setStorage] = useState<string>(() => params.get('s') ?? 'selective');
   const [aisleKey, setAisleKey] = useState<string>(() => params.get('a') ?? 'reach');
   const [levels, setLevels] = useState(() => Math.min(8, Math.max(1, Number(params.get('l')) || 4)));
 
   // bookmarkable: inputs live in the URL
   useEffect(() => {
-    setParams({ p: String(pallets), s: storage, a: aisleKey, l: String(levels) }, { replace: true });
-  }, [pallets, storage, aisleKey, levels, setParams]);
+    setParams({ m: mode === 'capacity' ? 'cap' : 'sp', p: String(pallets), ar: String(area), au: areaUnit, s: storage, a: aisleKey, l: String(levels) }, { replace: true });
+  }, [mode, pallets, area, areaUnit, storage, aisleKey, levels, setParams]);
   useEffect(() => { track('tool_wh_space'); }, []);
 
   const r = useMemo(() => {
@@ -62,12 +65,26 @@ export default function WarehouseSpaceCalcPage() {
     };
   }, [pallets, storage, aisleKey, levels]);
 
+  // capacity mode — the same math run backwards: given a building, how many
+  // pallet positions does it hold?
+  const cap = useMemo(() => {
+    const aisle = AISLE_SYSTEMS.find((a) => a.key === aisleKey)?.aisle ?? 2.9;
+    const posFoot = 1.2 * 1.1;
+    const lvls = storage === 'selective' ? levels : storage === 'floor2' ? 2 : 1;
+    const areaM2 = areaUnit === 'sqft' ? area / 10.7639 : area;
+    const storageArea = areaM2 * (1 - 0.35); // net of receiving/staging/support
+    const aisleShare = (aisle * 1.2) / 2;
+    const footprints = Math.max(0, Math.floor(storageArea / (posFoot + aisleShare)));
+    const positions = footprints * lvls;
+    return { areaM2, storageArea, footprints, positions, lvls, perPallet: positions > 0 ? areaM2 / positions : 0 };
+  }, [area, areaUnit, storage, aisleKey, levels]);
+
   const inputCls = 'w-full text-sm px-2 py-1.5 rounded border border-slate-200';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <Helmet>
-        <title>{T('Warehouse Space Calculator — square footage, m² & capacity calculation, free | DimPack3D', '倉庫面積計算器 — 平方呎、m² 同容量計算 | DimPack3D')}</title>
+        <title>{T('Warehouse Space Calculator — square footage & pallet capacity calculation, free | DimPack3D', '倉庫面積計算機 — 平方呎、m² 同卡板容量計算 | DimPack3D')}</title>
         <meta name="description" content={T(
           'How to calculate warehouse space and square footage: convert pallet count to floor area (square feet and m²) by storage type (selective rack, floor stack), rack levels and forklift aisle system — a warehouse space calculation and capacity estimate with the formula and every assumption shown. Free, no signup.',
           '點樣計倉庫面積同平方呎?按儲存方式(貨架/地面疊放)、貨架層數同鏟車通道系統,將卡板數換算做面積(平方呎同 m²)—倉庫面積同容量計算,公式同所有假設逐項列明。免費、唔使註冊。')} />
@@ -110,6 +127,14 @@ export default function WarehouseSpaceCalcPage() {
               },
               {
                 '@type': 'Question',
+                name: 'How many pallets can a warehouse hold?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Warehouse pallet capacity = ground footprints × rack levels. Take the building area, net off ~35% for receiving, shipping, staging and offices, then divide the remaining storage area by the space one pallet position needs including its aisle share (~3.1 m² with reach-truck aisles, ~2.4 m² with VNA). Multiply by rack levels. Example: a 1,000 m² (~10,750 sq ft) building racked 4 high with reach trucks holds roughly 850 pallet positions. This calculator has a capacity mode that runs the numbers for your building.',
+                },
+              },
+              {
+                '@type': 'Question',
                 name: 'How do you calculate warehouse square footage?',
                 acceptedAnswer: {
                   '@type': 'Answer',
@@ -121,18 +146,40 @@ export default function WarehouseSpaceCalcPage() {
         </script>
       </Helmet>
 
-      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Warehouse Space Calculator', '倉庫面積計算器')}</h1>
-      <p className="text-slate-600 mb-8 max-w-2xl">
-        {T('A warehouse space calculation from pallet count to floor area — square footage and m², plus the storage capacity that area gives you — using the same aisle and rack math as our floor planner. Your inputs stay in the URL — bookmark the result.',
-           '由卡板數計倉庫面積 — 平方呎同 m²,兼睇該面積嘅儲存容量 — 用嘅係同我哋 floor planner 一樣嘅通道/貨架數學。輸入會保存喺網址 — 收藏低隨時攞返。')}
+      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Warehouse Space & Pallet Capacity Calculator', '倉庫面積同卡板容量計算機')}</h1>
+      <p className="text-slate-600 mb-6 max-w-2xl">
+        {T('A warehouse space calculation that runs both ways: pallet count → floor area (square footage and m²), or building area → pallet positions capacity — using the same aisle and rack math as our floor planner. Your inputs stay in the URL — bookmark the result.',
+           '倉庫面積計算,兩個方向都計得:卡板數 → 樓面面積(平方呎同 m²),或者面積 → 卡板位容量 — 用嘅係同我哋 floor planner 一樣嘅通道/貨架數學。輸入會保存喺網址 — 收藏低隨時攞返。')}
       </p>
+
+      <div className="mb-6 inline-flex rounded-lg border border-slate-200 p-1 text-sm font-bold">
+        <button onClick={() => setMode('space')} className={`px-4 py-1.5 rounded-md transition-colors ${mode === 'space' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+          {T('Space for my pallets', '卡板 → 面積')}
+        </button>
+        <button onClick={() => { setMode('capacity'); track('tool_wh_space', 'capacity'); }} className={`px-4 py-1.5 rounded-md transition-colors ${mode === 'capacity' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+          {T('Capacity of my warehouse', '面積 → 容量')}
+        </button>
+      </div>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-8">
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Pallets to store', '要儲存嘅卡板數')}</label>
-            <input type="number" min={1} value={pallets} onChange={(e) => setPallets(Math.max(1, Number(e.target.value) || 1))} className={inputCls} />
-          </div>
+          {mode === 'space' ? (
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Pallets to store', '要儲存嘅卡板數')}</label>
+              <input type="number" min={1} value={pallets} onChange={(e) => setPallets(Math.max(1, Number(e.target.value) || 1))} className={inputCls} />
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-500">{T('Warehouse floor area', '倉庫樓面面積')} ({areaUnit === 'm2' ? 'm²' : 'sq ft'})</label>
+                <button onClick={() => { const toSqft = areaUnit === 'm2'; setAreaUnit(toSqft ? 'sqft' : 'm2'); setArea(Math.round(toSqft ? area * 10.7639 : area / 10.7639)); }} className="text-[11px] font-bold text-blue-600 hover:text-blue-500">
+                  {areaUnit === 'm2' ? T('switch to sq ft', '轉 sq ft') : T('switch to m²', '轉 m²')}
+                </button>
+              </div>
+              <input type="number" min={1} value={area} onChange={(e) => setArea(Math.max(1, Number(e.target.value) || 1))} className={inputCls} />
+              <p className="text-[11px] text-slate-400 mt-1">{T('Total building area — support space is netted off below.', '全棟面積 — 配套面積會喺下面扣除。')}</p>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Storage type', '儲存方式')}</label>
             <select value={storage} onChange={(e) => setStorage(e.target.value)} className={inputCls}>
@@ -154,6 +201,7 @@ export default function WarehouseSpaceCalcPage() {
         </div>
 
         <div>
+          {mode === 'space' ? (
           <div className="rounded-2xl border border-slate-200 p-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">{T('Estimated total footprint', '估算總面積')}</p>
             <p className="text-4xl font-black text-slate-900">
@@ -167,6 +215,20 @@ export default function WarehouseSpaceCalcPage() {
               <div className="flex justify-between"><span>{T('Ground footprints × levels', '地面腳印 × 層數')}</span><span className="font-semibold">{r.footprints.toLocaleString()} × {r.lvls}</span></div>
             </div>
           </div>
+          ) : (
+          <div className="rounded-2xl border border-slate-200 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">{T('Estimated pallet capacity', '估算卡板容量')}</p>
+            <p className="text-4xl font-black text-slate-900">
+              {cap.positions.toLocaleString()} {T('pallet positions', '個卡板位')}
+            </p>
+            <div className="mt-4 space-y-1.5 text-sm text-slate-600">
+              <div className="flex justify-between"><span>{T('Building area', '全棟面積')}</span><span className="font-semibold">{Math.round(cap.areaM2).toLocaleString()} m² ≈ {Math.round(cap.areaM2 * 10.7639).toLocaleString()} sq ft</span></div>
+              <div className="flex justify-between"><span>{T('Storage + aisles after support (65%)', '扣配套後儲存 + 通道(65%)')}</span><span className="font-semibold">{Math.round(cap.storageArea).toLocaleString()} m²</span></div>
+              <div className="flex justify-between"><span>{T('Ground footprints × levels', '地面腳印 × 層數')}</span><span className="font-semibold">{cap.footprints.toLocaleString()} × {cap.lvls}</span></div>
+              <div className="flex justify-between"><span>{T('Building area per position', '平均每卡板位')}</span><span className="font-semibold">{cap.perPallet ? cap.perPallet.toFixed(2) : '—'} m²</span></div>
+            </div>
+          </div>
+          )}
 
           <div className="mt-4 rounded-2xl bg-blue-50 border border-blue-100 p-5">
             <p className="text-sm text-slate-700 font-semibold mb-1.5">
