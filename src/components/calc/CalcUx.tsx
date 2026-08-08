@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link2, Check } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Link2, Check, ChevronDown, Printer } from 'lucide-react';
 import { track } from '../../lib/track';
 
 /**
@@ -39,6 +39,35 @@ export function CopyLink({ toolId }: { toolId: string }) {
     <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors">
       {copied ? <Check size={13} /> : <Link2 size={13} />}
       {copied ? 'Copied ✓' : 'Copy link to this result'}
+    </button>
+  );
+}
+
+/** Collapsible editorial section — the SEO text stays in the DOM (and in the
+ *  prerender snapshot) but stops dominating the screen. Rendered open on
+ *  desktop print? No — closed by default everywhere; searchers who want the
+ *  how-to click once. */
+export function Accordion({ title, children, defaultOpen = false }: { title: ReactNode; children: ReactNode; defaultOpen?: boolean }) {
+  return (
+    <details className="group rounded-xl border border-slate-200 mb-3" open={defaultOpen}>
+      <summary className="flex items-center justify-between cursor-pointer select-none px-5 py-3.5 font-bold text-slate-900 list-none [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown size={16} className="text-slate-400 transition-transform group-open:rotate-180 flex-shrink-0 ml-3" />
+      </summary>
+      <div className="px-5 pb-5">{children}</div>
+    </details>
+  );
+}
+
+/** Print the page — pair with `print:hidden` on everything except a
+ *  `hidden print:block` spec sheet so the printout is a clean 1-page spec. */
+export function PrintSpecButton({ toolId, label }: { toolId: string; label: string }) {
+  return (
+    <button
+      onClick={() => { track('print_spec', toolId); window.print(); }}
+      className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
+    >
+      <Printer size={13} /> {label}
     </button>
   );
 }

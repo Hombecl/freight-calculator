@@ -15,8 +15,8 @@ import { track } from '../lib/track';
  */
 
 import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
-import LayerDiagram from '../components/LayerDiagram';
-import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
+import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
+import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -81,7 +81,26 @@ export default function PalletCalcPage() {
   const inputCls = 'w-full text-sm px-2 py-1.5 rounded border border-slate-200';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <>
+    <div className="hidden print:block p-8">
+      <h1 className="text-xl font-black mb-1">Pallet Spec — DimPack3D</h1>
+      <p className="text-xs text-slate-500 mb-4">{location.href}</p>
+      <table className="text-sm w-full max-w-md">
+        <tbody>
+          <tr><td className="py-1 pr-6 font-semibold">Carton (L×W×H)</td><td>{cl} × {cw} × {ch} {unit} · {kgEach} kg</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Pallet</td><td>{pallet.label}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Cartons per layer</td><td>{r.layerCount}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Layers</td><td>{Math.ceil(r.perPallet / Math.max(1, r.layerCount))}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Cartons per pallet</td><td className="font-black">{r.perPallet}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Load height / gross</td><td>{Math.round(r.loadHeight)} cm · {Math.round(r.palletWeight)} kg</td></tr>
+          {r.palletsNeeded != null && <tr><td className="py-1 pr-6 font-semibold">Pallets for {qty.toLocaleString()}</td><td className="font-black">{r.palletsNeeded}</td></tr>}
+        </tbody>
+      </table>
+      <div className="mt-4 max-w-[240px]">
+        <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+      </div>
+    </div>
+    <div className="max-w-4xl mx-auto px-4 py-10 print:hidden">
       <Helmet>
         <title>{T('Pallet Calculator — cartons per pallet, layers & pallets needed, free | DimPack3D', '卡板計算器 — 每板箱數、層數同所需板數 | DimPack3D')}</title>
         <meta name="description" content={T(
@@ -225,7 +244,7 @@ export default function PalletCalcPage() {
                     <span className="font-bold text-slate-900">{r.palletsNeeded.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="pt-2"><CopyLink toolId="pallet" /></div>
+                <div className="pt-2 flex items-center gap-4"><CopyLink toolId="pallet" /><PrintSpecButton toolId="pallet" label={T('Print spec sheet', '列印規格單')} /></div>
               </div>
               <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
                 <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
@@ -233,9 +252,15 @@ export default function PalletCalcPage() {
                   <p>{T('per layer', '每層')} = {r.layerCount} · {T('layers', '層')} = {pallet.maxH} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.layers}</span></p>
                   <p>{T('per pallet', '每板')} = min({T('vol', '容積')}, {T('weight', '重量')}) = <span className="text-green-400">{r.perPallet}</span></p>
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('Layer pattern (top view)', '每層擺法(俯視)')}</p>
-                  <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('Layer pattern (top view)', '每層擺法(俯視)')}</p>
+                    <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('Stack (side view)', '堆疊(側視)')}</p>
+                    <SideDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} cartonH={ch * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} layers={Math.ceil(r.perPallet / Math.max(1, r.layerCount))} maxH={pallet.maxH} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -263,10 +288,8 @@ export default function PalletCalcPage() {
       </div>
 
       {/* How-to (editorial) — matches "how many boxes fit on a pallet" intent */}
-      <section className="mt-16 max-w-3xl">
-        <h2 className="text-2xl font-black text-slate-900 mb-4">
-          {T('How to calculate cartons per pallet', '每板箱數點樣計')}
-        </h2>
+      <section className="mt-12 max-w-3xl">
+        <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('How to calculate cartons per pallet', '每板箱數點樣計')}</h2>}>
         <p className="text-slate-600 mb-6">
           {T('Palletising is three limits stacked together — how many fit on the deck, how high you can go, and how much the pallet can carry. The real answer is whichever runs out first.',
              '疊卡板係三個限制疊埋一齊 — 板面裝到幾多、可以疊幾高、卡板頂到幾重。真正答案係邊個先爆頂。')}
@@ -295,8 +318,9 @@ export default function PalletCalcPage() {
             </li>
           ))}
         </ol>
+        </Accordion>
 
-        <div className="overflow-x-auto mb-8">
+        <div className="overflow-x-auto mb-8 mt-4">
           <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
             <thead className="bg-slate-100">
               <tr>
@@ -375,5 +399,6 @@ export default function PalletCalcPage() {
       <StickySpacer />
       <StickyResult label={T('Cartons per pallet', '每板箱數')} value={r.fitsFootprint ? `${r.perPallet.toLocaleString()}${r.palletsNeeded != null ? ` · ${r.palletsNeeded} ${T('plts', '板')}` : ''}` : T('overhangs', '會懸出')} />
     </div>
+    </>
   );
 }

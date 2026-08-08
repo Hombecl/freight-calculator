@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
-import { StickyResult, StickySpacer, CopyLink } from '../components/calc/CalcUx';
+import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 
 /**
  * /warehouse-space-calculator — lead-gen tool aimed squarely at warehouse
@@ -255,10 +255,8 @@ export default function WarehouseSpaceCalcPage() {
       </div>
 
       {/* How-to (editorial) — matches "how to calculate warehouse space" intent */}
-      <section className="mt-16 max-w-3xl">
-        <h2 className="text-2xl font-black text-slate-900 mb-4">
-          {T('How to calculate warehouse space', '點樣計倉庫面積')}
-        </h2>
+      <section className="mt-12 max-w-3xl">
+        <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('How to calculate warehouse space', '點樣計倉庫面積')}</h2>}>
         <p className="text-slate-600 mb-6">
           {T('The number people get wrong is not the pallet size — it is everything around the pallet. Work in four steps, and always start from pallets stored, not products.',
              '計錯嘅位好少係卡板尺寸,而係卡板周圍嗰啲。分四步計,而且永遠由「要儲幾多卡板」開始,唔係由產品數。')}
@@ -295,8 +293,9 @@ export default function WarehouseSpaceCalcPage() {
           <p className="mb-1">{T('Storage area', '儲存面積')} = 125 × 3.06 = <span className="text-green-400">383 m²</span></p>
           <p>{T('Total', '總面積')} = 383 ÷ 0.65 ≈ <span className="text-amber-400">590 m² (~6,350 sq ft)</span></p>
         </div>
+        </Accordion>
 
-        <p className="text-slate-600 text-sm mb-2">
+        <p className="text-slate-600 text-sm mb-2 mt-4">
           {T('The formula gives you a number. Whether that space actually works depends on the layout — can every forklift reach every pallet, turn into every bay, and does the slab carry the load?',
              '公式俾到你一個數。但嗰個面積用唔用得到,睇佈局 — 每架鏟車去唔去到每個卡板、轉唔轉到入每個格、地台頂唔頂得順?')}
         </p>

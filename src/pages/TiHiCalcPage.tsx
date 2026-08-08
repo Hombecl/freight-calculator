@@ -5,8 +5,8 @@ import { ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { PALLETS, CM_PER_IN, perLayer } from '../lib/pallets';
-import LayerDiagram from '../components/LayerDiagram';
-import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
+import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
+import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
 
 /**
  * /ti-hi-calculator — TI × HI in industry language. The math is the pallet
@@ -58,7 +58,26 @@ export default function TiHiCalcPage() {
   const inputCls = 'w-full text-sm px-2 py-1.5 rounded border border-slate-200';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <>
+    {/* print-only spec sheet — hand this to receiving / paste on the item file */}
+    <div className="hidden print:block p-8">
+      <h1 className="text-xl font-black mb-1">TI-HI Spec — DimPack3D</h1>
+      <p className="text-xs text-slate-500 mb-4">{location.href}</p>
+      <table className="text-sm w-full max-w-md">
+        <tbody>
+          <tr><td className="py-1 pr-6 font-semibold">Case (L×W×H)</td><td>{cl} × {cw} × {ch} {unit}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Pallet</td><td>{pallet.label}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">TI (cases/layer)</td><td>{r.ti}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">HI (layers)</td><td>{r.hi}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Cases per pallet</td><td className="font-black">{r.total}</td></tr>
+          <tr><td className="py-1 pr-6 font-semibold">Load height</td><td>{Math.round(r.loadHeight)} cm (max {Math.round(r.loadH)} cm)</td></tr>
+        </tbody>
+      </table>
+      <div className="mt-4 max-w-[240px]">
+        <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+      </div>
+    </div>
+    <div className="max-w-4xl mx-auto px-4 py-10 print:hidden">
       <Helmet>
         <title>{T('TI HI Calculator — cases per layer (TI) × layers high (HI), free | DimPack3D', 'TI HI 計算機 — 每層箱數 (TI) × 層數 (HI) | DimPack3D')}</title>
         <meta name="description" content={T(
@@ -170,7 +189,7 @@ export default function TiHiCalcPage() {
                 <div className="flex justify-between"><span>HI — {T('layers high', '層數')}</span><span className="font-semibold">{r.hi}</span></div>
                 <div className="flex justify-between"><span>{T('Load height used', '堆疊高度')}</span><span className="font-semibold">{Math.round(r.loadHeight)} / {Math.round(r.loadH)} cm</span></div>
                 <div className="flex justify-between"><span>{T('Cases per pallet', '每板箱數')}</span><span className="font-semibold">{r.total}</span></div>
-                <div className="pt-2"><CopyLink toolId="tihi" /></div>
+                <div className="pt-2 flex items-center gap-4"><CopyLink toolId="tihi" /><PrintSpecButton toolId="tihi" label={T('Print spec sheet', '列印規格單')} /></div>
               </div>
               <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
                 <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
@@ -178,9 +197,15 @@ export default function TiHiCalcPage() {
                   <p>TI = {T('best block fit on deck', '板面最佳整齊排列')} = <span className="text-green-400">{r.ti}</span></p>
                   <p>HI = {Math.round(r.loadH)} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.hi}</span> → <span className="text-amber-400">{r.total} {T('cases', '箱')}</span></p>
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('TI pattern (top view)', 'TI 擺法(俯視)')}</p>
-                  <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('TI pattern (top view)', 'TI 擺法(俯視)')}</p>
+                    <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('Stack (side view)', '堆疊(側視)')}</p>
+                    <SideDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} cartonH={ch * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} layers={r.hi} maxH={r.loadH} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -201,9 +226,9 @@ export default function TiHiCalcPage() {
         </div>
       </div>
 
-      <section className="mt-16 max-w-3xl">
-        <h2 className="text-2xl font-black text-slate-900 mb-4">{T('What TI and HI mean', 'TI 同 HI 係咩')}</h2>
-        <ol className="space-y-4 mb-8">
+      <section className="mt-12 max-w-3xl">
+        <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('What TI and HI mean', 'TI 同 HI 係咩')}</h2>}>
+        <ol className="space-y-4">
           {[
             [T('TI (tier) — cases per layer', 'TI(tier)— 每層箱數'),
              T('How many case footprints fit on the pallet deck in one layer. Found by trying the case both ways round and keeping the better block arrangement. Interlocking patterns can bind the load better but are set at build time, not on the item master.',
@@ -223,8 +248,9 @@ export default function TiHiCalcPage() {
             </li>
           ))}
         </ol>
+        </Accordion>
 
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-slate-500 mt-4">
           {T('Related:', '相關:')}{' '}
           <Link to="/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator (adds weight caps & pallets needed)', '卡板計算器(連載重上限同所需板數)')}</Link>
           {' · '}
@@ -236,5 +262,6 @@ export default function TiHiCalcPage() {
       <StickySpacer />
       <StickyResult label={T('Cases per pallet', '每板箱數')} value={r.fits ? `${r.ti} × ${r.hi} = ${r.total}` : T('overhangs', '會懸出')} />
     </div>
+    </>
   );
 }

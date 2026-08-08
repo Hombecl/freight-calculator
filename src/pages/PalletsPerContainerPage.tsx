@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
-import { StickyResult, StickySpacer, CopyLink } from '../components/calc/CalcUx';
+import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 
 /**
  * /pallets-per-container — "how many pallets fit in a 40ft container"
@@ -250,8 +250,8 @@ export default function PalletsPerContainerPage() {
              '常用規劃數值 — 實際尺寸因製造商略有差異,以櫃上 CSC 銘牌為準。堆疊高度要對住櫃門(228/258 cm)計,唔係櫃頂:裝櫃嗰下真正卡你嘅係門楣。')}
         </p>
 
-        <h2 className="text-2xl font-black text-slate-900 mb-4">{T('The mixed-orientation pattern', '混合擺向點解裝多啲')}</h2>
-        <ol className="space-y-4 mb-8">
+        <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('The mixed-orientation pattern', '混合擺向點解裝多啲')}</h2>}>
+        <ol className="space-y-4">
           {[
             [T('Two lanes, two orientations', '兩行、兩個擺向'),
              T('An EUR pallet is 120 × 80 cm and the container is 235 cm wide — two crosswise (240 cm) don’t fit. But one crosswise lane (120 cm wide) plus one lengthwise lane (80 cm) = 200 cm, and both fit side by side.',
@@ -271,8 +271,9 @@ export default function PalletsPerContainerPage() {
             </li>
           ))}
         </ol>
+        </Accordion>
 
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-slate-500 mt-4">
           {T('Related:', '相關:')}{' '}
           <Link to="/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator', '卡板計算器')}</Link>
           {' · '}

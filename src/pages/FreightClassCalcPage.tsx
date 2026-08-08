@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
-import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
+import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion } from '../components/calc/CalcUx';
 
 /**
  * /freight-class-calculator — NMFC freight class from shipment density.
@@ -297,10 +297,8 @@ export default function FreightClassCalcPage() {
           </table>
         </div>
 
-        <h2 className="text-2xl font-black text-slate-900 mb-4">
-          {T('How to calculate freight class', '運費等級點樣計')}
-        </h2>
-        <ol className="space-y-4 mb-8">
+        <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('How to calculate freight class', '運費等級點樣計')}</h2>}>
+        <ol className="space-y-4">
           {[
             [T('1. Measure as it ships', '1. 以出貨狀態量度'),
              T('Length × width × height of the whole handling unit — pallet included, to the extreme points. Overhang counts; so does the pallet under the freight.',
@@ -323,8 +321,9 @@ export default function FreightClassCalcPage() {
             </li>
           ))}
         </ol>
+        </Accordion>
 
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-slate-500 mt-4">
           {T('Related:', '相關:')}{' '}
           <Link to="/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator', '卡板計算器')}</Link>
           {' · '}
