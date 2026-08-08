@@ -22,16 +22,18 @@ const CONTAINERS = [
 
 const PALLET_TYPES = [
   { key: 'eur', label: 'EUR / EPAL — 120 × 80 cm', l: 120, w: 80 },
-  { key: 'gma', label: 'US GMA — 48 × 40 in (122 × 102 cm)', l: 122, w: 102 },
+  { key: 'gma', label: 'US GMA — 48 × 40 in (121.92 × 101.6 cm)', l: 121.92, w: 101.6 },
   { key: 'ind', label: 'Industrial — 120 × 100 cm', l: 120, w: 100 },
 ] as const;
+
+const EPS = 1e-6; // float-noise tolerance on exact imperial dims
 
 // best of: both single block orientations + the two-lane mixed pattern
 // (lane of crosswise pallets + lane of lengthwise pallets side by side)
 function floorFit(pl: number, pw: number, CL: number, CW: number) {
-  const a = Math.floor(CW / pw) * Math.floor(CL / pl);
-  const b = Math.floor(CW / pl) * Math.floor(CL / pw);
-  const mixed = pl + pw <= CW ? Math.floor(CL / pw) + Math.floor(CL / pl) : 0;
+  const a = Math.floor(CW / pw + EPS) * Math.floor(CL / pl + EPS);
+  const b = Math.floor(CW / pl + EPS) * Math.floor(CL / pw + EPS);
+  const mixed = pl + pw <= CW ? Math.floor(CL / pw + EPS) + Math.floor(CL / pl + EPS) : 0;
   return Math.max(a, b, mixed);
 }
 
@@ -52,12 +54,15 @@ export default function PalletsPerContainerPage() {
   const pallet = PALLET_TYPES.find((p) => p.key === palletKey) ?? PALLET_TYPES[0];
 
   const rows = useMemo(() => CONTAINERS.map((c) => {
-    const floor = floorFit(pallet.l, pallet.w, c.l, c.w);
-    const tiers = Math.max(1, Math.floor(c.h / loadedH));
+    // the door header, not the ceiling, is what a loaded pallet must clear —
+    // a pallet taller than the aperture cannot enter at all
+    const passesDoor = loadedH <= c.door.h;
+    const floor = passesDoor ? floorFit(pallet.l, pallet.w, c.l, c.w) : 0;
+    const tiers = passesDoor ? Math.floor(c.h / loadedH) : 0;
     const byVolume = floor * tiers;
     const byWeight = wtEach > 0 ? Math.floor(c.payload / wtEach) : Infinity;
-    const total = Math.min(byVolume, byWeight);
-    return { c, floor, tiers, byVolume, total, weightLimited: byWeight < byVolume };
+    const total = Math.max(0, Math.min(byVolume, byWeight));
+    return { c, floor, tiers, byVolume, total, passesDoor, weightLimited: passesDoor && byWeight < byVolume };
   }), [pallet, loadedH, wtEach]);
 
   const inputCls = 'w-full text-sm px-2 py-1.5 rounded border border-slate-200';
@@ -147,12 +152,16 @@ export default function PalletsPerContainerPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ c, floor, tiers, total, weightLimited }, i) => (
+              {rows.map(({ c, floor, tiers, total, passesDoor, weightLimited }, i) => (
                 <tr key={c.key} className={`border-t border-slate-100 ${i % 2 ? 'bg-slate-50' : ''}`}>
                   <td className="p-3 font-semibold">{c.label}</td>
                   <td className="p-3 text-slate-600">{floor}</td>
                   <td className="p-3 text-slate-600">{tiers}</td>
-                  <td className="p-3"><b className="text-slate-900">{total}</b>{weightLimited && <span className="text-amber-600 text-xs font-semibold ml-2">{T('weight-limited', '受重量限制')}</span>}</td>
+                  <td className="p-3">
+                    <b className="text-slate-900">{total}</b>
+                    {!passesDoor && <span className="text-red-600 text-xs font-semibold ml-2">{T(`won't pass the ${c.door.h} cm door`, `過唔到 ${c.door.h} cm 櫃門`)}</span>}
+                    {weightLimited && <span className="text-amber-600 text-xs font-semibold ml-2">{T('weight-limited', '受重量限制')}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>

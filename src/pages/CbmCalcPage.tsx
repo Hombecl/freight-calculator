@@ -17,10 +17,19 @@ import { track } from '../lib/track';
 // usable (not gross) CBM — the figure that actually matters when loading,
 // consistent with /guides/cbm-calculator-shipping
 const CONTAINERS = [
-  { key: '20gp', label: "20' GP", usable: 28 },
-  { key: '40gp', label: "40' GP", usable: 58 },
-  { key: '40hq', label: "40' HQ", usable: 68 },
+  { key: '20gp', label: "20' GP", usable: 28, dims: [589, 235, 239] },
+  { key: '40gp', label: "40' GP", usable: 58, dims: [1203, 235, 239] },
+  { key: '40hq', label: "40' HQ", usable: 68, dims: [1203, 235, 269] },
 ] as const;
+
+// the carton itself must physically fit inside in some orientation —
+// volume alone can recommend a container an oversized crate can't enter
+// (GPT-5.6 audit 2026-08-09)
+const cartonFitsDims = (cm: number[], dims: readonly number[]) => {
+  const c = [...cm].sort((x, y) => x - y);
+  const d = [...dims].sort((x, y) => x - y);
+  return c[0] <= d[0] && c[1] <= d[1] && c[2] <= d[2];
+};
 
 const CM_PER_IN = 2.54;
 const KG_PER_CBM_AIR = 167; // IATA air freight volumetric: 1 m³ ÷ 6000 cm³/kg
@@ -31,12 +40,15 @@ export default function CbmCalcPage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [params, setParams] = useSearchParams();
 
+  // finite upper bounds: absurd values (1e308) otherwise render "Infinity CBM"
+  const clampDim = (v: number) => Math.min(100000, Math.max(1, v));
+  const clampQty = (v: number) => Math.min(10000000, Math.max(1, v));
   const [unit, setUnit] = useState<'cm' | 'in'>(() => (params.get('u') === 'in' ? 'in' : 'cm'));
-  const [l, setL] = useState(() => Math.max(1, Number(params.get('l')) || (params.get('u') === 'in' ? 24 : 60)));
-  const [w, setW] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'in' ? 16 : 40)));
-  const [h, setH] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'in' ? 20 : 50)));
-  const [qty, setQty] = useState(() => Math.max(1, Number(params.get('q')) || 100));
-  const [kgEach, setKgEach] = useState(() => Math.max(0, Number(params.get('wt')) || 0));
+  const [l, setL] = useState(() => clampDim(Number(params.get('l')) || (params.get('u') === 'in' ? 24 : 60)));
+  const [w, setW] = useState(() => clampDim(Number(params.get('w')) || (params.get('u') === 'in' ? 16 : 40)));
+  const [h, setH] = useState(() => clampDim(Number(params.get('h')) || (params.get('u') === 'in' ? 20 : 50)));
+  const [qty, setQty] = useState(() => clampQty(Number(params.get('q')) || 100));
+  const [kgEach, setKgEach] = useState(() => Math.min(1000000, Math.max(0, Number(params.get('wt')) || 0)));
 
   useEffect(() => {
     setParams({ u: unit, l: String(l), w: String(w), h: String(h), q: String(qty), wt: String(kgEach) }, { replace: true });
@@ -62,12 +74,14 @@ export default function CbmCalcPage() {
     const totalActualKg = kgEach * qty;
     const volKg = totalCbm * KG_PER_CBM_AIR;
     const chargeableKg = Math.max(totalActualKg, volKg);
-    const fits = CONTAINERS.find((c) => totalCbm <= c.usable);
+    const cmDims = [l * f, w * f, h * f];
+    const fits = CONTAINERS.find((c) => totalCbm <= c.usable && cartonFitsDims(cmDims, c.dims));
+    const tooBig = !CONTAINERS.some((c) => cartonFitsDims(cmDims, c.dims));
     return {
       singleCbm, totalCbm,
       totalActualKg, volKg, chargeableKg,
       chargeableByVol: volKg >= totalActualKg,
-      fits,
+      fits, tooBig,
       fillPct: fits ? (totalCbm / fits.usable) * 100 : null,
     };
   }, [l, w, h, qty, kgEach, unit]);
@@ -139,19 +153,19 @@ export default function CbmCalcPage() {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <input type="number" min={1} value={l} onChange={(e) => setL(Math.max(1, Number(e.target.value) || 1))} className={inputCls} aria-label={`Length ${unit}`} />
-              <input type="number" min={1} value={w} onChange={(e) => setW(Math.max(1, Number(e.target.value) || 1))} className={inputCls} aria-label={`Width ${unit}`} />
-              <input type="number" min={1} value={h} onChange={(e) => setH(Math.max(1, Number(e.target.value) || 1))} className={inputCls} aria-label={`Height ${unit}`} />
+              <input type="number" min={1} value={l} onChange={(e) => setL(clampDim(Number(e.target.value) || 1))} className={inputCls} aria-label={`Length ${unit}`} />
+              <input type="number" min={1} value={w} onChange={(e) => setW(clampDim(Number(e.target.value) || 1))} className={inputCls} aria-label={`Width ${unit}`} />
+              <input type="number" min={1} value={h} onChange={(e) => setH(clampDim(Number(e.target.value) || 1))} className={inputCls} aria-label={`Height ${unit}`} />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">{T('L × W × H of one outer carton.', '一個外箱嘅 L × W × H。')}</p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Number of cartons', '紙箱數量')}</label>
-            <input type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} className={inputCls} />
+            <input type="number" min={1} value={qty} onChange={(e) => setQty(clampQty(Number(e.target.value) || 1))} className={inputCls} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Weight per carton, kg (optional)', '每箱重量, kg(選填)')}</label>
-            <input type="number" min={0} value={kgEach} onChange={(e) => setKgEach(Math.max(0, Number(e.target.value) || 0))} className={inputCls} />
+            <input type="number" min={0} value={kgEach} onChange={(e) => setKgEach(Math.min(1000000, Math.max(0, Number(e.target.value) || 0)))} className={inputCls} />
             <p className="text-[11px] text-slate-400 mt-1">{T('For air chargeable weight (actual vs volumetric).', '用嚟計空運計費重量(實重 vs 體積重量)。')}</p>
           </div>
         </div>
@@ -167,7 +181,7 @@ export default function CbmCalcPage() {
               <div className="flex justify-between"><span>{T('Single carton', '單箱')}</span><span className="font-semibold">{r.singleCbm.toFixed(4)} CBM</span></div>
               <div className="flex justify-between">
                 <span>{T('Smallest container that fits', '最細可裝貨櫃')}</span>
-                <span className="font-semibold">{r.fits ? `${r.fits.label} · ${r.fillPct!.toFixed(0)}%` : T('> 40HQ (multiple / FCL)', '> 40HQ(多櫃)')}</span>
+                <span className="font-semibold">{r.fits ? `${r.fits.label} · ${r.fillPct!.toFixed(0)}%` : r.tooBig ? T('carton exceeds container dims', '單箱大過貨櫃內尺寸') : T('> 40HQ (multiple / FCL)', '> 40HQ(多櫃)')}</span>
               </div>
               {kgEach > 0 && (
                 <>

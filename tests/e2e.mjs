@@ -298,6 +298,16 @@ await test('tools: ti-hi calculator computes TI × HI', async () => {
   await page.getByText(/8 × 5/).first().waitFor();
 }, page);
 
+await test('tools: ti-hi exact imperial GMA case gives TI 9 (audit regression)', async () => {
+  await page.goto(`${BASE}/ti-hi-calculator?u=in&l=16&w=12&h=12&p=gma&mh=60`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/9 × 5/).first().waitFor();
+}, page);
+
+await test('tools: pallets-per-container blocks pallets taller than the door', async () => {
+  await page.goto(`${BASE}/pallets-per-container?p=eur&h=230&wt=500`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/won't pass the 228 cm door/).first().waitFor();
+}, page);
+
 await test('tools: pallets-per-container reproduces published EUR counts', async () => {
   // EUR mixed-lane: 20'GP = 11 floor, 40' = 25 floor (loadedH 150 → 1 tier)
   await page.goto(`${BASE}/pallets-per-container?p=eur&h=150&wt=500`, { waitUntil: 'domcontentloaded' });

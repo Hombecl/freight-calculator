@@ -298,5 +298,15 @@ test('answers: EUR pallet holds 16 x 60x40x40 (2x2x4)', () => {
   assert.equal(f.count, 16);
 });
 
+// ---------- pallet layer math (GPT-5.6 audit regressions) ----------
+const { perLayer, PALLETS } = await import('../src/lib/pallets.ts');
+test('perLayer: exact 16x12in cases give 9 on GMA (48x40in), not 6', () => {
+  const gma = PALLETS.find((p) => p.key === 'gma');
+  assert.equal(perLayer(16 * 2.54, 12 * 2.54, gma.l, gma.w), 9);
+});
+test('perLayer: 40x30 on EUR gives 8', () => {
+  assert.equal(perLayer(40, 30, 120, 80), 8);
+});
+
 console.log(`\n${passed} passed, ${fails.length} failed`);
 if (fails.length) { console.log('FAILED:', fails.join(', ')); process.exit(1); }

@@ -98,7 +98,7 @@ export default function WarehouseSpaceCalcPage() {
                 name: 'How do you calculate how much warehouse space you need?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'Work from pallets, not products. 1) Ground positions = pallets ÷ rack levels high. 2) Each position needs its own footprint plus a share of the aisle — plan ~1.2 × 1.1 m per pallet position including rack steel, and add half an aisle per rack row (a reach-truck aisle is ~2.9 m, counterbalance ~3.7 m, VNA ~1.8 m). 3) That gives storage + aisle area. 4) Add 30–40% of the building for receiving, shipping, staging, battery charging and offices. Total = storage area ÷ (1 − 0.35). Example: 500 pallets, 4 levels high, reach trucks ≈ 1,100 m² (~11,800 sq ft).',
+                  text: 'Work from pallets, not products. 1) Ground positions = pallets ÷ rack levels high. 2) Each position needs its own footprint plus a share of the aisle — plan ~1.2 × 1.1 m per pallet position including rack steel, and add half an aisle per rack row (a reach-truck aisle is ~2.9 m, counterbalance ~3.7 m, VNA ~1.8 m). 3) That gives storage + aisle area. 4) Add 30–40% of the building for receiving, shipping, staging, battery charging and offices. Total = storage area ÷ (1 − 0.35). Example: 500 pallets, 4 levels high, reach trucks ≈ 590 m² (~6,350 sq ft).',
                 },
               },
               {

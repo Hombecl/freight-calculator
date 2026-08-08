@@ -35,9 +35,11 @@ export default function TiHiCalcPage() {
     if (unit === 'cm') {
       setUnit('in');
       setCl(+(cl / CM_PER_IN).toFixed(1)); setCw(+(cw / CM_PER_IN).toFixed(1)); setCh(+(ch / CM_PER_IN).toFixed(1));
+      if (maxH > 0) setMaxH(+(maxH / CM_PER_IN).toFixed(1));
     } else {
       setUnit('cm');
       setCl(+(cl * CM_PER_IN).toFixed(1)); setCw(+(cw * CM_PER_IN).toFixed(1)); setCh(+(ch * CM_PER_IN).toFixed(1));
+      if (maxH > 0) setMaxH(+(maxH * CM_PER_IN).toFixed(1));
     }
   };
 

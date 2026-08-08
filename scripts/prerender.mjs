@@ -186,6 +186,8 @@ try {
     if (title) html = html.replace(/<meta property="og:title" content="[^"]*"/, () => `<meta property="og:title" content="${title}"`);
     html = html.replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${helmetDesc[1]}"`);
     html = html.replace(/<meta property="og:url" content="[^"]*"/, () => `<meta property="og:url" content="https://www.dimpack3d.com${route === '/' ? '' : route}"`);
+    if (title) html = html.replace(/<meta name="twitter:title" content="[^"]*"/, () => `<meta name="twitter:title" content="${title}"`);
+    html = html.replace(/<meta name="twitter:description" content="[^"]*"/, () => `<meta name="twitter:description" content="${helmetDesc[1]}"`);
     return html;
   };
 

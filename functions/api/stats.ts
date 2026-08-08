@@ -20,7 +20,7 @@ const dec = (s: string) => {
   try { return decodeURIComponent(s); } catch { return s; }
 };
 
-async function listAll(kv: KVNamespace, prefix: string, maxPages = 40) {
+async function listAll(kv: KVNamespace, prefix: string, maxPages = 100) {
   const names: string[] = [];
   let cursor: string | undefined;
   let pages = 0;

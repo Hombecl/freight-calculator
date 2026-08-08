@@ -17,8 +17,11 @@ interface Env {
 
 const EVENT_RE = /^[a-z0-9_-]{1,40}$/;
 
-const enc = (s: unknown, max: number) =>
-  encodeURIComponent(String(s ?? '').slice(0, max)).slice(0, max + 60);
+const enc = (s: unknown, max: number) => {
+  let e = encodeURIComponent(String(s ?? '').slice(0, max));
+  if (e.length > max + 60) e = e.slice(0, max + 60).replace(/%[0-9A-Fa-f]?$/, ''); // never cut mid-escape
+  return e;
+};
 
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   let data: Record<string, unknown>;
