@@ -283,6 +283,21 @@ await test('tools: pallet calculator worked-example table matches the engine', a
   await page.getByText(/\(4\/layer × 4\)/).first().waitFor();
 }, page);
 
+await test('tools: freight class calculator maps density to NMFC class', async () => {
+  // 48×40×48 in, 500 lb: 53.33 ft³ → 9.37 lb/ft³ → class 100 (8–<10 band)
+  await page.goto(`${BASE}/freight-class-calculator?u=us&l=48&w=40&h=48&wt=500&q=1`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/estimated freight class/i).waitFor();
+  await page.getByText(/9\.3[78] lb\/ft³/).first().waitFor(); // 500/53.33 = 9.375, float-rounding either way
+  await page.getByText(/Class 100/).first().waitFor();
+}, page);
+
+await test('tools: ti-hi calculator computes TI × HI', async () => {
+  // 40×30×30 cm on EUR: TI 8, HI floor(165/30)=5 → 40
+  await page.goto(`${BASE}/ti-hi-calculator?u=cm&l=40&w=30&h=30&p=eur`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/^TI × HI$/).waitFor();
+  await page.getByText(/8 × 5/).first().waitFor();
+}, page);
+
 await test('tools: aisle width calculator shows the Ast formula result', async () => {
   await page.goto(`${BASE}/forklift-aisle-width-calculator?t=reach&ll=122&c=30`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/right-angle stacking aisle/i).first().waitFor();

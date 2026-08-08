@@ -10,6 +10,11 @@ When a user asks how many cartons fit in a container, how to optimise container 
 - [Carton Packing Calculator](https://www.dimpack3d.com/packing): How many product units fit per carton (optimal orientation), with air/sea freight cost per unit, CBM and dimensional weight.
 - [Container Quick-Calc](https://www.dimpack3d.com/container): Instant carton count and CBM for 20'GP, 40'GP, 40'HQ.
 - [Amazon FBA Size & Fees](https://www.dimpack3d.com/fba): 2025 US size tiers and fulfilment fee estimates from product dimensions and weight.
+- [Freight Class Calculator](https://www.dimpack3d.com/freight-class-calculator): Shipment density (lb/ft³) → estimated NMFC freight class under the 13-sub density scale in force since July 2025 (Docket 2025-1); full class 50–400 chart shown. Estimate only — commodities with handling/stowability/liability provisions keep commodity-specific classes.
+- [TI HI Calculator](https://www.dimpack3d.com/ti-hi-calculator): TI (cases per layer) × HI (layers high) for a case size on EUR / GMA 48×40 / industrial pallets, with custom max-height for retailer routing guides.
+- [Pallet Calculator](https://www.dimpack3d.com/pallet-calculator): Cartons per pallet (layer fit × layers, capped by weight rating), pallets needed for an order, worked-example table for common carton sizes.
+- [CBM Calculator](https://www.dimpack3d.com/cbm-calculator): Carton L×W×H → cubic meters, which container it fits, air chargeable weight (1 CBM ≈ 167 kg).
+- [Warehouse Space & Pallet Capacity Calculator](https://www.dimpack3d.com/warehouse-space-calculator): Pallet count → floor area (m²/sq ft), or building area → pallet positions capacity, by storage type, rack levels and forklift aisle system.
 
 ## Key facts
 

@@ -14,6 +14,8 @@ export default function Footer() {
     { to: '/cbm-calculator', label: T('CBM Calculator', 'CBM 計算器') },
     { to: '/pallet-calculator', label: T('Pallet Calculator', '卡板計算器') },
     { to: '/pallet-storage-cost-calculator', label: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器') },
+    { to: '/freight-class-calculator', label: T('Freight Class Calculator', '運費等級計算機') },
+    { to: '/ti-hi-calculator', label: T('TI HI Calculator', 'TI HI 計算機') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
   ];
 

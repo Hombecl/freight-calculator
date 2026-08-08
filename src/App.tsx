@@ -24,6 +24,8 @@ const DimWeightCalcPage = lazy(() => import('./pages/DimWeightCalcPage'));
 const CbmCalcPage = lazy(() => import('./pages/CbmCalcPage'));
 const PalletCalcPage = lazy(() => import('./pages/PalletCalcPage'));
 const PalletStorageCostPage = lazy(() => import('./pages/PalletStorageCostPage'));
+const FreightClassCalcPage = lazy(() => import('./pages/FreightClassCalcPage'));
+const TiHiCalcPage = lazy(() => import('./pages/TiHiCalcPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="cbm-calculator" element={<CbmCalcPage />} />
         <Route path="pallet-calculator" element={<PalletCalcPage />} />
         <Route path="pallet-storage-cost-calculator" element={<PalletStorageCostPage />} />
+        <Route path="freight-class-calculator" element={<FreightClassCalcPage />} />
+        <Route path="ti-hi-calculator" element={<TiHiCalcPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />

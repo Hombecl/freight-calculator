@@ -14,24 +14,7 @@ import { track } from '../lib/track';
  * two block orientations (never over-counts); funnels to /planner.
  */
 
-// standard pallets — dims (cm), usable load height (cm), dynamic weight rating
-// (kg); mirrors src/data/answers.json so answer pages and this tool agree
-const PALLETS = [
-  { key: 'eur', label: 'EUR / EPAL — 120 × 80 cm', l: 120, w: 80, maxH: 165, maxWt: 1500 },
-  { key: 'gma', label: 'US GMA — 48 × 40 in (121.9 × 101.6 cm)', l: 121.9, w: 101.6, maxH: 152, maxWt: 1134 },
-  { key: 'ind', label: 'Industrial — 120 × 100 cm', l: 120, w: 100, maxH: 165, maxWt: 1500 },
-] as const;
-
-const CM_PER_IN = 2.54;
-const PALLET_TARE_KG = 25;
-
-// cartons per layer: best of the two block orientations (carton kept
-// "this way up"). Never over-counts; interlocking/pinwheel may fit a few more.
-function perLayer(cl: number, cw: number, pl: number, pw: number) {
-  const a = Math.floor(pl / cl) * Math.floor(pw / cw);
-  const b = Math.floor(pl / cw) * Math.floor(pw / cl);
-  return Math.max(a, b);
-}
+import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -361,6 +344,10 @@ export default function PalletCalcPage() {
         <div className="text-sm text-slate-500">
           {T('Related:', '相關:')}{' '}
           <Link to="/planner" className="text-blue-600 hover:underline">{T('3D load planner', '3D 裝載規劃器')}</Link>
+          {' · '}
+          <Link to="/ti-hi-calculator" className="text-blue-600 hover:underline">{T('TI HI calculator', 'TI HI 計算機')}</Link>
+          {' · '}
+          <Link to="/freight-class-calculator" className="text-blue-600 hover:underline">{T('Freight class calculator', '運費等級計算機')}</Link>
           {' · '}
           <Link to="/pallet-storage-cost-calculator" className="text-blue-600 hover:underline">{T('Pallet storage cost calculator', '卡板倉存費用計算器')}</Link>
           {' · '}
