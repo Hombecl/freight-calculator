@@ -77,9 +77,23 @@ export default function FreightClassCalcPage() {
     const lbs = (unit === 'metric' ? wt / KG_PER_LB : wt) * qty;
     const cuft = (inL * inW * inH * qty) / 1728;
     const density = cuft > 0 ? lbs / cuft : 0;
-    const idx = DENSITY_CLASSES.findIndex((d) => density >= d.min);
-    const row = DENSITY_CLASSES[idx === -1 ? DENSITY_CLASSES.length - 1 : idx];
-    return { cuft, lbs, density, row, idx: idx === -1 ? DENSITY_CLASSES.length - 1 : idx };
+    const rawIdx = DENSITY_CLASSES.findIndex((d) => density >= d.min);
+    const idx = rawIdx === -1 ? DENSITY_CLASSES.length - 1 : rawIdx;
+    const row = DENSITY_CLASSES[idx];
+    // "drop a class": distance to the next denser band — a cheaper rate.
+    // Two honest ways there: add weight at the same size, or cut height at
+    // the same weight (tighter packing = our whole thesis).
+    let drop = null;
+    if (idx > 0 && density > 0) {
+      const nextMin = DENSITY_CLASSES[idx - 1].min;
+      const nextCls = DENSITY_CLASSES[idx - 1].cls;
+      const addLb = nextMin * cuft - lbs;
+      const maxCuft = lbs / nextMin;
+      const newHIn = (maxCuft * 1728) / (inL * inW * qty);
+      const cutIn = inH - newHIn;
+      drop = { nextCls, gap: nextMin - density, addLb, cutIn };
+    }
+    return { cuft, lbs, density, row, idx, drop };
   }, [l, w, h, wt, qty, unit]);
 
   const inputCls = 'w-full text-sm px-2 py-1.5 rounded border border-slate-200';
@@ -194,6 +208,19 @@ export default function FreightClassCalcPage() {
               <p>{T('density', '密度')} = {Math.round(r.lbs).toLocaleString()} lb ÷ {r.cuft.toFixed(2)} ft³ = <span className="text-green-400">{r.density.toFixed(2)} lb/ft³</span> → <span className="text-amber-400">class {r.row.cls}</span></p>
             </div>
           </div>
+
+          {r.drop && r.drop.cutIn > 0.05 && (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-bold text-emerald-800 mb-1">
+                {T(`You're ${r.drop.gap.toFixed(2)} lb/ft³ from class ${r.drop.nextCls} — a cheaper rate.`,
+                   `仲差 ${r.drop.gap.toFixed(2)} lb/ft³ 就跌落 class ${r.drop.nextCls} — 運費更平。`)}
+              </p>
+              <p className="text-xs text-emerald-700">
+                {T(`Get there by cutting ${unit === 'us' ? r.drop.cutIn.toFixed(1) + ' in' : (r.drop.cutIn * CM_PER_IN).toFixed(1) + ' cm'} of height (pack tighter, less air) — or the same shipment would qualify if it weighed ${Math.ceil(r.drop.addLb).toLocaleString()} lb more.`,
+                   `方法:堆疊高度減 ${unit === 'us' ? r.drop.cutIn.toFixed(1) + ' 吋' : (r.drop.cutIn * CM_PER_IN).toFixed(1) + ' cm'}(裝密啲、少啲空氣)— 或者同一票貨重多 ${Math.ceil(r.drop.addLb).toLocaleString()} 磅都得。`)}
+              </p>
+            </div>
+          )}
 
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
             <AlertTriangle className="text-amber-500 flex-shrink-0 mt-0.5" size={18} />

@@ -15,6 +15,7 @@ import { track } from '../lib/track';
  */
 
 import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
+import LayerDiagram from '../components/LayerDiagram';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -217,10 +218,16 @@ export default function PalletCalcPage() {
                   </div>
                 )}
               </div>
-              <div className="mt-4 rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
-                <p className="text-slate-400 mb-1">// {pallet.label.split(' — ')[0]}</p>
-                <p>{T('per layer', '每層')} = {r.layerCount} · {T('layers', '層')} = {pallet.maxH} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.layers}</span></p>
-                <p>{T('per pallet', '每板')} = min({T('vol', '容積')}, {T('weight', '重量')}) = <span className="text-green-400">{r.perPallet}</span></p>
+              <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
+                  <p className="text-slate-400 mb-1">// {pallet.label.split(' — ')[0]}</p>
+                  <p>{T('per layer', '每層')} = {r.layerCount} · {T('layers', '層')} = {pallet.maxH} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.layers}</span></p>
+                  <p>{T('per pallet', '每板')} = min({T('vol', '容積')}, {T('weight', '重量')}) = <span className="text-green-400">{r.perPallet}</span></p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('Layer pattern (top view)', '每層擺法(俯視)')}</p>
+                  <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                </div>
               </div>
             </div>
           )}

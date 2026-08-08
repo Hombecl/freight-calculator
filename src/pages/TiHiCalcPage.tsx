@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { PALLETS, CM_PER_IN, perLayer } from '../lib/pallets';
+import LayerDiagram from '../components/LayerDiagram';
 
 /**
  * /ti-hi-calculator — TI × HI in industry language. The math is the pallet
@@ -159,10 +160,16 @@ export default function TiHiCalcPage() {
                 <div className="flex justify-between"><span>{T('Load height used', '堆疊高度')}</span><span className="font-semibold">{Math.round(r.loadHeight)} / {Math.round(r.loadH)} cm</span></div>
                 <div className="flex justify-between"><span>{T('Cases per pallet', '每板箱數')}</span><span className="font-semibold">{r.total}</span></div>
               </div>
-              <div className="mt-4 rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
-                <p className="text-slate-400 mb-1">// {pallet.label.split(' — ')[0]}</p>
-                <p>TI = {T('best block fit on deck', '板面最佳整齊排列')} = <span className="text-green-400">{r.ti}</span></p>
-                <p>HI = {Math.round(r.loadH)} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.hi}</span> → <span className="text-amber-400">{r.total} {T('cases', '箱')}</span></p>
+              <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
+                  <p className="text-slate-400 mb-1">// {pallet.label.split(' — ')[0]}</p>
+                  <p>TI = {T('best block fit on deck', '板面最佳整齊排列')} = <span className="text-green-400">{r.ti}</span></p>
+                  <p>HI = {Math.round(r.loadH)} ÷ {Math.round(ch * (unit === 'in' ? CM_PER_IN : 1))} = <span className="text-green-400">{r.hi}</span> → <span className="text-amber-400">{r.total} {T('cases', '箱')}</span></p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{T('TI pattern (top view)', 'TI 擺法(俯視)')}</p>
+                  <LayerDiagram cartonL={cl * (unit === 'in' ? CM_PER_IN : 1)} cartonW={cw * (unit === 'in' ? CM_PER_IN : 1)} palletL={pallet.l} palletW={pallet.w} />
+                </div>
               </div>
             </div>
           )}
