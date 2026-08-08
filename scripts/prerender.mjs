@@ -169,6 +169,22 @@ try {
     child.on('error', () => { clearTimeout(timer); resolve(''); });
   });
 
+  // Every snapshot keeps the index.html template's homepage meta description +
+  // OG tags alongside the route's Helmet ones (data-rh) — Google reads the
+  // first description it sees, so route pages surfaced homepage copy in SERPs.
+  // Drop the template description when Helmet emitted one, and align OG
+  // title/description/url to the route.
+  const fixMeta = (html, route) => {
+    const helmetDesc = html.match(/<meta name="description" content="([^"]*)" data-rh="true"/);
+    if (!helmetDesc) return html;
+    html = html.replace(/<meta name="description"(?![^>]*data-rh)[^>]*>\s*/g, '');
+    const title = (html.match(/<title[^>]*>([^<]*)<\/title>/) || [])[1];
+    if (title) html = html.replace(/<meta property="og:title" content="[^"]*"/, () => `<meta property="og:title" content="${title}"`);
+    html = html.replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${helmetDesc[1]}"`);
+    html = html.replace(/<meta property="og:url" content="[^"]*"/, () => `<meta property="og:url" content="https://www.dimpack3d.com${route === '/' ? '' : route}"`);
+    return html;
+  };
+
   let ok = 0;
   const failed = [];
   const snapshotOne = async (route, profile) => {
@@ -187,7 +203,7 @@ try {
       ? join('dist', 'index.html')
       : join('dist', `${route.replace(/^\//, '')}.html`);
     mkdirSync(dirname(outPath), { recursive: true });
-    writeFileSync(outPath, '<!DOCTYPE html>\n' + html);
+    writeFileSync(outPath, '<!DOCTYPE html>\n' + fixMeta(html, route));
     ok++;
     console.log(`[prerender] ${route} → ${outPath} (${(html.length / 1024).toFixed(0)} KB)`);
   };

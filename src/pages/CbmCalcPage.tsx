@@ -77,10 +77,10 @@ export default function CbmCalcPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <Helmet>
-        <title>{T('CBM Calculator — cubic meters, container fit & air chargeable weight, free | DimPack3D', 'CBM 計算器 — 立方米、貨櫃裝載、空運計費重量 | DimPack3D')}</title>
+        <title>{T('CBM Calculator — cubic meters, container fit & air chargeable weight, free | DimPack3D', 'CBM 計算機(材積計算機)— 立方米、貨櫃裝載、空運計費重量 | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free CBM calculator. Enter carton L×W×H and quantity to get single and total cubic meters, which container it fits (20GP/40GP/40HQ), and air-freight chargeable weight (1 CBM ≈ 167 kg) — with the CBM formula shown. No signup.',
-          '免費 CBM 計算器。輸入紙箱 L×W×H 同數量,即得單箱同總立方米、可裝入邊款貨櫃(20GP/40GP/40HQ)同空運計費重量(1 CBM ≈ 167 kg),CBM 公式一齊顯示。免費、唔使註冊。')} />
+          '免費 CBM 計算機(材積計算機)。輸入紙箱 L×W×H 同數量,即得單箱同總立方米、可裝入邊款貨櫃(20GP/40GP/40HQ)同空運計費重量(1 CBM ≈ 167 kg),CBM 公式一齊顯示。免費、唔使註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',

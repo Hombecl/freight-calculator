@@ -49,7 +49,7 @@ export default function ApiDocsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <Helmet>
-        <title>{T('Bin-Packing API — free 3D container packing endpoint', '裝箱 API — 免費 3D 裝櫃運算接口')} | DimPack3D</title>
+        <title>{T('3D Bin Packing API — free REST endpoint for container packing', '3D 裝箱 API — 免費 REST 裝櫃運算接口')} | DimPack3D</title>
         <meta name="description" content={T(
           'Free REST API for 3D bin-packing: POST cartons and a container, get exact placements with weight, stacking, fragile and unload-order constraints. The engine behind DimPack3D.',
           '免費 3D 裝箱 REST API:POST 紙箱同貨櫃,取回精確擺位,支援重量、堆疊、易碎同落貨順序約束。',

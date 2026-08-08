@@ -317,7 +317,7 @@ export default function PlannerPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <Helmet>
-        <title>Interactive 3D Load Planner | DimPack3D</title>
+        <title>3D Packing Simulator — interactive 3D load planner, free | DimPack3D</title>
         <meta
           name="description"
           content="Real 3D bin-packing with weight & stacking limits, then drag, rotate and stack cartons by hand in an interactive editor. Free load planning from DimPack3D."
