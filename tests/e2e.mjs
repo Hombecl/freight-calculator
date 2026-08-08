@@ -272,7 +272,7 @@ await test('tools: warehouse capacity mode computes pallet positions from area',
   // 1000 m², reach aisles, 4 levels: floor(650/3.06)=212 footprints × 4 = 848
   await page.goto(`${BASE}/warehouse-space-calculator?m=cap&ar=1000&au=m2&s=selective&a=reach&l=4`, { waitUntil: 'domcontentloaded' });
   await page.getByText(/estimated pallet capacity/i).waitFor();
-  await page.getByText(/848/).waitFor();
+  await page.getByText(/848/).first().waitFor(); // headline + mobile sticky bar both show it
 }, page);
 
 await test('tools: pallet calculator worked-example table matches the engine', async () => {

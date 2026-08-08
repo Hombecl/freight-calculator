@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
 
 /**
  * /freight-class-calculator — NMFC freight class from shipment density.
@@ -188,6 +189,14 @@ export default function FreightClassCalcPage() {
             <label className="block text-xs font-semibold text-slate-500 mb-1">{T('Number of units', '件數')}</label>
             <input type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} className={inputCls} />
           </div>
+          <PresetChips
+            title={T('Try a typical shipment:', '試下常見貨件:')}
+            chips={[
+              { label: T('Std pallet 500 lb', '標準板 500 lb'), onClick: () => { setUnit('us'); setL(48); setW(40); setH(48); setWt(500); setQty(1); } },
+              { label: T('Tall pallet 900 lb', '高板 900 lb'), onClick: () => { setUnit('us'); setL(48); setW(40); setH(70); setWt(900); setQty(1); } },
+              { label: T('Crate 1,200 lb', '木箱 1,200 lb'), onClick: () => { setUnit('us'); setL(60); setW(48); setH(40); setWt(1200); setQty(1); } },
+            ]}
+          />
         </div>
 
         <div>
@@ -202,11 +211,24 @@ export default function FreightClassCalcPage() {
               <div className="flex justify-between"><span>{T('Total weight', '總重量')}</span><span className="font-semibold">{Math.round(r.lbs).toLocaleString()} lb</span></div>
               <div className="flex justify-between"><span>{T('Density band', '密度區間')}</span><span className="font-semibold">{rangeLabel(r.idx)} lb/ft³ ({T('sub', 'sub')} {r.row.sub})</span></div>
             </div>
-            <div className="mt-4 rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
+            {/* density scale — where this shipment sits between the class breaks */}
+            <div className="mt-4">
+              <div className="flex h-3 rounded-full overflow-hidden">
+                {DENSITY_CLASSES.slice().reverse().map((d, i) => (
+                  <div key={d.cls} className={`flex-1 ${DENSITY_CLASSES.length - 1 - i === r.idx ? 'bg-blue-600' : i % 2 ? 'bg-slate-200' : 'bg-slate-300'}`} title={`Class ${d.cls}`} />
+                ))}
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>{T('light & bulky · class 400 · expensive', '輕拋 · class 400 · 貴')}</span>
+                <span>{T('dense · class 50 · cheap', '密實 · class 50 · 平')}</span>
+              </div>
+            </div>
+            <div className="mt-3 rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
               <p className="text-slate-400 mb-1">// {T('density math', '密度計算')}</p>
               <p>ft³ = (L × W × H) ÷ 1728 × {qty} = <span className="text-green-400">{r.cuft.toFixed(2)}</span></p>
               <p>{T('density', '密度')} = {Math.round(r.lbs).toLocaleString()} lb ÷ {r.cuft.toFixed(2)} ft³ = <span className="text-green-400">{r.density.toFixed(2)} lb/ft³</span> → <span className="text-amber-400">class {r.row.cls}</span></p>
             </div>
+            <div className="mt-3"><CopyLink toolId="freight_class" /></div>
           </div>
 
           {r.drop && r.drop.cutIn > 0.05 && (
@@ -313,6 +335,8 @@ export default function FreightClassCalcPage() {
           <Link to="/planner" className="text-blue-600 hover:underline">{T('3D load planner', '3D 裝載規劃器')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult label={T('Est. freight class', '運費等級')} value={`Class ${r.row.cls} · ${r.density.toFixed(1)} pcf`} />
     </div>
   );
 }

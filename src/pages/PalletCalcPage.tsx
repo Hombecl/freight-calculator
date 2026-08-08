@@ -16,6 +16,7 @@ import { track } from '../lib/track';
 
 import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
 import LayerDiagram from '../components/LayerDiagram';
+import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -182,6 +183,13 @@ export default function PalletCalcPage() {
             <input type="number" min={0} value={qty} onChange={(e) => setQty(Math.max(0, Number(e.target.value) || 0))} className={inputCls} />
             <p className="text-[11px] text-slate-400 mt-1">{T('Total cartons to ship → pallets needed.', '要出嘅總箱數 → 所需板數。')}</p>
           </div>
+          <PresetChips
+            title={T('Try a common carton (cm):', '試下常見箱 (cm):')}
+            chips={EXAMPLE_SIZES.slice(0, 4).map(([el, ew, eh]) => ({
+              label: `${el}×${ew}×${eh}`,
+              onClick: () => { setUnit('cm'); setCl(el); setCw(ew); setCh(eh); },
+            }))}
+          />
         </div>
 
         <div>
@@ -217,6 +225,7 @@ export default function PalletCalcPage() {
                     <span className="font-bold text-slate-900">{r.palletsNeeded.toLocaleString()}</span>
                   </div>
                 )}
+                <div className="pt-2"><CopyLink toolId="pallet" /></div>
               </div>
               <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
                 <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
@@ -363,6 +372,8 @@ export default function PalletCalcPage() {
           <Link to="/guides/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator guide', '卡板計算指南')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult label={T('Cartons per pallet', '每板箱數')} value={r.fitsFootprint ? `${r.perPallet.toLocaleString()}${r.palletsNeeded != null ? ` · ${r.palletsNeeded} ${T('plts', '板')}` : ''}` : T('overhangs', '會懸出')} />
     </div>
   );
 }

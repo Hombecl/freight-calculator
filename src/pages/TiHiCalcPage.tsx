@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { PALLETS, CM_PER_IN, perLayer } from '../lib/pallets';
 import LayerDiagram from '../components/LayerDiagram';
+import { StickyResult, StickySpacer, CopyLink, PresetChips } from '../components/calc/CalcUx';
 
 /**
  * /ti-hi-calculator — TI × HI in industry language. The math is the pallet
@@ -138,6 +139,14 @@ export default function TiHiCalcPage() {
             <input type="number" min={0} value={maxH || ''} placeholder={String(Math.round(pallet.maxH / (unit === 'in' ? CM_PER_IN : 1)))} onChange={(e) => setMaxH(Math.max(0, Number(e.target.value) || 0))} className={inputCls} />
             <p className="text-[11px] text-slate-400 mt-1">{T('Retail routing guides often cap loaded height — enter yours.', '零售商 routing guide 通常有高度上限 — 有就填。')}</p>
           </div>
+          <PresetChips
+            title={T('Try a common case:', '試下常見箱:')}
+            chips={[
+              { label: '16×12×12 in', onClick: () => { setUnit('in'); setCl(16); setCw(12); setCh(12); } },
+              { label: '40×30×30 cm', onClick: () => { setUnit('cm'); setCl(40); setCw(30); setCh(30); } },
+              { label: '60×40×40 cm', onClick: () => { setUnit('cm'); setCl(60); setCw(40); setCh(40); } },
+            ]}
+          />
         </div>
 
         <div>
@@ -161,6 +170,7 @@ export default function TiHiCalcPage() {
                 <div className="flex justify-between"><span>HI — {T('layers high', '層數')}</span><span className="font-semibold">{r.hi}</span></div>
                 <div className="flex justify-between"><span>{T('Load height used', '堆疊高度')}</span><span className="font-semibold">{Math.round(r.loadHeight)} / {Math.round(r.loadH)} cm</span></div>
                 <div className="flex justify-between"><span>{T('Cases per pallet', '每板箱數')}</span><span className="font-semibold">{r.total}</span></div>
+                <div className="pt-2"><CopyLink toolId="tihi" /></div>
               </div>
               <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-4 items-start">
                 <div className="rounded-lg bg-slate-900 text-white p-4 font-mono text-xs">
@@ -223,6 +233,8 @@ export default function TiHiCalcPage() {
           <Link to="/planner" className="text-blue-600 hover:underline">{T('3D load planner', '3D 裝載規劃器')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult label={T('Cases per pallet', '每板箱數')} value={r.fits ? `${r.ti} × ${r.hi} = ${r.total}` : T('overhangs', '會懸出')} />
     </div>
   );
 }

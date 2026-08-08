@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import { StickyResult, StickySpacer, CopyLink } from '../components/calc/CalcUx';
 
 /**
  * /pallets-per-container — "how many pallets fit in a 40ft container"
@@ -35,6 +36,31 @@ function floorFit(pl: number, pw: number, CL: number, CW: number) {
   const b = Math.floor(CW / pl + EPS) * Math.floor(CL / pw + EPS);
   const mixed = pl + pw <= CW ? Math.floor(CL / pw + EPS) + Math.floor(CL / pl + EPS) : 0;
   return Math.max(a, b, mixed);
+}
+
+/** Top-view of the 40' floor — the two-lane mixed pattern drawn to scale,
+ *  so "25 EUR pallets" stops being a magic number. */
+function FloorPattern({ pl, pw }: { pl: number; pw: number }) {
+  const CL = 1203, CW = 235;
+  const W = 560, s = W / CL, H = CW * s, pad = 4;
+  const rects: Array<{ x: number; y: number; w: number; h: number; lane: number }> = [];
+  if (pl + pw <= CW) {
+    for (let i = 0; i < Math.floor(CL / pw + 1e-6); i++) rects.push({ x: i * pw, y: 0, w: pw, h: pl, lane: 0 });
+    for (let i = 0; i < Math.floor(CL / pl + 1e-6); i++) rects.push({ x: i * pl, y: pl, w: pl, h: pw, lane: 1 });
+  } else {
+    const cols = Math.floor(CL / pl + 1e-6), rows = Math.floor(CW / pw + 1e-6);
+    for (let r0 = 0; r0 < rows; r0++) for (let c = 0; c < cols; c++) rects.push({ x: c * pl, y: r0 * pw, w: pl, h: pw, lane: r0 % 2 });
+  }
+  return (
+    <svg viewBox={`0 0 ${W + pad * 2} ${H + pad * 2}`} className="w-full max-w-[600px]" role="img" aria-label={`40 ft container floor pattern, ${rects.length} pallets`}>
+      <rect x={pad} y={pad} width={W} height={H} rx={3} className="fill-slate-100 stroke-slate-400" strokeWidth={1.5} />
+      {rects.map((r0, i) => (
+        <rect key={i} x={pad + r0.x * s + 0.8} y={pad + r0.y * s + 0.8} width={r0.w * s - 1.6} height={r0.h * s - 1.6} rx={1.5}
+          className={r0.lane === 0 ? 'fill-amber-200 stroke-amber-500' : 'fill-blue-200 stroke-blue-500'} strokeWidth={0.8} />
+      ))}
+      <text x={pad + W - 4} y={pad + H - 5} textAnchor="end" className="fill-slate-400" fontSize={9}>{`40' · ${rects.length} pallets`}</text>
+    </svg>
+  );
 }
 
 export default function PalletsPerContainerPage() {
@@ -171,6 +197,12 @@ export default function PalletsPerContainerPage() {
                '地面板數 = 單一擺向同雙行混合擺向取較多者。實際裝櫃通常因綁帶、填充物同櫃門位讓出 1–2 個位。雙層堆疊仲要底層頂得起上層。')}
           </p>
 
+          <div className="mt-4">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{T("40' floor pattern (top view) — amber = crosswise lane, blue = lengthwise", "40 呎地面擺法(俯視)— 橙 = 橫擺行,藍 = 直擺行")}</p>
+            <FloorPattern pl={pallet.l} pw={pallet.w} />
+          </div>
+          <div className="mt-2"><CopyLink toolId="pallets_container" /></div>
+
           <div className="mt-4 rounded-2xl bg-blue-50 border border-blue-100 p-5">
             <p className="text-sm text-slate-700 font-semibold mb-1.5">
               {T('Loading loose cartons instead of pallets?', '散箱唔上板?')}
@@ -251,6 +283,8 @@ export default function PalletsPerContainerPage() {
           <Link to="/container" className="text-blue-600 hover:underline">{T('Container quick-calc', '貨櫃快速計算')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult label={T("Pallets: 20' / 40' / HQ", "板數 20'/40'/HQ")} value={rows.map((x) => x.total).join(' / ')} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import { StickyResult, StickySpacer, CopyLink } from '../components/calc/CalcUx';
 
 /**
  * /cbm-calculator — the remaining buried cluster: CBM / cubic-meter / "how to
@@ -199,6 +200,7 @@ export default function CbmCalcPage() {
               <p>CBM = (L×W×H {unit}) ÷ <span className="text-amber-400">{unit === 'cm' ? '1,000,000' : '61,024'}</span> = <span className="text-green-400">{r.singleCbm.toFixed(4)}</span></p>
               <p>total = {r.singleCbm.toFixed(4)} × {qty} = <span className="text-green-400">{r.totalCbm.toFixed(3)} CBM</span></p>
             </div>
+            <div className="mt-3"><CopyLink toolId="cbm" /></div>
           </div>
 
           <div className="mt-4 rounded-2xl bg-blue-50 border border-blue-100 p-5">
@@ -284,6 +286,8 @@ export default function CbmCalcPage() {
           <Link to="/packing" className="text-blue-600 hover:underline">{T('Carton packing calculator', '產品裝箱計算器')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult label={T('Total volume', '總體積')} value={`${r.totalCbm.toFixed(2)} CBM`} />
     </div>
   );
 }

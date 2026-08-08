@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import { StickyResult, StickySpacer, CopyLink } from '../components/calc/CalcUx';
 
 /**
  * /warehouse-space-calculator — lead-gen tool aimed squarely at warehouse
@@ -214,6 +215,7 @@ export default function WarehouseSpaceCalcPage() {
               <div className="flex justify-between"><span>{T('Per pallet stored', '平均每卡板')}</span><span className="font-semibold">{r.perPallet.toFixed(2)} m²</span></div>
               <div className="flex justify-between"><span>{T('Ground footprints × levels', '地面腳印 × 層數')}</span><span className="font-semibold">{r.footprints.toLocaleString()} × {r.lvls}</span></div>
             </div>
+            <div className="mt-3"><CopyLink toolId="wh_space" /></div>
           </div>
           ) : (
           <div className="rounded-2xl border border-slate-200 p-6">
@@ -227,6 +229,7 @@ export default function WarehouseSpaceCalcPage() {
               <div className="flex justify-between"><span>{T('Ground footprints × levels', '地面腳印 × 層數')}</span><span className="font-semibold">{cap.footprints.toLocaleString()} × {cap.lvls}</span></div>
               <div className="flex justify-between"><span>{T('Building area per position', '平均每卡板位')}</span><span className="font-semibold">{cap.perPallet ? cap.perPallet.toFixed(2) : '—'} m²</span></div>
             </div>
+            <div className="mt-3"><CopyLink toolId="wh_space" /></div>
           </div>
           )}
 
@@ -308,6 +311,11 @@ export default function WarehouseSpaceCalcPage() {
           <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
         </div>
       </section>
+      <StickySpacer />
+      <StickyResult
+        label={mode === 'space' ? T('Total footprint', '總面積') : T('Pallet capacity', '卡板容量')}
+        value={mode === 'space' ? `${Math.round(r.total).toLocaleString()} m²` : `${cap.positions.toLocaleString()} ${T('positions', '個位')}`}
+      />
     </div>
   );
 }
