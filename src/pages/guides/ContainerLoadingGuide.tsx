@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function ContainerLoadingGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>Container Loading Optimization: Maximize Space Utilization | DimPack3D</title>
-        <meta name="description" content="Expert guide to container loading optimization. Learn how to maximize space utilization in 20GP, 40GP, 40HQ containers. Includes loading patterns, weight distribution, and cost-saving strategies." />
-        <meta name="keywords" content="container loading optimization, container space utilization, 20GP loading, 40GP loading, 40HQ loading, cargo loading plan, container stacking, shipping container optimization" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/container-loading-optimization" />
-        <meta property="og:title" content="Container Loading Optimization: Maximize Space Utilization" />
-        <meta property="og:description" content="Expert strategies for optimizing container loading to achieve 90%+ space utilization." />
+        <title>{T("Container Loading Optimization: Maximize Space Utilization | DimPack3D", "貨櫃裝載優化指南 — 提高空間利用率 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Expert guide to container loading optimization. Learn how to maximize space utilization in 20GP, 40GP, 40HQ containers. Includes loading patterns, weight distribution, and cost-saving strategies.",
+          "貨櫃裝載優化專業指南。學識點喺 20GP、40GP、40HQ 貨櫃提高空間利用率,包括擺法、重量分佈同慳成本策略。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Container Loading Optimization: Maximize Space Utilization",
+            "headline": T("Container Loading Optimization: Maximize Space Utilization", "貨櫃裝載優化指南 — 提高空間利用率"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Expert guide to container loading optimization for 20GP, 40GP, 40HQ containers.",
             "author": { "@type": "Organization", "name": "DimPack3D" },
             "publisher": { "@type": "Organization", "name": "DimPack3D", "url": "https://www.dimpack3d.com" },

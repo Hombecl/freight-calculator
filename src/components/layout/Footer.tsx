@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import competitorsData from '../../data/competitors.json';
 
 export default function Footer() {
   const { lang } = useApp();
@@ -30,10 +31,19 @@ export default function Footer() {
     { to: '/guides', label: T('All guides →', '全部指南 →') },
   ];
 
+  // The /compare/* pages had the site's best CTR (pos ~10, 12.3%) while being
+  // orphans — nothing on the site linked to them, so they were reachable only
+  // via sitemap.xml. Generated from the same competitors.json the routes and
+  // prerender use, so a new competitor is linked the moment it is added.
+  const compare = competitorsData.competitors.map((c) => ({
+    to: `/compare/${c.slug}`,
+    label: T(`${c.name} alternative`, `${c.name} 替代方案`),
+  }));
+
   return (
     <footer className="bg-slate-950 text-slate-400 mt-auto border-t border-slate-800 print:hidden">
       <div className="max-w-6xl mx-auto px-4 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-10">
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
@@ -79,6 +89,18 @@ export default function Footer() {
             <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">{T('Guides', '指南')}</h4>
             <ul className="space-y-2.5 text-sm">
               {guides.map((l) => (
+                <li key={l.to}>
+                  <Link to={l.to} className="hover:text-white transition-colors">{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Compare */}
+          <div>
+            <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">{T('Compare', '比較')}</h4>
+            <ul className="space-y-2.5 text-sm">
+              {compare.map((l) => (
                 <li key={l.to}>
                   <Link to={l.to} className="hover:text-white transition-colors">{l.label}</Link>
                 </li>

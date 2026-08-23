@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function CbmCalculatorGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>CBM Calculator Guide: Master Shipping Volume Calculations | DimPack3D</title>
-        <meta name="description" content="Complete guide to CBM (Cubic Meter) calculations for international shipping. Learn formulas, container capacities for 20GP, 40GP, 40HQ, and how to optimize cargo loading." />
-        <meta name="keywords" content="CBM calculator, cubic meter calculation, shipping volume, container capacity, 20GP capacity, 40GP capacity, 40HQ capacity, freight calculation, cargo volume" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/cbm-calculator-shipping" />
-        <meta property="og:title" content="CBM Calculator Guide: Master Shipping Volume Calculations" />
-        <meta property="og:description" content="Learn CBM calculations, container capacities, and cargo optimization strategies for international shipping." />
+        <title>{T("CBM Calculator Guide: Master Shipping Volume Calculations | DimPack3D", "CBM 計算指南 — 材積、貨櫃容量同裝載優化 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Complete guide to CBM (Cubic Meter) calculations for international shipping. Learn formulas, container capacities for 20GP, 40GP, 40HQ, and how to optimize cargo loading.",
+          "國際運輸 CBM(立方米)計算完整指南。學識公式、20GP / 40GP / 40HQ 貨櫃容量,同點優化裝貨。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "CBM Calculator Guide: Master Shipping Volume Calculations",
+            "headline": T("CBM Calculator Guide: Master Shipping Volume Calculations", "CBM 計算指南 — 材積、貨櫃容量同裝載優化"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Complete guide to CBM calculations for international shipping, including formulas, container capacities, and optimization strategies.",
             "author": {
               "@type": "Organization",

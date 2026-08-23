@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function FbaFeeCalculatorGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs | DimPack3D</title>
-        <meta name="description" content="Free guide to Amazon FBA fees and costs. Learn how to calculate fulfillment fees, storage fees, referral fees, and maximize your FBA profit margins in 2025." />
-        <meta name="keywords" content="FBA fee calculator, amazon FBA fees, FBA fulfillment fees, FBA cost calculator, amazon seller fees, FBA profit calculator, FBA revenue calculator, amazon profit margin" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/fba-fee-calculator" />
-        <meta property="og:title" content="Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs" />
-        <meta property="og:description" content="Learn how to calculate all Amazon FBA fees and maximize your profit margins with our comprehensive guide." />
+        <title>{T("Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs | DimPack3D", "Amazon FBA 費用計算指南 2025 — FBA 成本全解 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Free guide to Amazon FBA fees and costs. Learn how to calculate fulfillment fees, storage fees, referral fees, and maximize your FBA profit margins in 2025.",
+          "免費 Amazon FBA 費用指南。學識點計配送費、倉儲費、平台佣金,提高 FBA 利潤率。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs",
+            "headline": T("Amazon FBA Fee Calculator 2025: Complete Guide to FBA Costs", "Amazon FBA 費用計算指南 2025 — FBA 成本全解"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Free guide to Amazon FBA fees and costs. Learn how to calculate fulfillment fees, storage fees, referral fees, and maximize your FBA profit margins.",
             "author": {
               "@type": "Organization",

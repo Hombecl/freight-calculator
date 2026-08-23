@@ -6,8 +6,16 @@
       "url": "https://www.easycargo3d.com",
       "summaryEn": "EasyCargo is an established browser-based load planning tool with per-seat licensing (day tickets, monthly or yearly), a 10-day free trial, and support for trucks, containers and pallets.",
       "summaryZh": "EasyCargo 係老牌瀏覽器裝載規劃工具,按席位收費(日票、月費或年費),有 10 日免費試用,支援貨車、貨櫃同卡板。",
-      "theyHaveEn": ["Truck types and pallets as first-class vehicles", "Established customer base and long track record", "Team/enterprise licensing (enterprise tier from $2,400+ orders)"],
-      "theyHaveZh": ["貨車與卡板類型齊全", "老牌產品,客戶基礎成熟", "團隊/企業授權(企業級 $2,400+ 起)"],
+      "theyHaveEn": [
+        "Truck types and pallets as first-class vehicles",
+        "Established customer base and long track record",
+        "Team/enterprise licensing (enterprise tier from $2,400+ orders)"
+      ],
+      "theyHaveZh": [
+        "貨車與卡板類型齊全",
+        "老牌產品,客戶基礎成熟",
+        "團隊/企業授權(企業級 $2,400+ 起)"
+      ],
       "pricingEn": "Paid per-seat licenses (day tickets, monthly, yearly; prices shown in their store). Free trial is 10 days.",
       "pricingZh": "按席位收費(日票/月費/年費,價錢喺佢哋商店顯示),試用期 10 日。"
     },
@@ -17,8 +25,16 @@
       "url": "https://cargo-planner.com",
       "summaryEn": "Cargo-Planner is a polished commercial load planning platform for sea, road and air with an embeddable SDK/API, used by large forwarders and airlines. Pricing is subscription-based via custom tiers.",
       "summaryZh": "Cargo-Planner 係精緻嘅商用裝載規劃平台,覆蓋海運、陸運、空運,提供可嵌入 SDK/API,大型貨代同航空公司都有採用。訂閱制,價錢按方案報價。",
-      "theyHaveEn": ["Air cargo (ULD) support", "SDK/API for embedding into your own systems", "Enterprise customer base (airlines, global forwarders)"],
-      "theyHaveZh": ["空運 ULD 支援", "SDK/API 可嵌入自家系統", "企業客戶群(航空公司、全球貨代)"],
+      "theyHaveEn": [
+        "Air cargo (ULD) support",
+        "SDK/API for embedding into your own systems",
+        "Enterprise customer base (airlines, global forwarders)"
+      ],
+      "theyHaveZh": [
+        "空運 ULD 支援",
+        "SDK/API 可嵌入自家系統",
+        "企業客戶群(航空公司、全球貨代)"
+      ],
       "pricingEn": "Subscription plans (quote-based tiers); free trial available.",
       "pricingZh": "訂閱制(按方案報價),有免費試用。"
     },
@@ -28,10 +44,75 @@
       "url": "https://www.magiclogic.com",
       "summaryEn": "Cube-IQ (MagicLogic) is enterprise desktop load-optimization software with deep constraint support, frequently cited among the most advanced packers. Third-party listings report pricing from roughly $5,000/year per user.",
       "summaryZh": "Cube-IQ(MagicLogic)係企業級桌面裝載優化軟件,約束支援極深,常被評為最強算法之一。第三方目錄顯示價格約每用戶每年 $5,000 起。",
-      "theyHaveEn": ["Very deep constraint engine (mixed vehicles, complex rules)", "Desktop + database integrations for enterprise ops", "Decades of enterprise deployments"],
-      "theyHaveZh": ["約束引擎極深(混合載具、複雜規則)", "桌面 + 數據庫整合,面向企業營運", "數十年企業部署經驗"],
+      "theyHaveEn": [
+        "Very deep constraint engine (mixed vehicles, complex rules)",
+        "Desktop + database integrations for enterprise ops",
+        "Decades of enterprise deployments"
+      ],
+      "theyHaveZh": [
+        "約束引擎極深(混合載具、複雜規則)",
+        "桌面 + 數據庫整合,面向企業營運",
+        "數十年企業部署經驗"
+      ],
       "pricingEn": "Enterprise licensing; third-party listings report from ~$5,000/yr per user (verify with vendor).",
       "pricingZh": "企業授權;第三方目錄顯示約每用戶每年 $5,000 起(以官方報價為準)。"
+    },
+    {
+      "slug": "goodloading-alternative",
+      "name": "Goodloading",
+      "url": "https://goodloading.com",
+      "summaryEn": "Goodloading is a browser-based cargo planning app for road, sea and air. It offers free registration with an always-free demo version and a paid professional tier, and covers axle pressure, permissible total weight and centre of gravity, multi-stop loading, 3D visualisation with a loading animation, and sharing by link or PDF.",
+      "summaryZh": "Goodloading 係瀏覽器裝載規劃工具,支援陸運、海運同空運。免費註冊、demo 版一直免費,另有付費專業版;涵蓋軸重、總許可重量同重心、多點裝卸、3D 視覺化連裝載動畫,可用連結或 PDF 分享。",
+      "theyHaveEn": [
+        "Axle pressure, permissible total weight and centre of gravity",
+        "Multi-stop loading with cargo separated per drop",
+        "Loading animation in shared projects and PDFs"
+      ],
+      "theyHaveZh": [
+        "軸重、總許可重量同重心計算",
+        "多點裝卸,每個卸貨點分開擺放",
+        "分享項目同 PDF 內置裝載動畫"
+      ],
+      "pricingEn": "Free registration with an always-free demo version; a paid professional version adds advanced customisation (prices on their site).",
+      "pricingZh": "免費註冊,demo 版一直免費;付費專業版提供進階自訂功能(價錢見官網)。"
+    },
+    {
+      "slug": "3dbinpacking-alternative",
+      "name": "3DBinPacking",
+      "url": "https://www.3dbinpacking.com",
+      "summaryEn": "3DBinPacking is a cloud packing-optimisation service with an API, aimed at box selection and load planning. It offers a 14-day trial with no credit card required, states all tools are included in every subscription plan, and advertises an average calculation time under 0.1 second.",
+      "summaryZh": "3DBinPacking 係雲端裝箱優化服務,附 API,主打選箱同裝載規劃。有 14 日試用、唔使信用卡,聲明所有工具喺每個訂閱方案都包,並標榜平均運算時間少於 0.1 秒。",
+      "theyHaveEn": [
+        "Box-selection tools (find a box size, try out box sizes)",
+        "Pallet stacking and max-load checks as separate tools",
+        "Established commercial API with published documentation"
+      ],
+      "theyHaveZh": [
+        "選箱工具(搵合適箱、試唔同箱)",
+        "卡板堆疊同最大裝載檢查獨立工具",
+        "成熟商用 API,有正式文檔"
+      ],
+      "pricingEn": "Subscription plans (all tools included in each plan); 14-day trial, no credit card required. Current prices on their site.",
+      "pricingZh": "訂閱制(每個方案都包晒所有工具);14 日試用、唔使信用卡。價錢以官網為準。"
+    },
+    {
+      "slug": "cargowiz-alternative",
+      "name": "CargoWiz",
+      "url": "https://www.softtruck.com",
+      "summaryEn": "CargoWiz is a Windows desktop container-loading calculator that positions itself as the easiest to learn. It has a drag-and-drop editor, Excel import, and a \"Spread My Cargo\" function for weight distribution, with a fully-featured 30-day trial download.",
+      "summaryZh": "CargoWiz 係 Windows 桌面貨櫃裝載計算軟件,主打易學易用。有拖放編輯器、Excel 匯入,同埋「Spread My Cargo」重量分佈功能,提供 30 日全功能試用下載。",
+      "theyHaveEn": [
+        "Windows desktop app that runs without a browser or internet",
+        "Excel import and a drag-and-drop cargo editor",
+        "Fully-featured 30-day trial; support free for the first year"
+      ],
+      "theyHaveZh": [
+        "Windows 桌面程式,唔使瀏覽器或上網都用得",
+        "Excel 匯入 + 拖放式貨物編輯器",
+        "30 日全功能試用;首年免費支援"
+      ],
+      "pricingEn": "Paid Windows licence after a 30-day fully-featured trial; the vendor does not publish a price on the product page (verify with vendor).",
+      "pricingZh": "30 日全功能試用後需購買 Windows 授權;官網產品頁未有公開價錢(以官方報價為準)。"
     }
   ]
 }

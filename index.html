@@ -70,7 +70,13 @@
     }
     </script>
 
-    <!-- Structured Data / JSON-LD - WebApplication -->
+    <!-- Structured Data / JSON-LD - WebApplication
+         2026-08-23: removed an aggregateRating of 4.8 from 150 ratings. The site
+         has no review system and has never collected a rating, so that markup was
+         fabricated. Google requires review markup to reflect genuine reviews that
+         are visible on the page; fake ratings are grounds for a "spammy structured
+         markup" manual action, which suppresses rankings site-wide. Do NOT re-add
+         it unless real, on-page, verifiable reviews exist to back it. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -106,13 +112,6 @@
         "Bilingual Support (English & Traditional Chinese)"
       ],
       "screenshot": "https://www.dimpack3d.com/og-image.png",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "ratingCount": "150",
-        "bestRating": "5",
-        "worstRating": "1"
-      },
       "author": {
         "@type": "Organization",
         "name": "DimPack3D"

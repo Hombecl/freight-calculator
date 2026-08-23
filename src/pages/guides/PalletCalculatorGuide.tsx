@@ -5,23 +5,32 @@ import { useApp } from '../../context/AppContext';
 
 export default function PalletCalculatorGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
+      {/* Head is locale-aware (2026-08-23). It used to be hardcoded English, so
+          /zh/guides/* served an English title+description over Chinese body copy —
+          Google read them as EN duplicates and this page ranked (badly, pos ~86)
+          for English queries like "pallet estimator", splitting them with the real
+          /pallet-calculator tool. og:url/og:title/og:description are deliberately
+          NOT set here: prerender.mjs fixMeta rewrites them per route, and a
+          page-level og:url leaves a second, wrong tag on the /zh snapshot. */}
       <Helmet>
-        <title>Pallet Calculator Guide: Optimize Pallet Loading & Shipping | DimPack3D</title>
-        <meta name="description" content="Free pallet calculator guide. Learn standard pallet sizes, calculate cartons per pallet, optimize pallet loading patterns, and reduce LTL and FTL shipping costs." />
-        <meta name="keywords" content="pallet calculator, pallet loading calculator, cartons per pallet, pallet size, pallet weight calculator, LTL shipping, FTL shipping, pallet optimization, 48x40 pallet" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/pallet-calculator" />
-        <meta property="og:title" content="Pallet Calculator Guide: Optimize Pallet Loading & Shipping" />
-        <meta property="og:description" content="Learn standard pallet sizes, calculate cartons per pallet, and optimize your pallet loading for cost-effective shipping." />
+        <title>{T('Pallet Calculator Guide: Optimize Pallet Loading & Shipping | DimPack3D', '卡板計算指南 — 每板箱數、擺法同運費優化 | DimPack3D')}</title>
+        <meta name="description" content={T(
+          'Free pallet calculator guide. Learn standard pallet sizes, calculate cartons per pallet, optimize pallet loading patterns, and reduce LTL and FTL shipping costs.',
+          '免費卡板計算指南。認識標準卡板尺寸、計每板箱數、優化逐層擺法,慳返 LTL 同 FTL 運費。')} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Pallet Calculator Guide: Optimize Pallet Loading & Shipping",
-            "description": "Free pallet calculator guide. Learn standard pallet sizes, calculate cartons per pallet, optimize pallet loading patterns, and reduce shipping costs.",
+            "headline": T('Pallet Calculator Guide: Optimize Pallet Loading & Shipping', '卡板計算指南 — 每板箱數、擺法同運費優化'),
+            "description": T(
+              'Free pallet calculator guide. Learn standard pallet sizes, calculate cartons per pallet, optimize pallet loading patterns, and reduce shipping costs.',
+              '免費卡板計算指南。認識標準卡板尺寸、計每板箱數、優化逐層擺法,慳返運費。'),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "author": {
               "@type": "Organization",
               "name": "DimPack3D"

@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function DimensionalWeightGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>Dimensional Weight Calculator Guide: DIM Weight Formula Explained | DimPack3D</title>
-        <meta name="description" content="Complete guide to dimensional weight (DIM weight) calculations. Learn the formula, divisors for air and sea freight, and strategies to reduce shipping costs by optimizing packaging." />
-        <meta name="keywords" content="dimensional weight calculator, DIM weight, volumetric weight, shipping weight calculation, DIM factor, air freight weight, sea freight weight, package optimization" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/dimensional-weight-calculator" />
-        <meta property="og:title" content="Dimensional Weight Calculator Guide: DIM Weight Formula Explained" />
-        <meta property="og:description" content="Learn how dimensional weight affects shipping costs and how to optimize your packaging." />
+        <title>{T("Dimensional Weight Calculator Guide: DIM Weight Formula Explained | DimPack3D", "材積重量計算指南 — DIM 重量公式詳解 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Complete guide to dimensional weight (DIM weight) calculations. Learn the formula, divisors for air and sea freight, and strategies to reduce shipping costs by optimizing packaging.",
+          "材積重量(DIM weight)計算完整指南。學識公式、空運同海運除數,同點靠優化包裝慳運費。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Dimensional Weight Calculator Guide: DIM Weight Formula Explained",
+            "headline": T("Dimensional Weight Calculator Guide: DIM Weight Formula Explained", "材積重量計算指南 — DIM 重量公式詳解"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Complete guide to dimensional weight calculations for shipping optimization.",
             "author": { "@type": "Organization", "name": "DimPack3D" },
             "publisher": { "@type": "Organization", "name": "DimPack3D", "url": "https://www.dimpack3d.com" },

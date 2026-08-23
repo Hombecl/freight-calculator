@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function AmazonDimensionalWeightGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>Amazon Dimensional Weight Calculator 2025: Complete FBA Guide | DimPack3D</title>
-        <meta name="description" content="Master Amazon dimensional weight calculations for FBA. Learn how Amazon calculates DIM weight, understand the 139 cubic inch divisor, and optimize packaging to reduce fees." />
-        <meta name="keywords" content="amazon dimensional weight, amazon dim weight calculator, FBA dimensional weight, amazon 139 divisor, amazon shipping weight, FBA weight calculation, amazon volumetric weight" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/amazon-dimensional-weight" />
-        <meta property="og:title" content="Amazon Dimensional Weight Calculator 2025: Complete FBA Guide" />
-        <meta property="og:description" content="Learn how Amazon calculates dimensional weight for FBA and optimize your packaging to reduce fulfillment fees." />
+        <title>{T("Amazon Dimensional Weight Calculator 2025: Complete FBA Guide | DimPack3D", "Amazon 材積重量計算指南 — FBA DIM 重量同 139 除數 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Master Amazon dimensional weight calculations for FBA. Learn how Amazon calculates DIM weight, understand the 139 cubic inch divisor, and optimize packaging to reduce fees.",
+          "掌握 Amazon FBA 材積重量計算。了解 Amazon 點計 DIM 重量、139 立方吋除數,同點優化包裝慳返費用。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Amazon Dimensional Weight Calculator 2025: Complete FBA Guide",
+            "headline": T("Amazon Dimensional Weight Calculator 2025: Complete FBA Guide", "Amazon 材積重量計算指南 — FBA DIM 重量同 139 除數"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Master Amazon dimensional weight calculations for FBA. Learn how Amazon calculates DIM weight and optimize packaging to reduce fees.",
             "author": {
               "@type": "Organization",

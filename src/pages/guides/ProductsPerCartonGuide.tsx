@@ -5,22 +5,22 @@ import { useApp } from '../../context/AppContext';
 
 export default function ProductsPerCartonGuide() {
   const { lang } = useApp();
+  const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
     <article className="max-w-4xl mx-auto">
       <Helmet>
-        <title>Products Per Carton Calculator: Optimize Box Packing | DimPack3D</title>
-        <meta name="description" content="Learn how to calculate the optimal number of products per carton. Master packing algorithms, rotation strategies, and space optimization techniques to reduce shipping costs." />
-        <meta name="keywords" content="products per carton calculator, box packing calculator, carton optimization, packing efficiency, products per box, packaging calculator, carton capacity" />
-        <meta property="og:url" content="https://www.dimpack3d.com/guides/products-per-carton" />
-        <meta property="og:title" content="Products Per Carton Calculator: Optimize Box Packing" />
-        <meta property="og:description" content="Learn how to maximize products per carton with smart packing strategies." />
+        <title>{T("Products Per Carton Calculator: Optimize Box Packing | DimPack3D", "每箱產品數計算指南 — 裝箱優化 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Learn how to calculate the optimal number of products per carton. Master packing algorithms, rotation strategies, and space optimization techniques to reduce shipping costs.",
+          "學識點計每箱最佳產品數。掌握裝箱演算法、旋轉策略同空間優化技巧,慳返運費。")} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": "Products Per Carton Calculator: Optimize Box Packing",
+            "headline": T("Products Per Carton Calculator: Optimize Box Packing", "每箱產品數計算指南 — 裝箱優化"),
+            "inLanguage": lang === 'zh' ? 'zh-Hant' : 'en',
             "description": "Guide to calculating optimal products per carton and maximizing packing efficiency.",
             "author": { "@type": "Organization", "name": "DimPack3D" },
             "publisher": { "@type": "Organization", "name": "DimPack3D", "url": "https://www.dimpack3d.com" },

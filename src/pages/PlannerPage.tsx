@@ -324,10 +324,16 @@ export default function PlannerPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <Helmet>
-        <title>3D Packing Simulator — interactive 3D load planner, free | DimPack3D</title>
+        {/* Intent split (2026-08-23): the homepage owned "3d packing simulator" at
+            pos 1-2 until this page's title was exact-matched to the same query in
+            137b419 — after which BOTH pages ranked (7.4 / 13.6) and clicks went to
+            zero. This page now targets its own cluster: "3d load planner",
+            "container loading simulator", "load plan". Do not re-add
+            "packing simulator" here; that phrase belongs to the homepage. */}
+        <title>3D Load Planner — container loading simulator, drag & stack, free | DimPack3D</title>
         <meta
           name="description"
-          content="Real 3D bin-packing with weight & stacking limits, then drag, rotate and stack cartons by hand in an interactive editor. Free load planning from DimPack3D."
+          content="Interactive 3D load planner for containers, trucks and pallets. Auto-arrange with real bin-packing (weight & stack limits), then drag, rotate and stack cartons by hand. Free, no signup."
         />
       </Helmet>
 
