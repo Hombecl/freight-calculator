@@ -1,16 +1,16 @@
 import { Helmet } from 'react-helmet-async';
+import { IS_ZH } from '../lib/locale';
 import Calculator from '../components/Calculator';
 
 export default function ContainerPage() {
+  const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   return (
     <>
       <Helmet>
-        <title>Container Loading Calculator - 20GP 40GP 40HQ Optimizer | DimPack3D</title>
-        <meta name="description" content="Free container loading calculator. Calculate how many cartons fit in 20GP, 40GP, 40HQ shipping containers. Maximize space utilization with 3D visualization." />
-        <meta name="keywords" content="container loading calculator, container calculator, 20GP calculator, 40GP calculator, 40HQ calculator, container utilization, shipping container optimizer, CBM calculator, container space" />
-        <meta property="og:url" content="https://www.dimpack3d.com/container" />
-        <meta property="og:title" content="Container Loading Calculator - 20GP 40GP 40HQ Optimizer | DimPack3D" />
-        <meta property="og:description" content="Calculate carton-to-container loading for 20GP, 40GP, 40HQ with maximum space utilization and 3D visualization." />
+        <title>{T("Container Loading Calculator - 20GP 40GP 40HQ Optimizer | DimPack3D", "貨櫃裝載計算器 — 20GP、40GP、40HQ 裝載優化 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Free container loading calculator. Calculate how many cartons fit in 20GP, 40GP, 40HQ shipping containers. Maximize space utilization with 3D visualization.",
+          "免費貨櫃裝載計算器。計 20GP、40GP、40HQ 貨櫃可以裝幾多箱,用 3D 視覺化將空間利用率做到最盡。")} />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",

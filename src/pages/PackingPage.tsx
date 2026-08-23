@@ -1,16 +1,16 @@
 import { Helmet } from 'react-helmet-async';
+import { IS_ZH } from '../lib/locale';
 import Calculator from '../components/Calculator';
 
 export default function PackingPage() {
+  const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   return (
     <>
       <Helmet>
-        <title>Product Packing Calculator - 3D Box Packing Optimizer | DimPack3D</title>
-        <meta name="description" content="Free 3D product packing calculator. Calculate how many products fit in a carton, optimize packing arrangement, estimate CBM and shipping costs for air & sea freight." />
-        <meta name="keywords" content="packing calculator, box packing calculator, carton calculator, CBM calculator, shipping calculator, products per carton, 3D packing visualization, air freight calculator, sea freight calculator" />
-        <meta property="og:url" content="https://www.dimpack3d.com/packing" />
-        <meta property="og:title" content="Product Packing Calculator - 3D Box Packing Optimizer | DimPack3D" />
-        <meta property="og:description" content="Calculate optimal product-to-carton packing with 3D visualization. Estimate CBM and shipping costs for air & sea freight." />
+        <title>{T("Product Packing Calculator - 3D Box Packing Optimizer | DimPack3D", "產品裝箱計算器 — 3D 紙箱裝箱優化 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Free 3D product packing calculator. Calculate how many products fit in a carton, optimize packing arrangement, estimate CBM and shipping costs for air & sea freight.",
+          "免費 3D 產品裝箱計算器。計一個紙箱可以裝幾多件產品、優化擺放方式,並估算 CBM 同空運海運運費。")} />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",

@@ -1,16 +1,16 @@
 import { Helmet } from 'react-helmet-async';
+import { IS_ZH } from '../lib/locale';
 import Calculator from '../components/Calculator';
 
 export default function FbaPage() {
+  const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   return (
     <>
       <Helmet>
-        <title>Amazon FBA Size Tier Calculator 2025 - FBA Fee Estimator | DimPack3D</title>
-        <meta name="description" content="Free Amazon FBA size tier calculator based on 2025 standards. Calculate FBA fulfillment fees, determine product size tiers, and optimize packaging to reduce costs." />
-        <meta name="keywords" content="FBA calculator, Amazon FBA size tier, FBA fee calculator, Amazon fulfillment fees, FBA 2025, product size tier, FBA shipping calculator, Amazon seller tools, FBA optimization" />
-        <meta property="og:url" content="https://www.dimpack3d.com/fba" />
-        <meta property="og:title" content="Amazon FBA Size Tier Calculator 2025 - FBA Fee Estimator | DimPack3D" />
-        <meta property="og:description" content="Calculate Amazon FBA size tiers and fulfillment fees based on 2025 standards. Optimize packaging to reduce FBA costs." />
+        <title>{T("Amazon FBA Size Tier Calculator 2025 - FBA Fee Estimator | DimPack3D", "Amazon FBA 尺寸分級計算器 2025 — FBA 費用估算 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Free Amazon FBA size tier calculator based on 2025 standards. Calculate FBA fulfillment fees, determine product size tiers, and optimize packaging to reduce costs.",
+          "免費 Amazon FBA 尺寸分級計算器,依 2025 標準。計 FBA 配送費、判斷產品尺寸級別,並優化包裝慳返成本。")} />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",

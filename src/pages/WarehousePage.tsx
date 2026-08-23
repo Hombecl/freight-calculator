@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { IS_ZH } from '../lib/locale';
 import { AlertTriangle, CheckCircle2, Route, Share2, FileText, Save, Check } from 'lucide-react';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import {
@@ -74,6 +75,7 @@ const isStructure = (b: PlannerBox) => {
 };
 
 export default function WarehousePage() {
+  const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   const [floorL, setFloorL] = useState(2000); // cm
   const [floorW, setFloorW] = useState(1200);
   const [aisle, setAisle] = useState(300);
@@ -402,8 +404,10 @@ export default function WarehousePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <Helmet>
-        <title>Warehouse Floor Planner — pallets, racks, aisles & forklift reachability | DimPack3D</title>
-        <meta name="description" content="Plan a warehouse floor in 3D: pallet rows with forklift aisles, racks with level capacity, walls and columns, dock on any edge — with live forklift reachability and route simulation. Free." />
+        <title>{T("Warehouse Floor Planner — pallets, racks, aisles & forklift reachability | DimPack3D", "倉庫平面規劃器 — 卡板、貨架、通道同叉車可達性 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Plan a warehouse floor in 3D: pallet rows with forklift aisles, racks with level capacity, walls and columns, dock on any edge — with live forklift reachability and route simulation. Free.",
+          "用 3D 規劃倉庫平面:卡板排位連叉車通道、貨架逐層容量、牆身同柱位、任何一邊都可以開卸貨門 — 仲有即時叉車可達性同路線模擬。免費。")} />
       </Helmet>
 
       <div className="mb-5 flex flex-wrap items-center gap-3">

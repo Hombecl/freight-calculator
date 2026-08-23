@@ -103,6 +103,7 @@ const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
 };
 
 export default function PlannerPage() {
+  const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   const [params] = useSearchParams();
   const preset = PRESETS[params.get('demo') ?? ''];
   const [containerKey, setContainerKey] = useState<ContainerKey>(preset?.container ?? '20gp');
@@ -330,11 +331,10 @@ export default function PlannerPage() {
             zero. This page now targets its own cluster: "3d load planner",
             "container loading simulator", "load plan". Do not re-add
             "packing simulator" here; that phrase belongs to the homepage. */}
-        <title>3D Load Planner — container loading simulator, drag & stack, free | DimPack3D</title>
-        <meta
-          name="description"
-          content="Interactive 3D load planner for containers, trucks and pallets. Auto-arrange with real bin-packing (weight & stack limits), then drag, rotate and stack cartons by hand. Free, no signup."
-        />
+        <title>{T("3D Load Planner — container loading simulator, drag & stack, free | DimPack3D", "3D 裝載規劃器 — 貨櫃裝載模擬、拖拉堆疊,免費 | DimPack3D")}</title>
+        <meta name="description" content={T(
+          "Interactive 3D load planner for containers, trucks and pallets. Auto-arrange with real bin-packing (weight & stack limits), then drag, rotate and stack cartons by hand. Free, no signup.",
+          "貨櫃、貨車同卡板嘅互動 3D 裝載規劃器。用真實裝箱演算法自動排位(計重量同堆疊上限),再手動拖動、旋轉、堆疊紙箱。免費,唔使註冊。")} />
       </Helmet>
 
       <div className="mb-5">
