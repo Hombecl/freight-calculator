@@ -7,6 +7,7 @@ import { track } from '../lib/track';
 import { PALLETS, CM_PER_IN, perLayer } from '../lib/pallets';
 import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
 import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
+import PalletChain from '../components/PalletChain';
 
 /**
  * /ti-hi-calculator — TI × HI in industry language. The math is the pallet
@@ -259,6 +260,7 @@ export default function TiHiCalcPage() {
           <Link to="/planner" className="text-blue-600 hover:underline">{T('3D load planner', '3D 裝載規劃器')}</Link>
         </div>
       </section>
+      <PalletChain current="/ti-hi-calculator" />
       <StickySpacer />
       <StickyResult label={T('Cases per pallet', '每板箱數')} value={r.fits ? `${r.ti} × ${r.hi} = ${r.total}` : T('overhangs', '會懸出')} />
     </div>

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import PalletChain from '../components/PalletChain';
 
 /**
  * /pallet-builder — landing for the "pallet builder" query (~1,300/mo US).
@@ -99,6 +100,7 @@ export default function PalletBuilderPage() {
           <Link to="/freight-class-calculator" className="text-blue-600 hover:underline">{T('Freight class calculator', '運費等級計算機')}</Link>
         </div>
       </section>
+      <PalletChain current="/pallet-builder" />
     </div>
   );
 }

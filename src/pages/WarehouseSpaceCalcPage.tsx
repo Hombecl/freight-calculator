@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
+import PalletChain from '../components/PalletChain';
 
 /**
  * /warehouse-space-calculator — lead-gen tool aimed squarely at warehouse
@@ -310,6 +311,7 @@ export default function WarehouseSpaceCalcPage() {
           <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
         </div>
       </section>
+      <PalletChain current="/warehouse-space-calculator" />
       <StickySpacer />
       <StickyResult
         label={mode === 'space' ? T('Total footprint', '總面積') : T('Pallet capacity', '卡板容量')}

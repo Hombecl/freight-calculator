@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
+import PalletChain from '../components/PalletChain';
 
 /**
  * /pallet-storage-cost-calculator — the "cost" search cluster the data
@@ -208,6 +209,7 @@ export default function PalletStorageCostPage() {
           <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
         </div>
       </section>
+      <PalletChain current="/pallet-storage-cost-calculator" />
     </div>
   );
 }

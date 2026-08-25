@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
+import PalletChain from '../components/PalletChain';
 
 /**
  * /pallets-per-container — "how many pallets fit in a 40ft container"
@@ -284,6 +285,7 @@ export default function PalletsPerContainerPage() {
           <Link to="/container" className="text-blue-600 hover:underline">{T('Container quick-calc', '貨櫃快速計算')}</Link>
         </div>
       </section>
+      <PalletChain current="/pallets-per-container" />
       <StickySpacer />
       <StickyResult label={T("Pallets: 20' / 40' / HQ", "板數 20'/40'/HQ")} value={rows.map((x) => x.total).join(' / ')} />
     </div>

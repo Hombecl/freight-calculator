@@ -17,6 +17,7 @@ import { track } from '../lib/track';
 import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
 import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
 import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
+import PalletChain from '../components/PalletChain';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -102,7 +103,11 @@ export default function PalletCalcPage() {
     </div>
     <div className="max-w-4xl mx-auto px-4 py-10 print:hidden">
       <Helmet>
-        <title>{T('Pallet Calculator — cartons per pallet, layers & pallets needed, free | DimPack3D', '卡板計算器 — 每板箱數、層數同所需板數 | DimPack3D')}</title>
+        {/* Hub page for the pallet position (POSITIONING.md §4-5): biggest
+            impression pool on the site. The title carries the wedge — other
+            calculators divide deck area by carton area, this one runs the packer
+            and shows the arrangement. */}
+        <title>{T('Pallet Calculator — cartons per pallet, built box by box (not estimated) | DimPack3D', '卡板計算器 — 每板箱數,逐箱砌出嚟唔係靠估 | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free pallet calculator. Enter carton size and weight to get cartons per layer, layers to max load height, cartons per pallet (capped by the pallet weight rating), footprint utilisation, and pallets needed for your order — EUR, US GMA and industrial pallets. No signup.',
           '免費卡板計算器。輸入紙箱尺寸同重量,即得每層箱數、到最大堆疊高度嘅層數、每板箱數(受卡板載重上限限制)、板面利用率同訂單所需板數 — 支援歐標、美式 GMA 同工業卡板。免費、唔使註冊。')} />
@@ -396,6 +401,7 @@ export default function PalletCalcPage() {
           <Link to="/guides/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator guide', '卡板計算指南')}</Link>
         </div>
       </section>
+      <PalletChain current="/pallet-calculator" />
       <StickySpacer />
       <StickyResult label={T('Cartons per pallet', '每板箱數')} value={r.fitsFootprint ? `${r.perPallet.toLocaleString()}${r.palletsNeeded != null ? ` · ${r.palletsNeeded} ${T('plts', '板')}` : ''}` : T('overhangs', '會懸出')} />
     </div>

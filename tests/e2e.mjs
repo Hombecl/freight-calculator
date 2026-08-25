@@ -45,14 +45,46 @@ page.setDefaultTimeout(15_000);
 // ---------- homepage ----------
 await test('home: hero renders with headline', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: /stop shipping air/i }).waitFor();
+  // Headline changed with the pallet repositioning (POSITIONING.md §3); it was
+  // "Stop shipping air", which sold container void — 2.3% of search demand.
+  await page.getByRole('heading', { name: /most pallet calculators guess/i }).waitFor();
 }, page);
 
-await test('home: hero tabs switch container/carton scene', async () => {
+await test('home: hero defaults to the pallet scene', async () => {
+  // The hero must open on a pallet: the headline claims the engine builds one,
+  // so the demo has to show it. Guards against the default silently reverting.
+  await page.getByText(/GMA pallet 48×40/i).waitFor();
+}, page);
+
+await test('home: hero tabs switch pallet/container/carton scene', async () => {
   await page.getByRole('button', { name: /products → carton/i }).click();
   await page.getByText(/Master carton · 60×40×40/i).waitFor();
   await page.getByRole('button', { name: /cartons → container/i }).click();
   await page.getByText(/20' GP shipping container/i).waitFor();
+  await page.getByRole('button', { name: /cartons → pallet/i }).click();
+  await page.getByText(/GMA pallet 48×40/i).waitFor();
+}, page);
+
+await test('home: the four pallet questions link the chain', async () => {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
+  for (const href of ['/pallet-calculator', '/pallets-per-container',
+                      '/warehouse-space-calculator', '/pallet-storage-cost-calculator']) {
+    await page.locator(`a[href="${href}"]`).first().waitFor();
+  }
+}, page);
+
+await test('pallet chain: marks current step and does not self-link', async () => {
+  await page.goto(`${BASE}/pallet-calculator`, { waitUntil: 'domcontentloaded' });
+  const chain = page.locator('nav').filter({ hasText: /work out your pallets/i }).first();
+  await chain.waitFor();
+  // step 1 is the current page: rendered as text, never as a link back to itself
+  await chain.locator('[aria-current="page"]').waitFor();
+  if (await chain.locator('a[href="/pallet-calculator"]').count() > 0) {
+    throw new Error('pallet chain self-links on its own page');
+  }
+  // and it still offers the next steps
+  await chain.locator('a[href="/pallets-per-container"]').waitFor();
 }, page);
 
 await test('home: chain nav links all five tools', async () => {
@@ -154,7 +186,8 @@ await test('compare: easycargo page renders honestly', async () => {
 
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/唔好再為空隙付運費/).waitFor();
+  // ZH side of the repositioned headline (was 唔好再為空隙付運費).
+  await page.getByText(/大部分卡板計算機靠估/).waitFor();
 }, page);
 
 await test('plans: sign-in gate renders', async () => {

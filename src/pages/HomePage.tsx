@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   ArrowRight, Check, Package, Container, Cuboid, Move3d,
-  FileText, ShieldCheck, Warehouse,
+  FileText, ShieldCheck, Warehouse, Layers,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
@@ -37,6 +37,17 @@ const CARTON_SCENE = {
     { id: 'u2', label: 'Accessory box', l: 12, w: 8, h: 6, weight: 0.2, qty: 40, color: 0x60a5fa },
   ] as PackItemSpec[],
 };
+// Pallet is the DEFAULT hero scene (POSITIONING.md): pallet-shaped questions are
+// 63% of search demand reaching this site, against 4.4% for container/3D. The
+// demo has to show the thing the headline claims — cartons actually placed on a
+// GMA deck, not a container. 122×102 GMA, 152 cm planning height, 1,134 kg.
+const PALLET_SCENE = {
+  container: { l: 122, w: 102, h: 152, maxWeight: 1134 },
+  specs: [
+    { id: 'p1', label: 'Case 40×30×25', l: 40, w: 30, h: 25, weight: 12, qty: 45, color: 0xfbbf24 },
+    { id: 'p2', label: 'Case 30×25×20', l: 30, w: 25, h: 20, weight: 8, qty: 18, color: 0x60a5fa },
+  ] as PackItemSpec[],
+};
 
 export default function HomePage() {
   const { lang } = useApp();
@@ -51,13 +62,20 @@ export default function HomePage() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }, [location.hash]);
 
-  const [heroMode, setHeroMode] = useState<'container' | 'carton'>('container');
+  type HeroMode = 'pallet' | 'container' | 'carton';
+  const [heroMode, setHeroMode] = useState<HeroMode>('pallet');
   const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
   const cartonDemo = useMemo(() => packWithConstraints(CARTON_SCENE.container, CARTON_SCENE.specs), []);
-  const demo = heroMode === 'container' ? containerDemo : cartonDemo;
-  const scene = heroMode === 'container' ? CONTAINER_SCENE : CARTON_SCENE;
+  const palletDemo = useMemo(() => packWithConstraints(PALLET_SCENE.container, PALLET_SCENE.specs), []);
+  const SCENES: Record<HeroMode, { scene: typeof CONTAINER_SCENE; demo: typeof containerDemo }> = {
+    pallet: { scene: PALLET_SCENE, demo: palletDemo },
+    container: { scene: CONTAINER_SCENE, demo: containerDemo },
+    carton: { scene: CARTON_SCENE, demo: cartonDemo },
+  };
+  const demo = SCENES[heroMode].demo;
+  const scene = SCENES[heroMode].scene;
 
-  const switchHero = (mode: 'container' | 'carton') => {
+  const switchHero = (mode: HeroMode) => {
     setHeroMode(mode);
     track('hero_tab', mode);
   };
@@ -161,21 +179,27 @@ export default function HomePage() {
                 <Check size={13} />
                 {T('Free · in your browser', '免費 · 瀏覽器即用')}
               </div>
+              {/* Pallet-first headline (POSITIONING.md §3). The old line, "Stop
+                  shipping air", sold container void — 2.3% of demand. The claim
+                  now names the differentiator directly: other pallet calculators
+                  divide deck area by carton area, this one runs the packer. */}
               <h1 className="text-4xl md:text-5xl font-black leading-[1.08] mb-5">
-                {T('Stop shipping air.', '唔好再為空隙付運費。')}
+                {T('Most pallet calculators guess. This one builds the pallet.', '大部分卡板計算機靠估。呢個真係逐箱砌出嚟。')}
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed mb-8">
                 {T(
-                  'And stop finding out at the dock. Plans optimized in 3D and checked against the door, the axles and the crush limits — before the truck leaves, not after.',
-                  '亦都唔好去到碼頭先發現問題。方案 3D 優化之餘,櫃門、車軸、抗壓全部預先檢查 — 喺車開出之前,唔係之後。',
+                  'Cartons per pallet, pallets per container, floor space and storage cost — every number placed box by box by a real packing engine, not deck area divided by carton area.',
+                  '每板箱數、每櫃板數、佔地面積同倉存成本 — 每個數字都係真實裝箱引擎逐箱擺出嚟,唔係用板面面積除以箱面面積果種。',
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-4">
                 <Link
-                  to={heroMode === 'container' ? '/planner' : '/packing'}
+                  to={heroMode === 'pallet' ? '/pallet-calculator' : heroMode === 'container' ? '/planner' : '/packing'}
                   className="group inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white px-7 py-3.5 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-500/25"
                 >
-                  {heroMode === 'container' ? T('Plan a container — free', '免費規劃一個貨櫃') : T('Pack a carton — free', '免費計一個紙箱')}
+                  {heroMode === 'pallet'
+                    ? T('Calculate cartons per pallet — free', '免費計每板箱數')
+                    : heroMode === 'container' ? T('Plan a container — free', '免費規劃一個貨櫃') : T('Pack a carton — free', '免費計一個紙箱')}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -184,11 +208,16 @@ export default function HomePage() {
                   {demo.stats.volumeUtil.toFixed(1)}% {T('utilization', '利用率')}
                 </span>
                 <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                  {demo.boxes.length} {heroMode === 'container' ? T('cartons', '箱') : T('units', '件')}
+                  {demo.boxes.length} {heroMode === 'carton' ? T('units', '件') : T('cartons', '箱')}
                 </span>
                 {heroMode === 'container' && (
                   <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
                     {(demo.stats.totalWeight / 1000).toFixed(1)}t / 28.2t
+                  </span>
+                )}
+                {heroMode === 'pallet' && (
+                  <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
+                    {Math.round(demo.stats.totalWeight)} kg / 1,134 kg
                   </span>
                 )}
               </div>
@@ -200,6 +229,14 @@ export default function HomePage() {
             {/* the actual product, live + motion affordance + explicit mode tabs */}
             <div>
               <div className="flex gap-1.5 mb-3">
+                <button
+                  onClick={() => switchHero('pallet')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    heroMode === 'pallet' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                  }`}
+                >
+                  <Layers size={15} /> {T('Cartons → pallet', '紙箱 → 卡板')}
+                </button>
                 <button
                   onClick={() => switchHero('container')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
@@ -223,9 +260,11 @@ export default function HomePage() {
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
                   <span className="ml-3 text-xs text-slate-500 font-mono">
-                    {heroMode === 'container'
-                      ? T("20' GP shipping container · 589×235×239 cm", "20' GP 貨櫃 · 589×235×239 cm")
-                      : T('Master carton · 60×40×40 cm', '外箱 · 60×40×40 cm')}
+                    {heroMode === 'pallet'
+                      ? T('GMA pallet 48×40" · 152 cm load height · 1,134 kg', 'GMA 卡板 48×40" · 152 cm 堆疊高度 · 1,134 kg')
+                      : heroMode === 'container'
+                        ? T("20' GP shipping container · 589×235×239 cm", "20' GP 貨櫃 · 589×235×239 cm")
+                        : T('Master carton · 60×40×40 cm', '外箱 · 60×40×40 cm')}
                   </span>
                 </div>
                 <div className="p-3 [&_p]:text-slate-500 [&_.bg-slate-100]:bg-slate-800 [&_.bg-slate-100]:text-slate-300 [&_.text-slate-700]:text-slate-300 [&_.bg-slate-200]:bg-slate-700 [&_.bg-slate-200]:text-slate-200">
@@ -242,6 +281,56 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ THE FOUR PALLET QUESTIONS ============
+          Sits directly under the hero because pallet-shaped queries are 63% of
+          the search demand reaching this site (POSITIONING.md §1) and every tool
+          for them already existed — scattered, and buried at positions 52-77.
+          The order is the order the questions actually get asked in. */}
+      <section className="bg-white border-b border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 py-14">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('Work out your pallets', '搞掂你嘅卡板')}
+          </h2>
+          <p className="text-slate-500 mb-8 max-w-2xl">
+            {T(
+              'Four questions, in the order they come up. Every answer is computed by the same packing engine — so the count on one page can never disagree with the next.',
+              '四條問題,順住你實際會問嘅次序。每個答案都係同一個裝箱引擎計出嚟 — 所以呢一頁嘅數,唔會同下一頁對唔上。',
+            )}
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { to: '/pallet-calculator', n: '1', q: T('How many cartons fit on a pallet?', '一板可以裝幾多箱?'),
+                d: T('Cartons per layer, layers to max height, capped by the pallet weight rating.', '每層箱數、到最大高度嘅層數,再受卡板載重上限限制。') },
+              { to: '/pallets-per-container', n: '2', q: T('How many pallets fit in a container?', '一個櫃裝到幾多板?'),
+                d: T('20ft and 40ft floor patterns, double-stacking by loaded height, payload-capped.', '20 呎同 40 呎地面擺法、按裝載高度雙層堆疊,受載重限制。') },
+              { to: '/warehouse-space-calculator', n: '3', q: T('How much floor space is that?', '咁要幾多面積?'),
+                d: T('Pallet positions to square footage and m², including forklift aisles.', '卡板位換算成平方呎同平方米,連叉車通道計埋。') },
+              { to: '/pallet-storage-cost-calculator', n: '4', q: T('What will storage cost?', '倉存要幾多錢?'),
+                d: T('3PL or own-warehouse cost per pallet per month, at your rate.', '3PL 或者自家倉,每板每月成本,用你自己個價。') },
+            ].map((c) => (
+              <Link
+                key={c.to}
+                to={c.to}
+                onClick={() => track('pallet_chain', c.to)}
+                className="group block rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md bg-white p-5 transition-all"
+              >
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 text-xs font-black mb-3">{c.n}</span>
+                <div className="font-bold text-slate-900 mb-1.5 leading-snug group-hover:text-blue-700 transition-colors">{c.q}</div>
+                <p className="text-sm text-slate-500 leading-relaxed">{c.d}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-6 text-sm text-slate-500">
+            {T('Also: ', '仲有:')}
+            <Link to="/ti-hi-calculator" className="text-blue-600 hover:underline">{T('TI × HI', 'TI × HI')}</Link>
+            {' · '}
+            <Link to="/pallet-builder" className="text-blue-600 hover:underline">{T('see the stack in 3D', '3D 睇實際堆疊')}</Link>
+            {' · '}
+            <Link to="/cbm-calculator" className="text-blue-600 hover:underline">{T('CBM & chargeable weight', 'CBM 同計費重量')}</Link>
           </div>
         </div>
       </section>
@@ -522,8 +611,13 @@ export default function HomePage() {
       {/* ============ PROOF: comparison + engine rules ============ */}
       <section className="bg-slate-950 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 md:py-24">
+          {/* Was "Not a CBM toy — a load-planning engine". That line defined the
+              product by what it refuses to be, and the thing it dismissed (CBM)
+              is 13.7% of search demand while the position it defended is 2.1%.
+              The engine is the PROOF the simple answer is right, not a rival to
+              it — see POSITIONING.md §2. */}
           <h2 className="text-2xl md:text-3xl font-black mb-10">
-            {T('Not a CBM toy — a load-planning engine', '唔係 CBM 玩具 — 係裝載規劃引擎')}
+            {T('Why the number is right', '點解個數係啱嘅')}
           </h2>
           <div className="grid lg:grid-cols-2 gap-10">
             {/* comparison */}
