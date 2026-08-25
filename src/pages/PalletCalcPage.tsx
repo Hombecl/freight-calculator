@@ -107,10 +107,12 @@ export default function PalletCalcPage() {
     <div className="max-w-4xl mx-auto px-4 py-10 print:hidden">
       <Helmet>
         {/* Hub page for the pallet position (POSITIONING.md §4-5): biggest
-            impression pool on the site. The title carries the wedge — other
-            calculators divide deck area by carton area, this one runs the packer
-            and shows the arrangement. */}
-        <title>{T('Pallet Calculator — cartons per pallet, built box by box (not estimated) | DimPack3D', '卡板計算器 — 每板箱數,逐箱砌出嚟唔係靠估 | DimPack3D')}</title>
+            impression pool on the site. ⛔ The wedge is that we DRAW the
+            arrangement and cap it by the weight rating — NOT that we "run the
+            packer": perLayer() below is block arithmetic, and palletBoxes()
+            deliberately bypasses the 3D engine. Do not reintroduce engine
+            language here. */}
+        <title>{T('Pallet Calculator — cartons per pallet, with the layer pattern drawn | DimPack3D', '卡板計算器 — 每板箱數,連逐層擺法畫出嚟 | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free pallet calculator. Enter carton size and weight to get cartons per layer, layers to max load height, cartons per pallet (capped by the pallet weight rating), footprint utilisation, and pallets needed for your order — EUR, US GMA and industrial pallets. No signup.',
           '免費卡板計算器。輸入紙箱尺寸同重量,即得每層箱數、到最大堆疊高度嘅層數、每板箱數(受卡板載重上限限制)、板面利用率同訂單所需板數 — 支援歐標、美式 GMA 同工業卡板。免費、唔使註冊。')} />

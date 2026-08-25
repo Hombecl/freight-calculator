@@ -152,7 +152,7 @@ export default function ComparePage() {
         >
           <div className="font-bold text-slate-900 text-sm mb-1">{T('Is the packing any good?', '個裝箱演算法夠唔夠好?')}</div>
           <p className="text-xs text-slate-500 leading-relaxed">
-            {T('80.2% average fill with full stability on the Bischoff–Ratcliff OR-Library set (300 instances).', '喺 Bischoff–Ratcliff OR-Library 300 個標準測試上,平均填充率 80.2% 兼且完全穩定。')}
+            {T('80.2% average fill across 300 Bischoff–Ratcliff OR-Library instances, with ≥60% base support enforced on every box. Published heuristics report 83–95% under varying — often weaker — stability rules.', '喺 Bischoff–Ratcliff OR-Library 300 個標準測試上平均填充率 80.2%,而且每箱都強制 ≥60% 底部支撐。已發表嘅啟發式演算法報 83–95%,但穩定性規則各有不同,通常較寬鬆。')}
           </p>
         </Link>
         <Link

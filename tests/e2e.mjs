@@ -47,7 +47,11 @@ await test('home: hero renders with headline', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   // Headline changed with the pallet repositioning (POSITIONING.md §3); it was
   // "Stop shipping air", which sold container void — 2.3% of search demand.
-  await page.getByRole('heading', { name: /most pallet calculators guess/i }).waitFor();
+  // ⛔ 2026-08-26: reworded again after an independent review caught that the
+  // previous version implied the pallet answers come from the packing engine.
+  // They do not — see the comment in HomePage. Assert on what we can defend:
+  // we DRAW the stack.
+  await page.getByRole('heading', { name: /shows you the stack/i }).waitFor();
 }, page);
 
 await test('home: hero defaults to the pallet scene', async () => {
@@ -300,7 +304,7 @@ await test('compare: easycargo page renders honestly', async () => {
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline (was 唔好再為空隙付運費).
-  await page.getByText(/大部分卡板計算機靠估/).waitFor();
+  await page.getByText(/大部分卡板計算機淨係俾個數字/).waitFor();
 }, page);
 
 await test('plans: sign-in gate renders', async () => {

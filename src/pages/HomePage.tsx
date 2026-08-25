@@ -67,7 +67,10 @@ export default function HomePage() {
   const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
   const cartonDemo = useMemo(() => packWithConstraints(CARTON_SCENE.container, CARTON_SCENE.specs), []);
   const palletDemo = useMemo(() => packWithConstraints(PALLET_SCENE.container, PALLET_SCENE.specs), []);
-  const SCENES: Record<HeroMode, { scene: typeof CONTAINER_SCENE; demo: typeof containerDemo }> = {
+  // CARTON_SCENE has no maxWeight (a single carton has no payload rating), so
+  // the record is typed on a widened scene shape rather than typeof CONTAINER_SCENE.
+  type HeroScene = { container: { l: number; w: number; h: number; maxWeight?: number }; specs: PackItemSpec[] };
+  const SCENES: Record<HeroMode, { scene: HeroScene; demo: typeof containerDemo }> = {
     pallet: { scene: PALLET_SCENE, demo: palletDemo },
     container: { scene: CONTAINER_SCENE, demo: containerDemo },
     carton: { scene: CARTON_SCENE, demo: cartonDemo },
@@ -180,16 +183,23 @@ export default function HomePage() {
                 {T('Free · in your browser', '免費 · 瀏覽器即用')}
               </div>
               {/* Pallet-first headline (POSITIONING.md §3). The old line, "Stop
-                  shipping air", sold container void — 2.3% of demand. The claim
-                  now names the differentiator directly: other pallet calculators
-                  divide deck area by carton area, this one runs the packer. */}
+                  shipping air", sold container void — 2.3% of demand.
+                  ⛔ 2026-08-26: the first version of this claimed the pallet
+                  answers came from "a real packing engine". They do NOT. The
+                  pallet tools use perLayer() — best of two block orientations,
+                  which IS deck area divided by carton area — and palletBoxes()
+                  deliberately bypasses packWithConstraints because the general
+                  engine places 30 where the block math places 40. The engine
+                  powers /planner, /packing, /container and /api/pack (mixed
+                  loads), not the pallet count. Claim only what the code does:
+                  we DRAW the arrangement and cap it by the real weight rating. */}
               <h1 className="text-4xl md:text-5xl font-black leading-[1.08] mb-5">
-                {T('Most pallet calculators guess. This one builds the pallet.', '大部分卡板計算機靠估。呢個真係逐箱砌出嚟。')}
+                {T('Most pallet calculators give you a number. This one shows you the stack.', '大部分卡板計算機淨係俾個數字。呢個仲畫埋成疊點砌。')}
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed mb-8">
                 {T(
-                  'Cartons per pallet, pallets per container, floor space and storage cost — every number placed box by box by a real packing engine, not deck area divided by carton area.',
-                  '每板箱數、每櫃板數、佔地面積同倉存成本 — 每個數字都係真實裝箱引擎逐箱擺出嚟,唔係用板面面積除以箱面面積果種。',
+                  'Cartons per pallet, pallets per container, floor space and storage cost — with the actual layer pattern drawn, capped by the pallet\u2019s real weight rating, and every assumption written down.',
+                  '每板箱數、每櫃板數、佔地面積同倉存成本 — 連實際逐層擺法畫埋出嚟,受卡板真實載重上限限制,所有假設都寫明。',
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-4">
@@ -297,8 +307,8 @@ export default function HomePage() {
           </h2>
           <p className="text-slate-500 mb-8 max-w-2xl">
             {T(
-              'Four questions, in the order they come up. Every answer is computed by the same packing engine — so the count on one page can never disagree with the next.',
-              '四條問題,順住你實際會問嘅次序。每個答案都係同一個裝箱引擎計出嚟 — 所以呢一頁嘅數,唔會同下一頁對唔上。',
+              'Four questions, in the order they come up. Every answer uses the same shared pallet maths — so the count on one page can never disagree with the next.',
+              '四條問題,順住你實際會問嘅次序。每個答案都用同一套卡板計算 — 所以呢一頁嘅數,唔會同下一頁對唔上。',
             )}
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
