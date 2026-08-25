@@ -57,12 +57,17 @@ await test('home: hero defaults to the pallet scene', async () => {
 }, page);
 
 await test('home: hero tabs switch pallet/container/carton scene', async () => {
+  // Each switch remounts the three.js planner (key={heroMode}). Three switches
+  // now instead of two, so against production the 15s default is too tight —
+  // verified manually that all three transitions work, they are just slow over
+  // the network with a cold cache. Per-wait budget, not a blanket timeout bump.
+  const SWITCH = { timeout: 30_000 };
   await page.getByRole('button', { name: /products → carton/i }).click();
-  await page.getByText(/Master carton · 60×40×40/i).waitFor();
+  await page.getByText(/Master carton · 60×40×40/i).waitFor(SWITCH);
   await page.getByRole('button', { name: /cartons → container/i }).click();
-  await page.getByText(/20' GP shipping container/i).waitFor();
+  await page.getByText(/20' GP shipping container/i).waitFor(SWITCH);
   await page.getByRole('button', { name: /cartons → pallet/i }).click();
-  await page.getByText(/GMA pallet 48×40/i).waitFor();
+  await page.getByText(/GMA pallet 48×40/i).waitFor(SWITCH);
 }, page);
 
 await test('home: the four pallet questions link the chain', async () => {
