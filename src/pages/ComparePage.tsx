@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowRight, Check, Minus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import competitorsData from '../data/competitors.json';
+import { track } from '../lib/track';
 
 /**
  * /compare/:slug — honest alternative pages ("EasyCargo alternative", ...).
@@ -104,13 +105,77 @@ export default function ComparePage() {
         )}</p>
       </div>
 
-      <Link
-        to="/planner"
-        className="group inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all"
-      >
-        {T('Try DimPack3D free — no signup', '免費試 DimPack3D — 無需註冊')}
-        <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
-      </Link>
+      {/* ============ CONVERSION PATH ============
+          These pages have the site's best CTR (12.3-12.7% at pos ~10) and, until
+          now, one generic /planner CTA and ZERO tracking — so there was no way to
+          tell whether any of that traffic did anything. Someone here is actively
+          evaluating a replacement for a $350-$5,000/yr tool: they already have a
+          carton list in the other product, and they need to know this is not a
+          toy before they switch. So: land them on the import step (matching the
+          promise made above), and put the three switching questions in reach. */}
+      <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-6 mb-6">
+        <h2 className="font-black text-slate-900 mb-1.5">
+          {T(`Try it with your own ${c.name} data`, `用你自己喺 ${c.name} 嘅資料試`)}
+        </h2>
+        <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+          {T(
+            'Paste or upload the carton list you already have — Excel, CSV, or straight from the clipboard — and see the same shipment packed in 3D. Nothing to install, no signup, and the numbers are computed in your browser.',
+            '將你已經有嘅箱單貼上或上載 — Excel、CSV,或者直接由剪貼簿 — 即刻見到同一批貨喺 3D 入面點裝。唔使安裝、唔使註冊,啲數字喺你部機直接計。',
+          )}
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/planner?import=1"
+            onClick={() => track('compare_cta_import', c.slug)}
+            className="group inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all"
+          >
+            {T('Bring your carton list — free', '掉個箱單入嚟 — 免費')}
+            <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+          <Link
+            to="/planner"
+            onClick={() => track('compare_cta_demo', c.slug)}
+            className="inline-flex items-center gap-2 text-blue-700 font-semibold text-sm hover:underline"
+          >
+            {T('or open a worked example', '或者開個現成例子')}
+          </Link>
+        </div>
+      </div>
+
+      {/* The three questions someone replacing a paid tool actually asks. Each
+          links to evidence that already exists rather than to a claim. */}
+      <div className="grid sm:grid-cols-3 gap-3 mb-8">
+        <Link
+          to="/api-docs"
+          onClick={() => track('compare_proof', `${c.slug}:benchmark`)}
+          className="rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 p-4 transition-colors"
+        >
+          <div className="font-bold text-slate-900 text-sm mb-1">{T('Is the packing any good?', '個裝箱演算法夠唔夠好?')}</div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {T('80.2% average fill with full stability on the Bischoff–Ratcliff OR-Library set (300 instances).', '喺 Bischoff–Ratcliff OR-Library 300 個標準測試上,平均填充率 80.2% 兼且完全穩定。')}
+          </p>
+        </Link>
+        <Link
+          to="/plans"
+          onClick={() => track('compare_proof', `${c.slug}:team`)}
+          className="rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 p-4 transition-colors"
+        >
+          <div className="font-bold text-slate-900 text-sm mb-1">{T('What about my team?', '團隊點用?')}</div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {T('Saved plans, share links, and an approval flow with an audit trail — without counting seats.', '儲存方案、分享連結、連審批流程同紀錄 — 唔使計席位。')}
+          </p>
+        </Link>
+        <Link
+          to="/reality-checks"
+          onClick={() => track('compare_proof', `${c.slug}:checks`)}
+          className="rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 p-4 transition-colors"
+        >
+          <div className="font-bold text-slate-900 text-sm mb-1">{T('Will it catch real problems?', '真係捉到問題?')}</div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {T('Door aperture, axle loads, crush limits, overhang and load voids — checked before the truck leaves.', '櫃門闊度、車軸重量、抗壓、懸出同空隙 — 車開出之前就檢查。')}
+          </p>
+        </Link>
+      </div>
       <p className="text-[11px] text-slate-400 mt-6">
         {T(
           `${c.name} is a trademark of its owner; facts above are from public pages or attributed third-party listings as of July 2026. Corrections: hello@dimpack3d.com.`,

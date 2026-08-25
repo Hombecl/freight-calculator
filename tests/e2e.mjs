@@ -181,6 +181,32 @@ await test('home: chain nav links all five tools', async () => {
   }
 }, page);
 
+// ---------- compare pages (highest-CTR surface) ----------
+await test('compare: conversion path lands on the import step', async () => {
+  await page.goto(`${BASE}/compare/easycargo-alternative`, { waitUntil: 'domcontentloaded' });
+  const cta = page.locator('a[href="/planner?import=1"]').first();
+  await cta.waitFor();
+  // the page promises "import your existing Excel"; the CTA must honour it
+  const label = (await cta.innerText()).toLowerCase();
+  if (!/carton list|箱單/.test(label)) {
+    throw new Error(`compare CTA no longer offers the import path: "${label}"`);
+  }
+}, page);
+
+await test('compare: ?import=1 actually opens the import modal', async () => {
+  await page.goto(`${BASE}/planner?import=1`, { waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder(/copy your rows/i).waitFor();
+}, page);
+
+await test('compare: the three switching questions link to real evidence', async () => {
+  await page.goto(`${BASE}/compare/cargo-planner-alternative`, { waitUntil: 'domcontentloaded' });
+  for (const href of ['/api-docs', '/plans', '/reality-checks']) {
+    await page.locator(`a[href^="${href}"]`).first().waitFor();
+  }
+  // the benchmark claim must stay attached to its number
+  await page.getByText(/80\.2%/).first().waitFor();
+}, page);
+
 // ---------- planner ----------
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });

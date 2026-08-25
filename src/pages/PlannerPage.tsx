@@ -181,7 +181,13 @@ export default function PlannerPage() {
   const regen = () => { setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); };
 
   // ---- Excel/CSV import (Tier 2 switching-cost killer — ENTERPRISE.md §4) ----
-  const [importOpen, setImportOpen] = useState(false);
+  // ?import=1 opens the modal on arrival. The /compare/* pages promise "import
+  // your existing Excel and see your load in 3D in under a minute" but linked to
+  // a bare /planner, so the promise and the destination did not match. Someone
+  // arriving from a competitor comparison already HAS their carton list in the
+  // other tool — landing them on the import step is the evaluation moment.
+  const [importOpen, setImportOpen] = useState(() => params.get('import') === '1');
+  useEffect(() => { if (params.get('import') === '1') track('import_open', 'deeplink'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const onImport = (imported: Spec[]) => {
     setSpecs(imported);
     track('import_cartons', String(imported.length));
