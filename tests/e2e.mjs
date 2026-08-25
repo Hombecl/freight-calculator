@@ -70,7 +70,27 @@ await test('home: the four pallet questions link the chain', async () => {
   await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
   for (const href of ['/pallet-calculator', '/pallets-per-container',
                       '/warehouse-space-calculator', '/pallet-storage-cost-calculator']) {
-    await page.locator(`a[href="${href}"]`).first().waitFor();
+    // prefix match so this keeps working if these cards ever carry ?c_* params
+    await page.locator(`a[href^="${href}"]`).first().waitFor();
+  }
+}, page);
+
+await test('pallet chain: carries the plan into the next step', async () => {
+  // step 1 with a real order quantity -> pallets needed is computed
+  await page.goto(`${BASE}/pallet-calculator?u=cm&l=40&w=30&h=30&wt=10&p=eur&q=500`, { waitUntil: 'domcontentloaded' });
+  const chain = page.locator('nav').filter({ hasText: /work out your pallets/i }).first();
+  await chain.waitFor();
+  const href = await chain.locator('a[href*="/pallet-storage-cost-calculator"]').first().getAttribute('href');
+  if (!href || !/c_plt=\d+/.test(href)) {
+    throw new Error(`chain link did not carry a pallet count: ${href}`);
+  }
+  const carried = Number(href.match(/c_plt=(\d+)/)[1]);
+  // follow it; step 4 must open seeded with that count, not its 50 default
+  await page.goto(`${BASE}${href}`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/storage cost/i).first().waitFor();
+  const seeded = await page.locator('input[type="number"]').first().inputValue();
+  if (Number(seeded) !== carried) {
+    throw new Error(`step 4 not seeded from chain: carried ${carried}, field shows ${seeded}`);
   }
 }, page);
 
@@ -80,11 +100,15 @@ await test('pallet chain: marks current step and does not self-link', async () =
   await chain.waitFor();
   // step 1 is the current page: rendered as text, never as a link back to itself
   await chain.locator('[aria-current="page"]').waitFor();
-  if (await chain.locator('a[href="/pallet-calculator"]').count() > 0) {
+  // ⛔ prefix match, not exact: chain links now carry ?c_* handoff params, so an
+  // exact `a[href="/pallet-calculator"]` selector would silently stop catching a
+  // self-link (it would be /pallet-calculator?c_pt=…) and this guard would pass
+  // while guarding nothing.
+  if (await chain.locator('a[href^="/pallet-calculator"]').count() > 0) {
     throw new Error('pallet chain self-links on its own page');
   }
   // and it still offers the next steps
-  await chain.locator('a[href="/pallets-per-container"]').waitFor();
+  await chain.locator('a[href^="/pallets-per-container"]').waitFor();
 }, page);
 
 await test('home: chain nav links all five tools', async () => {

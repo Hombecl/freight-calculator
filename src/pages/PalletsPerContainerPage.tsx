@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
+import { readCarry, seedNum, seedStr } from '../lib/palletChainState';
 
 /**
  * /pallets-per-container — "how many pallets fit in a 40ft container"
@@ -69,8 +70,9 @@ export default function PalletsPerContainerPage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [params, setParams] = useSearchParams();
 
-  const [palletKey, setPalletKey] = useState<string>(() => params.get('p') ?? 'eur');
-  const [loadedH, setLoadedH] = useState(() => Math.max(10, Number(params.get('h')) || 150));
+  const carryIn = readCarry(params);
+  const [palletKey, setPalletKey] = useState<string>(() => seedStr(params.get('p'), carryIn.pt, 'eur'));
+  const [loadedH, setLoadedH] = useState(() => Math.max(10, seedNum(params.get('h'), carryIn.lh, 150)));
   const [wtEach, setWtEach] = useState(() => Math.max(0, Number(params.get('wt')) || 500));
 
   useEffect(() => {
@@ -285,7 +287,7 @@ export default function PalletsPerContainerPage() {
           <Link to="/container" className="text-blue-600 hover:underline">{T('Container quick-calc', '貨櫃快速計算')}</Link>
         </div>
       </section>
-      <PalletChain current="/pallets-per-container" />
+      <PalletChain current="/pallets-per-container" carry={{ ...carryIn, pt: palletKey, lh: loadedH }} />
       <StickySpacer />
       <StickyResult label={T("Pallets: 20' / 40' / HQ", "板數 20'/40'/HQ")} value={rows.map((x) => x.total).join(' / ')} />
     </div>

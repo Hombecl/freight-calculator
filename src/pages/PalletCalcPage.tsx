@@ -18,6 +18,7 @@ import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
 import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
 import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
+import { readCarry, seedStr } from '../lib/palletChainState';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -41,7 +42,8 @@ export default function PalletCalcPage() {
   const [cw, setCw] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'in' ? 12 : 30)));
   const [ch, setCh] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'in' ? 12 : 30)));
   const [kgEach, setKgEach] = useState(() => Math.max(0, Number(params.get('wt')) || 10));
-  const [palletKey, setPalletKey] = useState<string>(() => params.get('p') ?? 'eur');
+  const carryIn = readCarry(params);
+  const [palletKey, setPalletKey] = useState<string>(() => seedStr(params.get('p'), carryIn.pt, 'eur'));
   const [qty, setQty] = useState(() => Math.max(0, Number(params.get('q')) || 0));
 
   useEffect(() => {
@@ -401,7 +403,10 @@ export default function PalletCalcPage() {
           <Link to="/guides/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator guide', '卡板計算指南')}</Link>
         </div>
       </section>
-      <PalletChain current="/pallet-calculator" />
+      <PalletChain
+        current="/pallet-calculator"
+        carry={{ pt: palletKey, cpp: r.perPallet, plt: r.palletsNeeded ?? undefined, lh: r.loadHeight }}
+      />
       <StickySpacer />
       <StickyResult label={T('Cartons per pallet', '每板箱數')} value={r.fitsFootprint ? `${r.perPallet.toLocaleString()}${r.palletsNeeded != null ? ` · ${r.palletsNeeded} ${T('plts', '板')}` : ''}` : T('overhangs', '會懸出')} />
     </div>

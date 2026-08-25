@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { IS_ZH } from '../lib/locale';
 import { track } from '../lib/track';
+import { chainHref, type ChainCarry } from '../lib/palletChainState';
 
 /**
  * PalletChain — the four pallet questions, in the order they get asked.
@@ -31,7 +32,13 @@ const EXTRAS = [
   { to: '/cbm-calculator', label: () => T('CBM & chargeable weight', 'CBM 同計費重量') },
 ];
 
-export default function PalletChain({ current }: { current: string }) {
+/**
+ * `carry` is what THIS page knows about the plan so far. It is appended to every
+ * forward link so the next step opens pre-filled instead of empty — see
+ * lib/palletChainState.ts for why the handoff is namespaced rather than a raw
+ * query-string forward.
+ */
+export default function PalletChain({ current, carry = {} }: { current: string; carry?: ChainCarry }) {
   return (
     <nav aria-label={T('Pallet planning steps', '卡板規劃步驟')} className="mt-12 print:hidden">
       <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-3">
@@ -63,7 +70,7 @@ export default function PalletChain({ current }: { current: string }) {
                 </div>
               ) : (
                 <Link
-                  to={s.to}
+                  to={chainHref(s.to, carry)}
                   onClick={() => track('pallet_chain', s.to)}
                   className="flex items-center gap-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:text-blue-700 transition-colors"
                 >
@@ -78,7 +85,7 @@ export default function PalletChain({ current }: { current: string }) {
         {EXTRAS.filter((e) => e.to !== current).map((e, i, arr) => (
           <span key={e.to}>
             <Link
-              to={e.to}
+              to={chainHref(e.to, carry)}
               onClick={() => track('pallet_chain', e.to)}
               className="text-blue-600 hover:underline"
             >

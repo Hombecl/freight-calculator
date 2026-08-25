@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import PalletChain from '../components/PalletChain';
+import { readCarry, seedNum } from '../lib/palletChainState';
 
 /**
  * /pallet-storage-cost-calculator — the "cost" search cluster the data
@@ -24,7 +25,8 @@ export default function PalletStorageCostPage() {
   const cur = (units?.currency as string) || 'USD';
   const [params, setParams] = useSearchParams();
 
-  const [pallets, setPallets] = useState(() => Math.max(1, Number(params.get('p')) || 50));
+  const carryIn = readCarry(params);
+  const [pallets, setPallets] = useState(() => Math.max(1, seedNum(params.get('p'), carryIn.plt, 50)));
   const [rate, setRate] = useState(() => Math.max(0, Number(params.get('r')) || 20));
   const [handling, setHandling] = useState(() => Math.max(0, Number(params.get('hd')) || 6));
   const [months, setMonths] = useState(() => Math.max(1, Number(params.get('m')) || 3));
@@ -209,7 +211,7 @@ export default function PalletStorageCostPage() {
           <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
         </div>
       </section>
-      <PalletChain current="/pallet-storage-cost-calculator" />
+      <PalletChain current="/pallet-storage-cost-calculator" carry={{ ...carryIn, plt: pallets }} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ const {
   checkReachabilityTurn, forkliftPathTurn,
 } = await import('../src/lib/warehouse.ts').then((m) => ({ ...m, gridFitCheck: null }));
 const { gridFit } = await import('../src/lib/answers.ts');
+const { readCarry, seedNum, seedStr, chainHref, hasCarry } = await import('../src/lib/palletChainState.ts');
 
 let passed = 0;
 const fails = [];
@@ -306,6 +307,63 @@ test('perLayer: exact 16x12in cases give 9 on GMA (48x40in), not 6', () => {
 });
 test('perLayer: 40x30 on EUR gives 8', () => {
   assert.equal(perLayer(40, 30, 120, 80), 8);
+});
+
+// ---------- pallet chain handoff ----------
+// The four chain steps reuse the SAME query letters for DIFFERENT things:
+// `p` is a pallet TYPE ('eur') on steps 1-2 but a pallet COUNT on steps 3-4,
+// `h` is carton height on step 1 but loaded pallet height on step 2. A naive
+// query-string forward would silently seed wrong numbers, so the handoff has
+// its own c_* namespace. These tests pin that behaviour.
+
+test('chain: own param wins over carried value', () => {
+  assert.equal(seedNum('42', 99, 500), 42);
+  assert.equal(seedStr('gma', 'eur', 'eur'), 'gma');
+});
+
+test('chain: carried value used when the page has no own param', () => {
+  assert.equal(seedNum(null, 99, 500), 99);
+  assert.equal(seedNum('', 99, 500), 99);
+  assert.equal(seedStr(null, 'eur', 'ind'), 'eur');
+});
+
+test('chain: falls back to the page default when nothing is carried', () => {
+  assert.equal(seedNum(null, undefined, 500), 500);
+  assert.equal(seedStr(null, undefined, 'eur'), 'eur');
+});
+
+test('chain: a pallet TYPE can never be read as a pallet COUNT', () => {
+  // the exact collision: 'eur' arriving where a count is expected
+  assert.equal(seedNum('eur', undefined, 500), 500);
+  assert.equal(readCarry(new URLSearchParams('c_plt=eur')).plt, undefined);
+});
+
+test('chain: non-finite and non-positive values are dropped, not coerced', () => {
+  const c = readCarry(new URLSearchParams('c_cpp=NaN&c_plt=-3&c_lh=0'));
+  assert.equal(c.cpp, undefined);
+  assert.equal(c.plt, undefined);
+  assert.equal(c.lh, undefined);
+});
+
+test('chain: pallet type is validated, not passed through raw', () => {
+  assert.equal(readCarry(new URLSearchParams('c_pt=eur')).pt, 'eur');
+  assert.equal(readCarry(new URLSearchParams('c_pt=' + encodeURIComponent('<script>'))).pt, undefined);
+});
+
+test('chain: href omits absent values and rounds the rest', () => {
+  assert.equal(chainHref('/x', {}), '/x');
+  assert.equal(chainHref('/x', { pt: 'eur', cpp: 40.6 }), '/x?c_pt=eur&c_cpp=41');
+  assert.equal(hasCarry({}), false);
+  assert.equal(hasCarry({ plt: 18 }), true);
+});
+
+test('chain: round-trips a real step-1 plan into step 3', () => {
+  const href = chainHref('/warehouse-space-calculator', { pt: 'gma', cpp: 142, plt: 18, lh: 145 });
+  const got = readCarry(new URLSearchParams(href.split('?')[1]));
+  assert.equal(got.plt, 18);
+  assert.equal(got.pt, 'gma');
+  // step 3's own `p` means COUNT — the carried count must seed it
+  assert.equal(seedNum(null, got.plt, 500), 18);
 });
 
 console.log(`\n${passed} passed, ${fails.length} failed`);

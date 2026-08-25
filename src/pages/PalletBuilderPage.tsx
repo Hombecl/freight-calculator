@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEffect } from 'react';
 import { ArrowRight, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import PalletChain from '../components/PalletChain';
+import { readCarry } from '../lib/palletChainState';
 
 /**
  * /pallet-builder — landing for the "pallet builder" query (~1,300/mo US).
@@ -14,6 +15,7 @@ import PalletChain from '../components/PalletChain';
  */
 
 export default function PalletBuilderPage() {
+  const [params] = useSearchParams();
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   useEffect(() => { track('tool_pallet_builder'); }, []);
@@ -100,7 +102,7 @@ export default function PalletBuilderPage() {
           <Link to="/freight-class-calculator" className="text-blue-600 hover:underline">{T('Freight class calculator', '運費等級計算機')}</Link>
         </div>
       </section>
-      <PalletChain current="/pallet-builder" />
+      <PalletChain current="/pallet-builder" carry={readCarry(params)} />
     </div>
   );
 }

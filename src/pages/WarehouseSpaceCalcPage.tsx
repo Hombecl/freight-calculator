@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
+import { readCarry, seedNum } from '../lib/palletChainState';
 
 /**
  * /warehouse-space-calculator — lead-gen tool aimed squarely at warehouse
@@ -32,7 +33,8 @@ export default function WarehouseSpaceCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [mode, setMode] = useState<'space' | 'capacity'>(() => (params.get('m') === 'cap' ? 'capacity' : 'space'));
-  const [pallets, setPallets] = useState(() => Math.max(1, Number(params.get('p')) || 500));
+  const carryIn = readCarry(params);
+  const [pallets, setPallets] = useState(() => Math.max(1, seedNum(params.get('p'), carryIn.plt, 500)));
   const [area, setArea] = useState(() => Math.max(1, Number(params.get('ar')) || 1000));
   const [areaUnit, setAreaUnit] = useState<'m2' | 'sqft'>(() => (params.get('au') === 'sqft' ? 'sqft' : 'm2'));
   const [storage, setStorage] = useState<string>(() => params.get('s') ?? 'selective');
@@ -311,7 +313,7 @@ export default function WarehouseSpaceCalcPage() {
           <Link to="/dimensional-weight-calculator" className="text-blue-600 hover:underline">{T('Dimensional weight calculator', '體積重量計算器')}</Link>
         </div>
       </section>
-      <PalletChain current="/warehouse-space-calculator" />
+      <PalletChain current="/warehouse-space-calculator" carry={{ ...carryIn, plt: pallets }} />
       <StickySpacer />
       <StickyResult
         label={mode === 'space' ? T('Total footprint', '總面積') : T('Pallet capacity', '卡板容量')}
