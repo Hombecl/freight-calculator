@@ -27,3 +27,54 @@ export function perLayer(cl: number, cw: number, pl: number, pw: number) {
   const b = Math.floor(pl / cw + EPS) * Math.floor(pw / cl + EPS);
   return Math.max(a, b);
 }
+
+/**
+ * The winning block arrangement behind perLayer(): how many cartons along the
+ * pallet length and width, and whether the carton is turned 90°.
+ *
+ * ⛔ Exists because the 3D Extreme-Point packer and this block math DISAGREE.
+ * For a 40×30×30 carton on a EUR pallet the block math gives 40 (8 per layer ×
+ * 5 layers) while packWithConstraints places 30 — the EP packer is general
+ * purpose and does not exploit a uniform block. Anything that renders or SAVES
+ * a pallet must lay boxes out from THIS function, or the artifact will contradict
+ * the number on the page (the same rule LayerDiagram was written to enforce).
+ */
+export function layerArrangement(cl: number, cw: number, pl: number, pw: number) {
+  const aX = Math.floor(pl / cl + EPS), aY = Math.floor(pw / cw + EPS);
+  const bX = Math.floor(pl / cw + EPS), bY = Math.floor(pw / cl + EPS);
+  return aX * aY >= bX * bY
+    ? { nx: aX, ny: aY, rotated: false, cellL: cl, cellW: cw }
+    : { nx: bX, ny: bY, rotated: true, cellL: cw, cellW: cl };
+}
+
+/** Lay `count` cartons out in that block arrangement, layer by layer. */
+export function palletBoxes(
+  count: number,
+  carton: { l: number; w: number; h: number; weight: number },
+  pallet: { l: number; w: number },
+  color = 0xfbbf24,
+) {
+  const a = layerArrangement(carton.l, carton.w, pallet.l, pallet.w);
+  const perLayerCount = a.nx * a.ny;
+  const boxes: Array<{
+    id: string; label: string; l: number; w: number; h: number;
+    px: number; py: number; pz: number; color: number; weight: number;
+  }> = [];
+  for (let i = 0; i < count && perLayerCount > 0; i++) {
+    const layer = Math.floor(i / perLayerCount);
+    const within = i % perLayerCount;
+    const gx = within % a.nx;
+    const gy = Math.floor(within / a.nx);
+    boxes.push({
+      id: `p${i}`,
+      label: 'Carton',
+      l: a.cellL, w: a.cellW, h: carton.h,
+      px: gx * a.cellL,
+      py: layer * carton.h,
+      pz: gy * a.cellW,
+      color,
+      weight: carton.weight,
+    });
+  }
+  return boxes;
+}

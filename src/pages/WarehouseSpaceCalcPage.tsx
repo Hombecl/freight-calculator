@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
-import { readCarry, seedNum } from '../lib/palletChainState';
+import { readCarry, seedNum, withCarry } from '../lib/palletChainState';
 
 /**
  * /warehouse-space-calculator — lead-gen tool aimed squarely at warehouse
@@ -43,7 +43,7 @@ export default function WarehouseSpaceCalcPage() {
 
   // bookmarkable: inputs live in the URL
   useEffect(() => {
-    setParams({ m: mode === 'capacity' ? 'cap' : 'sp', p: String(pallets), ar: String(area), au: areaUnit, s: storage, a: aisleKey, l: String(levels) }, { replace: true });
+    setParams(withCarry({ m: mode === 'capacity' ? 'cap' : 'sp', p: String(pallets), ar: String(area), au: areaUnit, s: storage, a: aisleKey, l: String(levels) }, carryIn), { replace: true });
   }, [mode, pallets, area, areaUnit, storage, aisleKey, levels, setParams]);
   useEffect(() => { track('tool_wh_space'); }, []);
 

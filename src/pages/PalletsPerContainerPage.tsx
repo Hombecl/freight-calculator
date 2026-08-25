@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
 import { StickyResult, StickySpacer, CopyLink, Accordion } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
-import { readCarry, seedNum, seedStr } from '../lib/palletChainState';
+import { readCarry, seedNum, seedStr, withCarry } from '../lib/palletChainState';
 
 /**
  * /pallets-per-container — "how many pallets fit in a 40ft container"
@@ -76,7 +76,7 @@ export default function PalletsPerContainerPage() {
   const [wtEach, setWtEach] = useState(() => Math.max(0, Number(params.get('wt')) || 500));
 
   useEffect(() => {
-    setParams({ p: palletKey, h: String(loadedH), wt: String(wtEach) }, { replace: true });
+    setParams(withCarry({ p: palletKey, h: String(loadedH), wt: String(wtEach) }, carryIn), { replace: true });
   }, [palletKey, loadedH, wtEach, setParams]);
   useEffect(() => { track('tool_pallets_container'); }, []);
 

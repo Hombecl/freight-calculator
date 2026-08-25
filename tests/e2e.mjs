@@ -94,6 +94,64 @@ await test('pallet chain: carries the plan into the next step', async () => {
   }
 }, page);
 
+await test('save step: offered, and the ANSWER is never gated', async () => {
+  await page.goto(`${BASE}/pallet-calculator?u=cm&l=40&w=30&h=30&wt=10&p=eur&q=500`, { waitUntil: 'domcontentloaded' });
+  // the result must be visible WITHOUT signing in — the capture step must never
+  // become a toll booth in front of the number (POSITIONING.md §2).
+  // ⛔ visible=true is required: the printable spec sheet renders the SAME
+  // labels inside a `hidden print:block` div, and a bare .first() resolves to
+  // that invisible copy and times out.
+  await page.getByText(/cartons per pallet/i).locator('visible=true').first().waitFor();
+  const save = page.locator('section').filter({ hasText: /keep this pallet plan/i }).first();
+  await save.waitFor();
+  // signed out: either a working sign-in affordance, or an honest "not
+  // available here" — never a dead button that cannot do anything
+  const signIn = await save.getByRole('button', { name: /sign in to save/i }).count();
+  const unavailable = await save.getByText(/not available in this environment/i).count();
+  if (signIn + unavailable === 0) {
+    throw new Error('save step rendered without a sign-in path or an unavailable notice');
+  }
+  // and it must not promise to email anything — there is no outbound mail
+  if (/we.{0,3}ll email|email you the|send you the plan/i.test(await save.innerText())) {
+    throw new Error('save step promises an email the site cannot send');
+  }
+}, page);
+
+await test('save step: hidden when there is no carton geometry to save', async () => {
+  // step 4 reached cold (no chain handoff) has nothing real to save
+  await page.goto(`${BASE}/pallet-storage-cost-calculator`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/storage cost/i).first().waitFor();
+  const n = await page.locator('section').filter({ hasText: /keep this pallet plan/i }).count();
+  if (n !== 0) throw new Error('save step rendered with no carton geometry');
+}, page);
+
+await test('save step: appears at the END of the chain once a plan is carried', async () => {
+  await page.goto(`${BASE}/pallet-storage-cost-calculator?c_pt=eur&c_cpp=40&c_cl=40&c_cw=30&c_ch=30&c_cwt=10&c_plt=13`,
+    { waitUntil: 'domcontentloaded' });
+  await page.locator('section').filter({ hasText: /keep this pallet plan/i }).first().waitFor();
+}, page);
+
+await test('chain: handoff survives the page rewriting its own URL state', async () => {
+  // Each page mirrors its inputs into the URL with setParams({...}), which
+  // replaces the whole query string. That silently erased c_* on mount: seeding
+  // still worked (useState runs first) so it LOOKED fine, but the chain died
+  // after one hop and the save step vanished. Pin it.
+  await page.goto(`${BASE}/pallet-storage-cost-calculator?c_pt=eur&c_cpp=40&c_cl=40&c_cw=30&c_ch=30&c_cwt=10&c_plt=13`,
+    { waitUntil: 'domcontentloaded' });
+  await page.locator('section').filter({ hasText: /keep this pallet plan/i }).first().waitFor();
+  await page.waitForFunction(() => /c_cl=40/.test(window.location.search), undefined, { timeout: 5000 });
+  const url = page.url();
+  for (const k of ['c_pt=eur', 'c_cpp=40', 'c_cl=40', 'c_cw=30', 'c_ch=30']) {
+    if (!url.includes(k)) throw new Error(`page stripped ${k} from the URL: ${url}`);
+  }
+  // and the forward chain link still carries it
+  const chain = page.locator('nav').filter({ hasText: /work out your pallets/i }).first();
+  const href = await chain.locator('a[href*="/pallet-calculator"]').first().getAttribute('href');
+  if (!href || !href.includes('c_cl=40')) {
+    throw new Error(`chain link lost the carry after URL rewrite: ${href}`);
+  }
+}, page);
+
 await test('pallet chain: marks current step and does not self-link', async () => {
   await page.goto(`${BASE}/pallet-calculator`, { waitUntil: 'domcontentloaded' });
   const chain = page.locator('nav').filter({ hasText: /work out your pallets/i }).first();

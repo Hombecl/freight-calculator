@@ -15,7 +15,7 @@ const {
   checkReachabilityTurn, forkliftPathTurn,
 } = await import('../src/lib/warehouse.ts').then((m) => ({ ...m, gridFitCheck: null }));
 const { gridFit } = await import('../src/lib/answers.ts');
-const { readCarry, seedNum, seedStr, chainHref, hasCarry } = await import('../src/lib/palletChainState.ts');
+const { readCarry, seedNum, seedStr, chainHref, hasCarry, canRebuildPlan, withCarry } = await import('../src/lib/palletChainState.ts');
 
 let passed = 0;
 const fails = [];
@@ -364,6 +364,75 @@ test('chain: round-trips a real step-1 plan into step 3', () => {
   assert.equal(got.pt, 'gma');
   // step 3's own `p` means COUNT — the carried count must seed it
   assert.equal(seedNum(null, got.plt, 500), 18);
+});
+
+test('chain: carton dims keep one decimal (rounding changes the fit)', () => {
+  // 30.5 cm rounded to 31 can drop a carton per layer — must not happen
+  const href = chainHref('/x', { cl: 40.5, cw: 30.5, ch: 25.25, cwt: 12.4 });
+  const got = readCarry(new URLSearchParams(href.split('?')[1]));
+  assert.equal(got.cl, 40.5);
+  assert.equal(got.cw, 30.5);
+  assert.equal(got.ch, 25.3);
+  assert.equal(got.cwt, 12.4);
+});
+
+test('chain: canRebuildPlan needs pallet type AND full carton geometry', () => {
+  assert.equal(canRebuildPlan({ pt: 'eur', cl: 40, cw: 30, ch: 25 }), true);
+  assert.equal(canRebuildPlan({ pt: 'eur', cl: 40, cw: 30 }), false);   // no height
+  assert.equal(canRebuildPlan({ cl: 40, cw: 30, ch: 25 }), false);      // no pallet
+  assert.equal(canRebuildPlan({}), false);
+});
+
+test('save: a saved pallet plan matches the count the page showed', async () => {
+  const { PALLETS, palletBoxes } = await import('../src/lib/pallets.ts');
+  const eur = PALLETS.find((p) => p.key === 'eur');
+  const perPallet = perLayer(40, 30, eur.l, eur.w) * Math.floor(eur.maxH / 30);
+  const boxes = palletBoxes(perPallet, { l: 40, w: 30, h: 30, weight: 10 }, { l: eur.l, w: eur.w });
+  assert.equal(boxes.length, perPallet);
+  // and it must physically fit the pallet it claims
+  assert.ok(Math.max(...boxes.map((b) => b.px + b.l)) <= eur.l + 1e-6);
+  assert.ok(Math.max(...boxes.map((b) => b.pz + b.w)) <= eur.w + 1e-6);
+  assert.ok(Math.max(...boxes.map((b) => b.py + b.h)) <= eur.maxH + 1e-6);
+});
+
+test('save: block math and the EP packer genuinely disagree (do not "simplify")', async () => {
+  // Pins the reason SavePalletPlan does NOT use packWithConstraints. If this
+  // ever starts passing with equal counts, the save path can be simplified —
+  // until then, swapping it would store a plan contradicting the page.
+  const { PALLETS, palletBoxes } = await import('../src/lib/pallets.ts');
+  const eur = PALLETS.find((p) => p.key === 'eur');
+  const perPallet = perLayer(40, 30, eur.l, eur.w) * Math.floor(eur.maxH / 30);
+  const packed = packWithConstraints(
+    { l: eur.l, w: eur.w, h: eur.maxH, maxWeight: eur.maxWt },
+    [{ id: 'c1', label: 'C', l: 40, w: 30, h: 30, weight: 10, qty: perPallet, color: 0 }],
+  );
+  const block = palletBoxes(perPallet, { l: 40, w: 30, h: 30, weight: 10 }, { l: eur.l, w: eur.w });
+  assert.equal(block.length, 40);
+  assert.ok(packed.boxes.length < block.length,
+    `EP packer placed ${packed.boxes.length}, block math ${block.length}`);
+});
+
+test('chain: withCarry keeps the handoff when a page rewrites its own URL state', () => {
+  // the bug: setParams({...}) replaces the WHOLE query string and dropped c_*
+  const own = { p: 'eur', h: '30', wt: '10' };
+  const merged = withCarry(own, { pt: 'gma', cpp: 40, cl: 40, cw: 30, ch: 30 });
+  assert.equal(merged.p, 'eur');           // page's own state survives
+  assert.equal(merged.c_pt, 'gma');        // and so does the handoff
+  assert.equal(merged.c_cl, '40');
+  const back = readCarry(new URLSearchParams(merged));
+  assert.equal(back.cpp, 40);
+  assert.equal(back.cl, 40);
+});
+
+test('chain: withCarry is a no-op when nothing was carried in', () => {
+  const own = { p: '50', r: '20' };
+  assert.deepEqual(withCarry(own, {}), own);
+});
+
+test('save: layerArrangement picks the better of the two orientations', async () => {
+  const { layerArrangement } = await import('../src/lib/pallets.ts');
+  const a = layerArrangement(40, 30, 120, 80);
+  assert.equal(a.nx * a.ny, perLayer(40, 30, 120, 80));
 });
 
 console.log(`\n${passed} passed, ${fails.length} failed`);

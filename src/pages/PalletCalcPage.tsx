@@ -18,7 +18,8 @@ import { PALLETS, CM_PER_IN, PALLET_TARE_KG, perLayer } from '../lib/pallets';
 import LayerDiagram, { SideDiagram } from '../components/LayerDiagram';
 import { StickyResult, StickySpacer, CopyLink, PresetChips, Accordion, PrintSpecButton } from '../components/calc/CalcUx';
 import PalletChain from '../components/PalletChain';
-import { readCarry, seedStr } from '../lib/palletChainState';
+import { readCarry, seedStr, withCarry } from '../lib/palletChainState';
+import SavePalletPlan from '../components/SavePalletPlan';
 
 // worked examples — common carton sizes, computed with the same perLayer math
 // so the table can never disagree with the calculator. Each row deep-links the
@@ -47,7 +48,7 @@ export default function PalletCalcPage() {
   const [qty, setQty] = useState(() => Math.max(0, Number(params.get('q')) || 0));
 
   useEffect(() => {
-    setParams({ u: unit, l: String(cl), w: String(cw), h: String(ch), wt: String(kgEach), p: palletKey, q: String(qty) }, { replace: true });
+    setParams(withCarry({ u: unit, l: String(cl), w: String(cw), h: String(ch), wt: String(kgEach), p: palletKey, q: String(qty) }, carryIn), { replace: true });
   }, [unit, cl, cw, ch, kgEach, palletKey, qty, setParams]);
   useEffect(() => { track('tool_pallet'); }, []);
 
@@ -403,9 +404,26 @@ export default function PalletCalcPage() {
           <Link to="/guides/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator guide', '卡板計算指南')}</Link>
         </div>
       </section>
+      <SavePalletPlan
+        carry={{
+          pt: palletKey, cpp: r.perPallet,
+          cl: cl * (unit === 'in' ? CM_PER_IN : 1),
+          cw: cw * (unit === 'in' ? CM_PER_IN : 1),
+          ch: ch * (unit === 'in' ? CM_PER_IN : 1),
+          cwt: kgEach,
+        }}
+        qty={qty || undefined}
+      />
       <PalletChain
         current="/pallet-calculator"
-        carry={{ pt: palletKey, cpp: r.perPallet, plt: r.palletsNeeded ?? undefined, lh: r.loadHeight }}
+        carry={{
+          pt: palletKey, cpp: r.perPallet, plt: r.palletsNeeded ?? undefined, lh: r.loadHeight,
+          // normalise to cm: the chain is unit-agnostic, this page may be in inches
+          cl: cl * (unit === 'in' ? CM_PER_IN : 1),
+          cw: cw * (unit === 'in' ? CM_PER_IN : 1),
+          ch: ch * (unit === 'in' ? CM_PER_IN : 1),
+          cwt: kgEach,
+        }}
       />
       <StickySpacer />
       <StickyResult label={T('Cartons per pallet', '每板箱數')} value={r.fitsFootprint ? `${r.perPallet.toLocaleString()}${r.palletsNeeded != null ? ` · ${r.palletsNeeded} ${T('plts', '板')}` : ''}` : T('overhangs', '會懸出')} />
