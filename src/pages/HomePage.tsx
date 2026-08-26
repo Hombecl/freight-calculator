@@ -37,10 +37,13 @@ const CARTON_SCENE = {
     { id: 'u2', label: 'Accessory box', l: 12, w: 8, h: 6, weight: 0.2, qty: 40, color: 0x60a5fa },
   ] as PackItemSpec[],
 };
-// Pallet is the DEFAULT hero scene (POSITIONING.md): pallet-shaped questions are
-// 63% of search demand reaching this site, against 4.4% for container/3D. The
-// demo has to show the thing the headline claims — cartons actually placed on a
-// GMA deck, not a container. 122×102 GMA, 152 cm planning height, 1,134 kg.
+// ⛔ 2026-08-26 (POSITIONING.md v2 §2): the hero defaults to the CONTAINER scene
+// again, and it is the mixed-carton one on purpose. Pallet questions are 63% of
+// search demand and remain the acquisition WEDGE — but the differentiated thing,
+// the one nothing else free does, is mixed-load 3D planning with operator
+// checks. v1 reasoned from demand share straight to company position in one
+// step; the homepage should EARN visitors via pallet questions and then show
+// them the planner, not declare itself a pallet calculator.
 const PALLET_SCENE = {
   container: { l: 122, w: 102, h: 152, maxWeight: 1134 },
   specs: [
@@ -63,7 +66,7 @@ export default function HomePage() {
   }, [location.hash]);
 
   type HeroMode = 'pallet' | 'container' | 'carton';
-  const [heroMode, setHeroMode] = useState<HeroMode>('pallet');
+  const [heroMode, setHeroMode] = useState<HeroMode>('container');
   const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
   const cartonDemo = useMemo(() => packWithConstraints(CARTON_SCENE.container, CARTON_SCENE.specs), []);
   const palletDemo = useMemo(() => packWithConstraints(PALLET_SCENE.container, PALLET_SCENE.specs), []);
@@ -194,12 +197,12 @@ export default function HomePage() {
                   loads), not the pallet count. Claim only what the code does:
                   we DRAW the arrangement and cap it by the real weight rating. */}
               <h1 className="text-4xl md:text-5xl font-black leading-[1.08] mb-5">
-                {T('Most pallet calculators give you a number. This one shows you the stack.', '大部分卡板計算機淨係俾個數字。呢個仲畫埋成疊點砌。')}
+                {T('Plan a mixed load in 3D. Catch what fails at the dock.', '3D 規劃混裝貨。喺碼頭出事之前捉到佢。')}
               </h1>
               <p className="text-lg text-slate-300 leading-relaxed mb-8">
                 {T(
-                  'Cartons per pallet, pallets per container, floor space and storage cost — with the actual layer pattern drawn, capped by the pallet\u2019s real weight rating, and every assumption written down.',
-                  '每板箱數、每櫃板數、佔地面積同倉存成本 — 連實際逐層擺法畫埋出嚟,受卡板真實載重上限限制,所有假設都寫明。',
+                  'Real bin-packing across mixed carton sizes with weight and stacking limits, then drag any carton by hand. Door aperture, axle loads, crush strength, overhang and load voids are all checked before the truck leaves. Free, in the browser, no signup.',
+                  '真實裝箱演算法處理混合尺寸紙箱,計埋重量同堆疊上限,再可以手動拖任何一箱微調。櫃門闊度、車軸重量、抗壓強度、懸出同空隙,全部喺車開出之前檢查。免費、瀏覽器即用、唔使註冊。',
                 )}
               </p>
               <div className="flex flex-wrap items-center gap-4">
@@ -209,7 +212,7 @@ export default function HomePage() {
                 >
                   {heroMode === 'pallet'
                     ? T('Calculate cartons per pallet — free', '免費計每板箱數')
-                    : heroMode === 'container' ? T('Plan a container — free', '免費規劃一個貨櫃') : T('Pack a carton — free', '免費計一個紙箱')}
+                    : heroMode === 'container' ? T('Plan the load — free', '免費規劃裝載') : T('Pack a carton — free', '免費計一個紙箱')}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -240,20 +243,20 @@ export default function HomePage() {
             <div>
               <div className="flex gap-1.5 mb-3">
                 <button
-                  onClick={() => switchHero('pallet')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    heroMode === 'pallet' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
-                  }`}
-                >
-                  <Layers size={15} /> {T('Cartons → pallet', '紙箱 → 卡板')}
-                </button>
-                <button
                   onClick={() => switchHero('container')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'container' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
                 >
                   <Container size={15} /> {T('Cartons → container', '紙箱 → 貨櫃')}
+                </button>
+                <button
+                  onClick={() => switchHero('pallet')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    heroMode === 'pallet' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                  }`}
+                >
+                  <Layers size={15} /> {T('Cartons → pallet', '紙箱 → 卡板')}
                 </button>
                 <button
                   onClick={() => switchHero('carton')}
@@ -291,56 +294,6 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============ THE FOUR PALLET QUESTIONS ============
-          Sits directly under the hero because pallet-shaped queries are 63% of
-          the search demand reaching this site (POSITIONING.md §1) and every tool
-          for them already existed — scattered, and buried at positions 52-77.
-          The order is the order the questions actually get asked in. */}
-      <section className="bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-14">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
-            {T('Work out your pallets', '搞掂你嘅卡板')}
-          </h2>
-          <p className="text-slate-500 mb-8 max-w-2xl">
-            {T(
-              'Four questions, in the order they come up. Every answer uses the same shared pallet maths — so the count on one page can never disagree with the next.',
-              '四條問題,順住你實際會問嘅次序。每個答案都用同一套卡板計算 — 所以呢一頁嘅數,唔會同下一頁對唔上。',
-            )}
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { to: '/pallet-calculator', n: '1', q: T('How many cartons fit on a pallet?', '一板可以裝幾多箱?'),
-                d: T('Cartons per layer, layers to max height, capped by the pallet weight rating.', '每層箱數、到最大高度嘅層數,再受卡板載重上限限制。') },
-              { to: '/pallets-per-container', n: '2', q: T('How many pallets fit in a container?', '一個櫃裝到幾多板?'),
-                d: T('20ft and 40ft floor patterns, double-stacking by loaded height, payload-capped.', '20 呎同 40 呎地面擺法、按裝載高度雙層堆疊,受載重限制。') },
-              { to: '/warehouse-space-calculator', n: '3', q: T('How much floor space is that?', '咁要幾多面積?'),
-                d: T('Pallet positions to square footage and m², including forklift aisles.', '卡板位換算成平方呎同平方米,連叉車通道計埋。') },
-              { to: '/pallet-storage-cost-calculator', n: '4', q: T('What will storage cost?', '倉存要幾多錢?'),
-                d: T('3PL or own-warehouse cost per pallet per month, at your rate.', '3PL 或者自家倉,每板每月成本,用你自己個價。') },
-            ].map((c) => (
-              <Link
-                key={c.to}
-                to={c.to}
-                onClick={() => track('pallet_chain', c.to)}
-                className="group block rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md bg-white p-5 transition-all"
-              >
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 text-xs font-black mb-3">{c.n}</span>
-                <div className="font-bold text-slate-900 mb-1.5 leading-snug group-hover:text-blue-700 transition-colors">{c.q}</div>
-                <p className="text-sm text-slate-500 leading-relaxed">{c.d}</p>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-6 text-sm text-slate-500">
-            {T('Also: ', '仲有:')}
-            <Link to="/ti-hi-calculator" className="text-blue-600 hover:underline">{T('TI × HI', 'TI × HI')}</Link>
-            {' · '}
-            <Link to="/pallet-builder" className="text-blue-600 hover:underline">{T('see the stack in 3D', '3D 睇實際堆疊')}</Link>
-            {' · '}
-            <Link to="/cbm-calculator" className="text-blue-600 hover:underline">{T('CBM & chargeable weight', 'CBM 同計費重量')}</Link>
           </div>
         </div>
       </section>
@@ -391,6 +344,56 @@ export default function HomePage() {
                 </span>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ THE FOUR PALLET QUESTIONS ============
+          Sits directly under the hero because pallet-shaped queries are 63% of
+          the search demand reaching this site (POSITIONING.md §1) and every tool
+          for them already existed — scattered, and buried at positions 52-77.
+          The order is the order the questions actually get asked in. */}
+      <section className="bg-white border-b border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 py-14">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">
+            {T('Work out your pallets', '搞掂你嘅卡板')}
+          </h2>
+          <p className="text-slate-500 mb-8 max-w-2xl">
+            {T(
+              'Four questions, in the order they come up. Every answer uses the same shared pallet maths — so the count on one page can never disagree with the next.',
+              '四條問題,順住你實際會問嘅次序。每個答案都用同一套卡板計算 — 所以呢一頁嘅數,唔會同下一頁對唔上。',
+            )}
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { to: '/pallet-calculator', n: '1', q: T('How many cartons fit on a pallet?', '一板可以裝幾多箱?'),
+                d: T('Cartons per layer, layers to max height, capped by the pallet weight rating.', '每層箱數、到最大高度嘅層數,再受卡板載重上限限制。') },
+              { to: '/pallets-per-container', n: '2', q: T('How many pallets fit in a container?', '一個櫃裝到幾多板?'),
+                d: T('20ft and 40ft floor patterns, double-stacking by loaded height, payload-capped.', '20 呎同 40 呎地面擺法、按裝載高度雙層堆疊,受載重限制。') },
+              { to: '/warehouse-space-calculator', n: '3', q: T('How much floor space is that?', '咁要幾多面積?'),
+                d: T('Pallet positions to square footage and m², including forklift aisles.', '卡板位換算成平方呎同平方米,連叉車通道計埋。') },
+              { to: '/pallet-storage-cost-calculator', n: '4', q: T('What will storage cost?', '倉存要幾多錢?'),
+                d: T('3PL or own-warehouse cost per pallet per month, at your rate.', '3PL 或者自家倉,每板每月成本,用你自己個價。') },
+            ].map((c) => (
+              <Link
+                key={c.to}
+                to={c.to}
+                onClick={() => track('pallet_chain', c.to)}
+                className="group block rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md bg-white p-5 transition-all"
+              >
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 text-xs font-black mb-3">{c.n}</span>
+                <div className="font-bold text-slate-900 mb-1.5 leading-snug group-hover:text-blue-700 transition-colors">{c.q}</div>
+                <p className="text-sm text-slate-500 leading-relaxed">{c.d}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-6 text-sm text-slate-500">
+            {T('Also: ', '仲有:')}
+            <Link to="/ti-hi-calculator" className="text-blue-600 hover:underline">{T('TI × HI', 'TI × HI')}</Link>
+            {' · '}
+            <Link to="/pallet-builder" className="text-blue-600 hover:underline">{T('see the stack in 3D', '3D 睇實際堆疊')}</Link>
+            {' · '}
+            <Link to="/cbm-calculator" className="text-blue-600 hover:underline">{T('CBM & chargeable weight', 'CBM 同計費重量')}</Link>
           </div>
         </div>
       </section>

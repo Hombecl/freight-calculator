@@ -47,17 +47,18 @@ await test('home: hero renders with headline', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   // Headline changed with the pallet repositioning (POSITIONING.md §3); it was
   // "Stop shipping air", which sold container void — 2.3% of search demand.
-  // ⛔ 2026-08-26: reworded again after an independent review caught that the
-  // previous version implied the pallet answers come from the packing engine.
-  // They do not — see the comment in HomePage. Assert on what we can defend:
-  // we DRAW the stack.
-  await page.getByRole('heading', { name: /shows you the stack/i }).waitFor();
+  // ⛔ 2026-08-26 (POSITIONING.md v2 §2): repositioned again — pallet is the
+  // acquisition wedge, the mixed-load planner is the position. Assert on the
+  // capability that is actually differentiated and actually implemented
+  // (realism.ts + fitsDoor), not on pallet arithmetic.
+  await page.getByRole('heading', { name: /plan a mixed load in 3D/i }).waitFor();
 }, page);
 
-await test('home: hero defaults to the pallet scene', async () => {
-  // The hero must open on a pallet: the headline claims the engine builds one,
-  // so the demo has to show it. Guards against the default silently reverting.
-  await page.getByText(/GMA pallet 48×40/i).waitFor();
+await test('home: hero defaults to the mixed-load container scene', async () => {
+  // The differentiated thing is mixed-load planning, so the demo must open on
+  // the mixed-carton container — not the pallet, which is the wedge. Guards
+  // against the default drifting back.
+  await page.getByText(/20' GP shipping container/i).waitFor();
 }, page);
 
 await test('home: hero tabs switch pallet/container/carton scene', async () => {
@@ -66,12 +67,12 @@ await test('home: hero tabs switch pallet/container/carton scene', async () => {
   // verified manually that all three transitions work, they are just slow over
   // the network with a cold cache. Per-wait budget, not a blanket timeout bump.
   const SWITCH = { timeout: 30_000 };
+  await page.getByRole('button', { name: /cartons → pallet/i }).click();
+  await page.getByText(/GMA pallet 48×40/i).waitFor(SWITCH);
   await page.getByRole('button', { name: /products → carton/i }).click();
   await page.getByText(/Master carton · 60×40×40/i).waitFor(SWITCH);
   await page.getByRole('button', { name: /cartons → container/i }).click();
   await page.getByText(/20' GP shipping container/i).waitFor(SWITCH);
-  await page.getByRole('button', { name: /cartons → pallet/i }).click();
-  await page.getByText(/GMA pallet 48×40/i).waitFor(SWITCH);
 }, page);
 
 await test('home: the four pallet questions link the chain', async () => {
@@ -303,8 +304,8 @@ await test('compare: easycargo page renders honestly', async () => {
 
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
-  // ZH side of the repositioned headline (was 唔好再為空隙付運費).
-  await page.getByText(/大部分卡板計算機淨係俾個數字/).waitFor();
+  // ZH side of the repositioned headline.
+  await page.getByText(/3D 規劃混裝貨/).waitFor();
 }, page);
 
 await test('plans: sign-in gate renders', async () => {
