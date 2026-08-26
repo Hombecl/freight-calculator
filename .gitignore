@@ -24,3 +24,6 @@ npm-debug.log*
 # Cache
 .cache/
 .vercel
+
+# wrangler pages dev local state (KV shim, build cache)
+.wrangler/

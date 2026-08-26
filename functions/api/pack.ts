@@ -19,6 +19,18 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+import { rateLimit, tooManyRequests, type RateLimitEnv } from './_rateLimit';
+
+/**
+ * Per-IP limits. Generous enough that a developer evaluating the API or a small
+ * integration never notices; tight enough that one client cannot burn the
+ * account's Functions quota. Both windows must pass.
+ */
+const RATE_RULES = [
+  { name: 'pack', limit: 60, windowSec: 60 },      // burst: 60/min
+  { name: 'pack', limit: 1000, windowSec: 86_400 }, // sustained: 1,000/day
+];
+
 const MAX_QTY = 2000;
 const MAX_ITEMS = 100;
 
@@ -31,7 +43,7 @@ const USAGE = {
     items: [{ label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 100, maxStack: 0, keepUpright: false, group: 'PO-1', unloadOrder: 1 }],
   },
   response: 'boxes (placed with px/py/pz min-corner positions), unplaced count, stats (volumeUtil, totalWeight, cog), zones (LIFO unload zones)',
-  limits: `${MAX_ITEMS} item types, ${MAX_QTY} total units per request. Free while in beta; volume licensing: hello@dimpack3d.com`,
+  limits: `${MAX_ITEMS} item types, ${MAX_QTY} total units per request; ${RATE_RULES[0].limit} requests/min and ${RATE_RULES[1].limit}/day per IP. Free while in beta; volume licensing: hello@dimpack3d.com`,
   interactive: 'https://www.dimpack3d.com/planner',
   docs: 'https://www.dimpack3d.com/api-docs',
 };
@@ -44,11 +56,16 @@ export const onRequestGet: PagesFunction = async () =>
     headers: { 'Content-Type': 'application/json', ...CORS },
   });
 
-export const onRequestPost: PagesFunction = async (ctx) => {
+export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
   const err = (msg: string, status = 400) =>
     new Response(JSON.stringify({ error: msg, docs: USAGE.docs }), {
       status, headers: { 'Content-Type': 'application/json', ...CORS },
     });
+
+  // Cost control before any work is done. GET (docs) and OPTIONS stay unlimited
+  // — they are cheap and blocking them would break CORS preflight.
+  const rl = await rateLimit(ctx.env, ctx.request, RATE_RULES);
+  if (!rl.ok) return tooManyRequests(rl, CORS, USAGE.docs);
 
   let body: any;
   try { body = await ctx.request.json(); } catch { return err('body must be JSON'); }
