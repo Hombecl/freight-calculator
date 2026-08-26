@@ -14,7 +14,7 @@
  * dock at +X) by Z (width); PlannerBox reuses px/pz footprints with py=0.
  */
 
-import type { PlannerBox } from '../components/InteractiveLoadPlanner';
+import type { PlannerBox } from './plannerBox';
 
 export interface Floor {
   l: number; // along X — dock is the +X edge

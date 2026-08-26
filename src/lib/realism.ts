@@ -12,7 +12,7 @@
  * Figures marked "typical" are industry norms; users must verify their spec.
  */
 
-import type { PlannerBox } from '../components/InteractiveLoadPlanner';
+import type { PlannerBox } from './plannerBox';
 
 // ---------------------------------------------------------------- 1. axles
 

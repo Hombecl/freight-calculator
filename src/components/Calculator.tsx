@@ -1,6 +1,9 @@
+// type-only: three.js is loaded from a CDN at runtime (window.THREE), but the
+// THREE.* namespace types must resolve for tsc. Erased at compile — no bundle cost.
+import type * as THREE from 'three';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { URL_LANG } from '../lib/locale';
-import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, Calculator, LayoutDashboard, X, DollarSign, Tag, Globe, RotateCcw, Eye, Cuboid, Layers, ZoomIn, ZoomOut, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Minimize2, Container, ArrowRight, HardDrive, Lightbulb, ExternalLink, Lock, Unlock, Sliders, Search, Trash2, FolderOpen, Plus, Library } from 'lucide-react';
+import { Package, Box, Anchor, Plane, ArrowRightLeft, Settings, Scale, X, DollarSign, Tag, RotateCcw, Eye, Cuboid, Layers, ZoomIn, ZoomOut, Maximize, CheckCircle, Ruler, Edit3, Save, ChevronDown, ChevronUp, Languages, Info, ScanLine, Container, ArrowRight, HardDrive, Lightbulb, ExternalLink, Lock, Unlock, Sliders, Search, Trash2, FolderOpen, Plus, Library, type LucideIcon } from 'lucide-react';
 
 // ===== Type Definitions =====
 type Language = 'zh' | 'en';
@@ -166,7 +169,10 @@ interface CompactCardProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
-  icon?: React.ComponentType<{ className?: string; size?: number }>;
+  // LucideIcon, not a hand-rolled shape: lucide exports ForwardRefExoticComponent,
+  // which is not assignable to a plain ComponentType<{className,size}> — that
+  // mismatch was 9 of the file's type errors.
+  icon?: LucideIcon;
   highlight?: boolean;
   action?: React.ReactNode;
 }
@@ -189,15 +195,7 @@ interface StatRowProps {
 }
 
 // Carton Optimizer Types
-interface BufferSettings {
-  perSide: number;     // Buffer per side in current units (e.g., 0.5cm each side)
-  totalLW: number;     // Total buffer for L/W direction (e.g., 1cm total)
-  totalH: number;      // Total buffer for height direction
-}
 
-interface FactoryConstraints {
-  maxWeight: number;   // Max total carton weight (products + box) in current units
-}
 
 interface CartonOption {
   name: string;
@@ -437,6 +435,11 @@ interface StoredData {
   selectedContainerKey: ContainerKey;
   mode: Mode;
   savedProducts?: SavedProduct[];  // Product Library
+  // FBA product dims. getInitialState('fbaProduct', …) has always READ this key,
+  // but it was never in StoredData and never in the save payload — so the FBA
+  // inputs silently reset on every reload while every other input persisted.
+  // Surfaced by adding tsc to CI (TS2345: not assignable to keyof StoredData).
+  fbaProduct?: DimensionsWithWeight;
 }
 
 const STORAGE_KEY = 'dimpack3d-settings';
@@ -473,7 +476,6 @@ const saveToStorage = (data: StoredData): void => {
 };
 
 // Translation dictionary type
-type TranslationKey = keyof typeof TRANSLATIONS.zh;
 type TranslationDictionary = Record<Language, Record<string, string>>;
 
 // --- Translation Dictionary ---
@@ -1353,7 +1355,7 @@ const StatRow: React.FC<StatRowProps> = ({ label, value, sub, isAlert = false, i
   </div>
 );
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units, customCartons, setCustomCartons, t, onClearData }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, rates, setRates, dimFactor, setDimFactor, exchangeRate, setExchangeRate, units: _units, customCartons, setCustomCartons, t, onClearData }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleClearData = () => {
@@ -1820,7 +1822,6 @@ const CartonOptimizerModal: React.FC<CartonOptimizerModalProps> = ({
       const currentOption = options.find(o => o.sourceType === 'current');
       if (currentOption && !currentOption.exceedsWeight) {
         const baseCost = currentOption.airCostPerUnit;
-        const baseUtil = currentOption.utilization;
         options.forEach(opt => {
           if (!opt.exceedsWeight && opt.sourceType !== 'current') {
             // Cost improvement (positive = savings)
@@ -3629,9 +3630,10 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
       selectedContainerKey,
       mode,
       savedProducts,
+      fbaProduct,
     };
     saveToStorage(dataToSave);
-  }, [lang, units, rates, dimFactor, exchangeRate, cartonThickness, customCartons, product, carton, shipmentCarton, selectedContainerKey, mode, savedProducts, isDataLoaded]);
+  }, [lang, units, rates, dimFactor, exchangeRate, cartonThickness, customCartons, product, carton, shipmentCarton, selectedContainerKey, mode, savedProducts, fbaProduct, isDataLoaded]);
 
   // --- Helper Functions ---
   const handleReset = () => {
@@ -3774,65 +3776,6 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
   }, [bestPacking, product, carton, rates, dimFactor, units, exchangeRate]);
 
   // --- Calculations: FBA Size Tier (Amazon US) ---
-  const fbaSizeTierCalc = useMemo(() => {
-    // Convert carton dimensions to inches for FBA calculation
-    const lengthIn = units.length === 'inch' ? carton.l : carton.l / 2.54;
-    const widthIn = units.length === 'inch' ? carton.w : carton.w / 2.54;
-    const heightIn = units.length === 'inch' ? carton.h : carton.h / 2.54;
-
-    // Convert gross weight to lbs
-    const grossWeightKg = packingCosts?.stats.grossWeight || 0;
-    const grossWeightLb = grossWeightKg / 0.453592;
-
-    if (lengthIn <= 0 || widthIn <= 0 || heightIn <= 0) return null;
-
-    const result = calculateFBASizeTier(lengthIn, widthIn, heightIn, grossWeightLb);
-
-    // Calculate potential savings if we can optimize to a lower tier
-    const lowerTier = getNextTierBoundary(result.tier.tier);
-    let optimization = null;
-
-    if (lowerTier && lowerTier.tier !== result.tier.tier) {
-      const dims = [lengthIn, widthIn, heightIn].sort((a, b) => b - a);
-      const [longest, median, shortest] = dims;
-
-      // Check which dimension(s) could be reduced to fit lower tier
-      const suggestions: { dim: string; current: number; target: number; diff: number }[] = [];
-
-      if (longest > lowerTier.maxDims.longest) {
-        suggestions.push({ dim: 'longest', current: longest, target: lowerTier.maxDims.longest, diff: longest - lowerTier.maxDims.longest });
-      }
-      if (median > lowerTier.maxDims.median) {
-        suggestions.push({ dim: 'median', current: median, target: lowerTier.maxDims.median, diff: median - lowerTier.maxDims.median });
-      }
-      if (shortest > lowerTier.maxDims.shortest) {
-        suggestions.push({ dim: 'shortest', current: shortest, target: lowerTier.maxDims.shortest, diff: shortest - lowerTier.maxDims.shortest });
-      }
-      if (result.billableWeight > lowerTier.maxWeight) {
-        suggestions.push({ dim: 'weight', current: result.billableWeight, target: lowerTier.maxWeight, diff: result.billableWeight - lowerTier.maxWeight });
-      }
-
-      // Calculate potential savings
-      let lowerTierFee = lowerTier.baseFee;
-      const assumedLowerWeight = Math.min(result.billableWeight, lowerTier.maxWeight);
-      if (lowerTier.perLbFee && assumedLowerWeight > 1) {
-        lowerTierFee += (assumedLowerWeight - 1) * lowerTier.perLbFee;
-      }
-
-      optimization = {
-        targetTier: lowerTier,
-        suggestions,
-        potentialSavings: result.estimatedFee - lowerTierFee,
-      };
-    }
-
-    return {
-      ...result,
-      dimsInches: { l: lengthIn, w: widthIn, h: heightIn },
-      actualWeightLb: grossWeightLb,
-      optimization,
-    };
-  }, [carton, packingCosts, units]);
 
   // --- Calculations: FBA Mode (independent) ---
   const fbaCalc = useMemo(() => {

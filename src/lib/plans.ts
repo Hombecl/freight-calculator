@@ -7,7 +7,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import type { PlannerBox } from '../components/InteractiveLoadPlanner';
+import type { PlannerBox } from './plannerBox';
 import type { PackItemSpec, PackContainer, PackStats } from './binPacking';
 
 export type PlanStatus = 'draft' | 'pending_review' | 'approved' | 'changes_requested';

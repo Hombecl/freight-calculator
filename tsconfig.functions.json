@@ -1,0 +1,17 @@
+{
+  "//": "functions/ is Cloudflare Pages Functions — a different runtime from src/ (Workers, not DOM). tsconfig.json only includes ['src'], so these files were never typechecked at all: a broken import here surfaces as a 500 on a live endpoint, not a build failure. Kept separate rather than merged into tsconfig.json because the two need different lib/types.",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["functions"]
+}

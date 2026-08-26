@@ -16,7 +16,7 @@
  *       weight · per-box max-stack weight (load propagated down the support tree)
  */
 
-import type { PlannerBox } from '../components/InteractiveLoadPlanner';
+import type { PlannerBox } from './plannerBox';
 
 export interface PackItemSpec {
   id: string;

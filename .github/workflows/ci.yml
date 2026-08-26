@@ -15,6 +15,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Typecheck BOTH projects. tsconfig.json only covers src/; functions/ is a
+      # different runtime (Workers, not DOM) and had never been typechecked at
+      # all — a broken import there surfaces as a 500 on a live endpoint rather
+      # than a build failure, because vite does not typecheck either.
+      - name: Typecheck (src + functions)
+        run: npm run typecheck
       - name: Unit tests (engines)
         run: npm test
       - name: Build (SPA — prerender runs on deploy machine)

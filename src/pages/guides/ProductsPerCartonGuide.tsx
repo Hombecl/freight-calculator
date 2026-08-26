@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, Clock, Calendar, Package, CheckCircle, Lightbulb, Calculator, Box } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, Calendar, Package, CheckCircle, Lightbulb, Box } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export default function ProductsPerCartonGuide() {

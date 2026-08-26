@@ -6,7 +6,7 @@
  * bundle cost). This is the deliverable freight forwarders actually pay for.
  */
 
-import type { PlannerBox } from '../components/InteractiveLoadPlanner';
+import type { PlannerBox } from './plannerBox';
 import type { PackStats, ZoneInfo, PackContainer } from './binPacking';
 
 export interface PlanMeta {

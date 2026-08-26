@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "build:spa": "vite build",
     "test": "tsx tests/unit.mjs",
-    "e2e": "node tests/e2e.mjs"
+    "e2e": "node tests/e2e.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
@@ -21,6 +22,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/three": "^0.182.0",

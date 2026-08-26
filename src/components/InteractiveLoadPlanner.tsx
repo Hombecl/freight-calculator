@@ -1,4 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
+import type { PlannerBox } from '../lib/plannerBox';
+
+// re-exported so existing imports from this component keep working
+export type { PlannerBox };
 
 /**
  * InteractiveLoadPlanner
@@ -23,20 +27,6 @@ import { useRef, useEffect, useState, useCallback } from 'react';
  *   For three.js we recentre the container on the origin.
  */
 
-export interface PlannerBox {
-  id: string;
-  label: string;
-  l: number; // size along X
-  w: number; // size along Z
-  h: number; // size along Y (up)
-  px: number; // min-corner X in [0, L-l]
-  py: number; // min-corner Y (layer base) in [0, H-h]
-  pz: number; // min-corner Z in [0, W-w]
-  color: number;
-  weight?: number; // per-unit weight (optional; carried through for stats)
-  group?: string; // keep-together group (carried through for export)
-  unloadOrder?: number; // LIFO unload order (carried through for export)
-}
 
 interface Props {
   className?: string;
