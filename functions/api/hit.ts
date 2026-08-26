@@ -9,9 +9,29 @@
  *   ev2|<YYYY-MM-DD>|<e>|<enc p>|<enc r>|<enc m>|<country>|<time+rand>
  * Fields are encodeURIComponent'd (| encodes to %7C, so it is a safe
  * delimiter) and length-capped to stay under the 512-byte key limit.
+ *
+ * ⛔ Rate limited per IP. This endpoint is unauthenticated and WRITES a KV
+ * record on every call with a 90-day TTL, so unbounded traffic does not just
+ * burn invocations — it bloats the namespace and consumes write quota for three
+ * months per entry. That is a larger exposure than /api/pack, which is
+ * read-mostly compute.
+ *
+ * Limits are deliberately generous: a genuinely active session fires a pageview
+ * per route change plus tool/CTA events, so a real user can legitimately send
+ * dozens of hits in a few minutes. Losing analytics from a shared NAT/CGNAT
+ * egress is the accepted trade — dropped hits are far cheaper than unbounded
+ * writes, and track() is fire-and-forget so a 429 is silently ignored client
+ * side (see src/lib/track.ts — sendBeacon, no retry).
  */
 
-interface Env {
+import { rateLimit, type RateLimitEnv } from './_rateLimit';
+
+const RATE_RULES = [
+  { name: 'hit', limit: 120, windowSec: 60 },       // burst: 120/min
+  { name: 'hit', limit: 3000, windowSec: 86_400 },  // sustained: 3,000/day
+];
+
+interface Env extends RateLimitEnv {
   LEADS: KVNamespace;
 }
 
@@ -24,6 +44,16 @@ const enc = (s: unknown, max: number) => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
+  // Check BEFORE parsing/writing. Analytics is fire-and-forget, so the response
+  // body does not matter — but the KV write it prevents is the whole point.
+  const rl = await rateLimit(ctx.env, ctx.request, RATE_RULES);
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ ok: false, error: 'rate limited' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': String(rl.retryAfter ?? 60) },
+    });
+  }
+
   let data: Record<string, unknown>;
   try {
     data = await ctx.request.json();
