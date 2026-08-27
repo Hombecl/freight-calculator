@@ -12,11 +12,3 @@ id = "13e65133a1414b1ebe5d125d38d43eb8"
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "dimpack3d_events"
-
-[[ratelimits]]
-name = "HIT_RATE_LIMITER"
-namespace_id = "73113005"
-
-  [ratelimits.simple]
-  limit = 120
-  period = 60

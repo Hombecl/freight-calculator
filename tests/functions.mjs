@@ -3,14 +3,13 @@ import assert from 'node:assert/strict';
 
 const { onRequestPost } = await import('../functions/api/hit.ts');
 
-function context(body, { allowed = true, ip = '203.0.113.8', country = 'HK' } = {}) {
+function context(body, { origin = '', country = 'HK' } = {}) {
   const points = [];
-  const limiterKeys = [];
   const request = new Request('https://dimpack3d.com/api/hit', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(ip ? { 'CF-Connecting-IP': ip } : {}),
+      ...(origin ? { Origin: origin } : {}),
     },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
@@ -20,16 +19,9 @@ function context(body, { allowed = true, ip = '203.0.113.8', country = 'HK' } = 
       request,
       env: {
         ANALYTICS: { writeDataPoint: (point) => points.push(point) },
-        HIT_RATE_LIMITER: {
-          limit: async ({ key }) => {
-            limiterKeys.push(key);
-            return { success: allowed };
-          },
-        },
       },
     },
     points,
-    limiterKeys,
   };
 }
 
@@ -42,7 +34,6 @@ function context(body, { allowed = true, ip = '203.0.113.8', country = 'HK' } = 
   });
   const response = await onRequestPost(run.ctx);
   assert.equal(response.status, 204);
-  assert.deepEqual(run.limiterKeys, ['203.0.113.8']);
   assert.deepEqual(run.points, [
     { indexes: ['pageview'], blobs: ['/planner', 'example.com', '', 'HK'], doubles: [1] },
     { indexes: ['export_pdf'], blobs: ['/planner', '', 'a4', 'HK'], doubles: [1] },
@@ -50,10 +41,9 @@ function context(body, { allowed = true, ip = '203.0.113.8', country = 'HK' } = 
 }
 
 {
-  const run = context({ e: 'pageview', p: '/zh/planner' }, { ip: '' });
+  const run = context({ e: 'pageview', p: '/zh/planner' });
   const response = await onRequestPost(run.ctx);
   assert.equal(response.status, 204);
-  assert.equal(run.limiterKeys.length, 0);
   assert.equal(run.points.length, 1);
 }
 
@@ -65,9 +55,9 @@ function context(body, { allowed = true, ip = '203.0.113.8', country = 'HK' } = 
 }
 
 {
-  const run = context({ e: 'pageview' }, { allowed: false });
+  const run = context({ e: 'pageview' }, { origin: 'https://attacker.test' });
   const response = await onRequestPost(run.ctx);
-  assert.equal(response.status, 429);
+  assert.equal(response.status, 403);
   assert.equal(run.points.length, 0);
 }
 

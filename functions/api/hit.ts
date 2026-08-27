@@ -9,7 +9,6 @@
 
 interface Env {
   ANALYTICS: AnalyticsEngineDataset;
-  HIT_RATE_LIMITER: RateLimit;
 }
 
 interface Hit {
@@ -38,16 +37,13 @@ function parseHit(value: unknown): Hit | null {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
-  const ip = ctx.request.headers.get('CF-Connecting-IP');
-  if (ip) {
-    const { success } = await ctx.env.HIT_RATE_LIMITER.limit({ key: ip });
-    if (!success) {
-      return new Response(JSON.stringify({ ok: false, error: 'rate limited' }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
-      });
-    }
+  const origin = ctx.request.headers.get('Origin');
+  if (origin && new URL(ctx.request.url).origin !== origin) {
+    return new Response('forbidden origin', { status: 403 });
   }
+
+  const contentLength = Number(ctx.request.headers.get('Content-Length') ?? 0);
+  if (contentLength > 16_384) return new Response('payload too large', { status: 413 });
 
   let data: unknown;
   try {
