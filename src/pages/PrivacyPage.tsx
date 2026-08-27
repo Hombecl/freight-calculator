@@ -4,7 +4,8 @@ import { useApp } from '../context/AppContext';
 /**
  * Privacy policy — must stay ACCURATE to what the site actually does:
  * client-side computation; emails collected at the export gate / waitlists
- * (stored in Cloudflare KV); first-party cookie-less analytics (/api/hit:
+ * (stored in Cloudflare KV); first-party cookie-less analytics (Cloudflare
+ * Analytics Engine via /api/hit:
  * event, path, referrer hostname, coarse country); Google Analytics 4
  * (cookies); optional share links stored server-side; hosting on Cloudflare.
  * Update this page whenever data handling changes.

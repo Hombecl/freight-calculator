@@ -21,7 +21,9 @@ and every promotion channel with its concrete action. Companion to SYSTEM.md
 
 **Events that measure each hop** (first-party `/api/hit`, mirrored to GA4):
 `pageview` → `hero_tab` → tool pageviews → `import_open/import_cartons`, `warehouse_place_one/route/example/tutorial_done` → `export_csv/export_pdf`, `waitlist_warehouse`, `plan_saved` → `share_create/share_open`, `review_submit/review_open/review_action`.
-Read: `curl "https://dimpack3d.com/api/stats?k=$(cat ~/.dimpack3d-stats-key)"`.
+Read current events in the Cloudflare Analytics Engine SQL console using
+`scripts/analytics.sql`. The protected `/api/stats` endpoint remains the source
+for leads, shares, and pre-migration KV events.
 
 ## 2. Segmentation — who lands and where we route them
 
@@ -62,7 +64,7 @@ Routing rules already built: hero tabs pick the packing level; chain nav shows t
 
 ## 4. Weekly operating rhythm (30 min)
 
-1. `api/stats` + GSC: what moved? (`hero_tab` split answers the container-vs-carton-vs-warehouse demand question)
+1. Analytics Engine + `api/stats` leads + GSC: what moved? (`hero_tab` split answers the container-vs-carton-vs-warehouse demand question)
 2. Any `waitlist_warehouse` or hello@ replies → same-day response (design-partner leads are the six-figure path)
 3. One content addition where data shows demand (answer page / guide / compare)
 4. Deploy anything pending → `node scripts/indexnow.mjs`

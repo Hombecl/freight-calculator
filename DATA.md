@@ -1,6 +1,6 @@
 # DimPack3D — Data Location Map
 
-_⛔ Read this before touching any backend data. Last updated 2026-07-04._
+_⛔ Read this before touching any backend data. Last updated 2026-08-28._
 
 ## Supabase — SHARED project (temporary arrangement)
 
@@ -39,11 +39,29 @@ Bound to the `dimpack3d` Pages project (wrangler.toml). Key patterns:
 | Key pattern | Content |
 |---|---|
 | `<ISO-date>_<rand>` | Email leads (export gate, waitlists) |
-| `ev_<ISO-date>_<rand>` | Analytics events (90-day TTL) |
+| `ev_…` / `ev2|…` | Legacy analytics events (90-day TTL; no new writes after the Analytics Engine migration) |
 | `share_<10-char-id>` | Shared load plans (1-year TTL) |
 
-Read aggregates: `GET /api/stats?k=<key>` — key at `~/.dimpack3d-stats-key`
-(local only), Pages secret `STATS_KEY`.
+`GET /api/stats?k=<key>` continues to return leads, shares, and the legacy KV
+event window. The key is at `~/.dimpack3d-stats-key` (local only), Pages secret
+`STATS_KEY`.
+
+## Cloudflare Analytics Engine — dataset `dimpack3d_events`
+
+Current `/api/hit` usage events are stored as:
+
+| Field | Content |
+|---|---|
+| `index1` | Event name |
+| `blob1` | Page path |
+| `blob2` | Referrer hostname |
+| `blob3` | Event metadata |
+| `blob4` | Coarse country code |
+| `double1` | `1` (event count) |
+
+Use the account's Analytics Engine SQL console with the queries in
+`scripts/analytics.sql`. Event requests are batched in the browser and protected
+by the native `HIT_RATE_LIMITER`; neither operation uses Workers KV.
 
 ## Local build secrets
 

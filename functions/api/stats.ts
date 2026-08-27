@@ -1,10 +1,14 @@
 /**
- * GET /api/stats?k=<STATS_KEY>[&days=N] — aggregate the collected events + leads.
+ * GET /api/stats?k=<STATS_KEY>[&days=N] — read leads, shares, and legacy KV events.
  * STATS_KEY is a Pages secret (wrangler pages secret put STATS_KEY).
  * Returns JSON: daily event counts, per-event totals, top paths/referrers/
  * countries/meta, and the lead list (emails are why this is key-protected).
  *
- * v2: aggregates ev2|… events from key NAMES only (see hit.ts) — list() reads
+ * Current usage events live in Analytics Engine (`dimpack3d_events`) and are
+ * queried from its SQL console. This endpoint retains the historical KV event
+ * window so the migration does not discard existing reporting data.
+ *
+ * v2: aggregates ev2|… legacy events from key NAMES only — list() reads
  * 1000 keys per KV op, so a 90-day window is a handful of ops. The old ev_
  * per-key-get design 524'd once events accumulated. Legacy ev_ keys (TTL'd,
  * gone by ~Nov 2026) are counted from their names into byDay + byEvent
@@ -92,6 +96,11 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   return new Response(
     JSON.stringify({
       days,
+      eventSource: {
+        current: 'analytics-engine',
+        dataset: 'dimpack3d_events',
+        note: 'Event fields below contain the legacy KV window only; query Analytics Engine for current events.',
+      },
       scanned: ev2.names.length + legacy.names.length,
       truncated: ev2.truncated || legacy.truncated,
       shares,

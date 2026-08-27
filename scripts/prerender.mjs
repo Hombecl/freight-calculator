@@ -136,6 +136,14 @@ let previewExited = null;
 preview.on('exit', (code, signal) => { previewExited = signal || code; });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const previewIsReady = () => {
+  try {
+    execFileSync('curl', ['-fsS', '--max-time', '2', `http://127.0.0.1:${PORT}/`], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 try {
   // Wait for the preview server. The window used to be 15s (30 x 500ms), which
@@ -150,10 +158,7 @@ try {
       throw new Error(`vite preview exited (${previewExited}) before serving — port ${PORT} taken, or the build output is unusable`);
     }
     await wait(POLL_MS);
-    try {
-      const res = await fetch(`http://localhost:${PORT}/`);
-      up = res.ok;
-    } catch { /* not up yet */ }
+    up = await previewIsReady();
     if (!up && i > 0 && i % 20 === 0) console.log(`[prerender] waiting for preview on :${PORT} (${(i * POLL_MS) / 1000}s)`);
   }
   if (!up) throw new Error(`vite preview did not start within ${READY_TIMEOUT_MS / 1000}s (machine load? check \`sysctl -n vm.loadavg\`)`);
@@ -206,7 +211,7 @@ try {
   let ok = 0;
   const failed = [];
   const snapshotOne = async (route, profile) => {
-    const html = await renderRoute(`http://localhost:${PORT}${route}`, profile);
+    const html = await renderRoute(`http://127.0.0.1:${PORT}${route}`, profile);
     if (!html) {
       console.warn(`[prerender] FAILED ${route}: no output (timeout or crash)`);
       failed.push(route);

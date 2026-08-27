@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "build:spa": "vite build",
-    "test": "tsx tests/unit.mjs",
+    "test": "tsx tests/unit.mjs && tsx tests/functions.mjs",
     "e2e": "node tests/e2e.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json"
   },
