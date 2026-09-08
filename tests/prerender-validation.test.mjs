@@ -16,3 +16,22 @@ test('one failed route blocks sitemap publication', () => {
   assert.throws(() => assertCompleteSnapshots(200, 199, []));
   assert.doesNotThrow(() => assertCompleteSnapshots(200, 200, []));
 });
+test('indexable routes reject robots and Googlebot noindex directives', () => {
+  for (const meta of [
+    '<meta name="robots" content="noindex, follow">',
+    "<meta content='NOINDEX' name='Googlebot'>",
+    '<meta name="robots" content="none">',
+  ]) {
+    assert.equal(snapshotProblem(html('/').replace('</head>', `${meta}</head>`), '/'), 'indexable route has noindex');
+  }
+  assert.equal(snapshotProblem(html('/').replace('</head>', '<meta name="robots" content="index, follow"></head>'), '/'), null);
+});
+test('embed snapshots must retain their deliberate noindex directive', () => {
+  assert.ok(snapshotProblem(html('/embed'), '/embed', false));
+  assert.equal(snapshotProblem(html('/embed').replace('</head>', '<meta name="robots" content="noindex"></head>'), '/embed', false), null);
+});
+test('empty or markup-only headings do not count as rendered content', () => {
+  for (const content of ['', '   ', '<span> &nbsp; </span>']) {
+    assert.ok(snapshotProblem(html('/').replace('<h1>Tool</h1>', `<h1>${content}</h1>`), '/'));
+  }
+});

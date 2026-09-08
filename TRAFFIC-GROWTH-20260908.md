@@ -9,12 +9,13 @@ The route is linked in the shared footer and the prerender route list, which gen
 - Missing Chrome now fails the production build instead of succeeding with an SPA shell.
 - Incomplete render runs fail before publishing a new sitemap.
 - Indexable snapshots require their own single correct canonical and rendered heading; a homepage fallback fails validation.
+- Indexable snapshots reject robots/Googlebot `noindex` (including `none`), embed snapshots must retain `noindex`, and empty headings no longer pass the content check.
 - Removed build-date `lastmod` values. No page-modification date is better than claiming every page changed at each build.
 - Removed the command that killed whatever process occupied the preview port. An occupied port must fail cleanly.
 
 ## Verification
 
-- 6 new calculator/render-guard tests passed, now included in `npm test`.
+- 9 new calculator/render-guard tests passed, included in `npm test`.
 - Existing engine tests: 45 passed; Pages Function tests passed.
 - Both TypeScript projects passed typecheck; production SPA build passed.
 - Built English tool rendered in connected Chrome: 18-unit grid, 66.67% utilization and 12 L unoccupied volume for the documented example.
