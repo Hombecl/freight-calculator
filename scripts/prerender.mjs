@@ -19,6 +19,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, existsSync, readFileSync, mkdtempSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { snapshotProblem, assertCompleteSnapshots } from './prerender-validation.mjs';
 
 const BASE_ROUTES = [
   '/',
@@ -38,6 +39,7 @@ const BASE_ROUTES = [
   '/forklift-aisle-width-calculator',
   '/dimensional-weight-calculator',
   '/cbm-calculator',
+  '/carton-space-calculator',
   '/pallet-calculator',
   '/pallet-storage-cost-calculator',
   '/freight-class-calculator',
@@ -86,7 +88,6 @@ const ROUTES = [...EN_ROUTES, ...NOSITEMAP_ROUTES].flatMap((r) => [r, r === '/' 
 // sitemap.xml with hreflang alternates — single source of truth is ROUTES
 function writeSitemap() {
   const site = 'https://www.dimpack3d.com';
-  const today = new Date().toISOString().slice(0, 10);
   const urls = EN_ROUTES.map((r) => {
     const clean = r === '/' ? '' : r;
     const en = `${site}${clean || '/'}`;
@@ -94,7 +95,6 @@ function writeSitemap() {
     const alt = (u, l) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${u}"/>`;
     const block = (loc) => `  <url>
     <loc>${loc}</loc>
-    <lastmod>${today}</lastmod>
 ${alt(en, 'en')}
 ${alt(zh, 'zh-Hant')}
 ${alt(en, 'x-default')}
@@ -117,15 +117,13 @@ const CHROME_PATHS = [
 ];
 const chrome = CHROME_PATHS.find((p) => existsSync(p));
 if (!chrome) {
-  console.warn('[prerender] Chrome not found — skipping prerender (SPA shell only).');
-  process.exit(0);
+  console.error('[prerender] Chrome not found — required snapshots were not generated. Release blocked.');
+  process.exit(1);
 }
 
 const PORT = 4173;
 
-// a zombie preview from an earlier run would serve a STALE dist to our
-// snapshots — clear the port before starting
-try { execFileSync('bash', ['-c', `lsof -ti :${PORT} | xargs kill -9`], { stdio: 'ignore' }); } catch { /* none */ }
+// --strictPort must fail if the port is occupied. Never kill an unrelated server.
 
 const preview = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore',
@@ -217,8 +215,9 @@ try {
       failed.push(route);
       return;
     }
-    if (!html.includes('</body>') || html.length < 5_000) {
-      console.warn(`[prerender] ${route} rendered too little — kept as SPA shell`);
+    const problem = snapshotProblem(html, route, !route.endsWith('/embed'));
+    if (problem) {
+      console.warn(`[prerender] FAILED ${route}: ${problem}`);
       failed.push(route);
       return;
     }
@@ -248,9 +247,9 @@ try {
     for (const route of second) await snapshotOne(route, profiles[0]);
     if (failed.length) console.error(`[prerender] STILL FAILED after retry: ${failed.join(', ')}`);
   }
+  assertCompleteSnapshots(ROUTES.length, ok, failed);
   writeSitemap();
   console.log(`[prerender] done: ${ok}/${ROUTES.length} routes snapshotted`);
-  if (ok === 0) process.exit(1);
 } finally {
   try { process.kill(-preview.pid, 'SIGTERM'); } catch { preview.kill('SIGTERM'); }
 }

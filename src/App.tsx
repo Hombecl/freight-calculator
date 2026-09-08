@@ -22,6 +22,7 @@ const WarehouseSpaceCalcPage = lazy(() => import('./pages/WarehouseSpaceCalcPage
 const AisleWidthCalcPage = lazy(() => import('./pages/AisleWidthCalcPage'));
 const DimWeightCalcPage = lazy(() => import('./pages/DimWeightCalcPage'));
 const CbmCalcPage = lazy(() => import('./pages/CbmCalcPage'));
+const CartonSpacePage = lazy(() => import('./pages/CartonSpacePage'));
 const PalletCalcPage = lazy(() => import('./pages/PalletCalcPage'));
 const PalletStorageCostPage = lazy(() => import('./pages/PalletStorageCostPage'));
 const FreightClassCalcPage = lazy(() => import('./pages/FreightClassCalcPage'));
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="forklift-aisle-width-calculator" element={<AisleWidthCalcPage />} />
         <Route path="dimensional-weight-calculator" element={<DimWeightCalcPage />} />
         <Route path="cbm-calculator" element={<CbmCalcPage />} />
+        <Route path="carton-space-calculator" element={<CartonSpacePage />} />
         <Route path="pallet-calculator" element={<PalletCalcPage />} />
         <Route path="pallet-storage-cost-calculator" element={<PalletStorageCostPage />} />
         <Route path="freight-class-calculator" element={<FreightClassCalcPage />} />
