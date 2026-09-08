@@ -8,8 +8,9 @@
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "build:spa": "vite build",
-    "test": "tsx tests/unit.mjs && tsx tests/functions.mjs",
+    "test": "tsx tests/unit.mjs && tsx tests/functions.mjs && npm run test:growth",
     "e2e": "node tests/e2e.mjs",
+    "test:growth": "tsx --test tests/cartonSpace.test.ts tests/prerender-validation.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json"
   },
   "dependencies": {
