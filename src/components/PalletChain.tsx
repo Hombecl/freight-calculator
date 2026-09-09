@@ -27,9 +27,9 @@ export const PALLET_STEPS = [
 ];
 
 const EXTRAS = [
-  { to: '/pallet-height-calculator', label: () => T('Mixed-carton pallet height', '混合箱型卡板高度') },
+  { to: '/pallet-height-calculator', label: () => T('Mixed orders & pallet height', '混合訂單與棧板高度') },
   { to: '/ti-hi-calculator', label: () => T('TI × HI', 'TI × HI') },
-  { to: '/pallet-builder', label: () => T('See the stack in 3D', '3D 睇實際堆疊') },
+  { to: '/pallet-builder', label: () => T('See the stack in 3D', '3D 查看實際堆疊') },
   { to: '/cbm-calculator', label: () => T('CBM & chargeable weight', 'CBM 同計費重量') },
 ];
 
@@ -43,7 +43,7 @@ export default function PalletChain({ current, carry = {} }: { current: string; 
   return (
     <nav aria-label={T('Pallet planning steps', '卡板規劃步驟')} className="mt-12 print:hidden">
       <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-3">
-        {T('Work out your pallets', '搞掂你嘅卡板')}
+        {T('Work out your pallets', '規劃棧板與出貨')}
       </h2>
       <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {PALLET_STEPS.map((s, i) => {

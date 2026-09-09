@@ -112,10 +112,10 @@ export default function PalletCalcPage() {
             packer": perLayer() below is block arithmetic, and palletBoxes()
             deliberately bypasses the 3D engine. Do not reintroduce engine
             language here. */}
-        <title>{T('Pallet Calculator — cartons per pallet, with the layer pattern drawn | DimPack3D', '卡板計算器 — 每板箱數,連逐層擺法畫出嚟 | DimPack3D')}</title>
+        <title>{T('Pallet Calculator — cartons per pallet, with the layer pattern drawn | DimPack3D', '棧板計算機（卡板）— 每板箱數與堆疊排列 | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free pallet calculator. Enter carton size and weight to get cartons per layer, layers to max load height, cartons per pallet (capped by the pallet weight rating), footprint utilisation, and pallets needed for your order — EUR, US GMA and industrial pallets. No signup.',
-          '免費卡板計算器。輸入紙箱尺寸同重量,即得每層箱數、到最大堆疊高度嘅層數、每板箱數(受卡板載重上限限制)、板面利用率同訂單所需板數 — 支援歐標、美式 GMA 同工業卡板。免費、唔使註冊。')} />
+          '免費棧板計算機：輸入紙箱尺寸與重量，計算每層箱數、堆疊層數、每板箱數、板面利用率及訂單所需棧板數。支援歐規、美規 GMA 和工業棧板，提供排列圖，免註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -174,11 +174,12 @@ export default function PalletCalcPage() {
         </script>
       </Helmet>
 
-      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Pallet Calculator', '卡板計算器')}</h1>
+      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Pallet Calculator', '棧板計算機（卡板）')}</h1>
       <p className="text-slate-600 mb-8 max-w-2xl">
         {T('How many cartons fit on a pallet — and how many pallets your order needs. Layer count, stack height and the weight rating are all applied. Inputs stay in the URL — bookmark your pallet.',
-           '一板裝到幾多箱、你張單要幾多板。每層箱數、堆疊高度同載重上限一次過計埋。輸入保存喺網址 — 收藏低你嘅卡板。')}
+           '一個棧板可以放多少箱？整張訂單需要多少板？輸入箱型後，依據每層排列、堆疊高度和載重上限計算。設定保存在網址，方便收藏與分享。')}
       </p>
+      <p className="mb-8 print:hidden"><Link to="/pallet-height-calculator" className="text-blue-700 font-semibold underline">{T('Mixed cartons or repeat orders? Compare pallets, save your order and print build steps →', '混合箱型或重複訂單？比較棧板、儲存訂單並列印逐箱擺放步驟 →')}</Link></p>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-8">
         <div className="space-y-4">

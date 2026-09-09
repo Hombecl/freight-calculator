@@ -1,1 +1,2 @@
-/*    /index.html   200
+# Pages serves matching prerendered HTML files and its native SPA fallback.
+# Do not rewrite /* to /index.html: Pages detects that as an infinite loop.

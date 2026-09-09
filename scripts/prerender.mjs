@@ -20,96 +20,7 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync, mkdtempSync } from 
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const BASE_ROUTES = [
-  '/',
-  '/planner',
-  '/warehouse',
-  '/packing',
-  '/container',
-  '/fba',
-  '/answers',
-  '/api-docs',
-  '/about',
-  '/privacy',
-  '/terms',
-  '/guides',
-  '/reality-checks',
-  '/warehouse-space-calculator',
-  '/forklift-aisle-width-calculator',
-  '/dimensional-weight-calculator',
-  '/cbm-calculator',
-  '/pallet-calculator',
-  '/pallet-storage-cost-calculator',
-  '/freight-class-calculator',
-  '/ti-hi-calculator',
-  '/pallet-builder',
-  '/pallet-height-calculator',
-  '/pallets-per-container',
-  '/guides/fba-size-tiers-2025',
-  '/guides/cbm-calculator-shipping',
-  '/guides/container-loading-optimization',
-  '/guides/dimensional-weight-calculator',
-  '/guides/products-per-carton',
-  '/guides/amazon-dimensional-weight',
-  '/guides/fba-fee-calculator',
-  '/guides/pallet-calculator',
-];
-
-// programmatic answer pages — same single source as src/lib/answers.ts
-// (containers/trucks pack cartons IN; pallets stack cartons ON)
-const answersData = JSON.parse(readFileSync('src/data/answers.json', 'utf8'));
-const ANSWER_ROUTES = [];
-const vesselGroups = [
-  { list: answersData.containers, prep: 'in' },
-  { list: answersData.pallets ?? [], prep: 'on' },
-  { list: answersData.trucks ?? [], prep: 'in' },
-];
-for (const { list, prep } of vesselGroups) {
-  for (const v of list) {
-    ANSWER_ROUTES.push(`/answers/cartons-${prep}-${v.slug}`);
-    for (const c of answersData.cartons) {
-      ANSWER_ROUTES.push(`/answers/how-many-${c.l}x${c.w}x${c.h}-cartons-fit-${prep}-a-${v.slug}`);
-    }
-  }
-}
-
-// competitor comparison pages — single source src/data/competitors.json
-const competitorsData = JSON.parse(readFileSync('src/data/competitors.json', 'utf8'));
-const COMPARE_ROUTES = competitorsData.competitors.map((c) => `/compare/${c.slug}`);
-
-const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES, ...COMPARE_ROUTES];
-// prerendered but noindex + kept out of the sitemap: without a snapshot the
-// SPA fallback serves the HOMEPAGE snapshot (three.js tag and all) for /embed
-const NOSITEMAP_ROUTES = ['/embed'];
-// every page exists in both locales; /zh/* serves Traditional Chinese
-const ROUTES = [...EN_ROUTES, ...NOSITEMAP_ROUTES].flatMap((r) => [r, r === '/' ? '/zh' : `/zh${r}`]);
-
-// sitemap.xml with hreflang alternates — single source of truth is ROUTES
-function writeSitemap() {
-  const site = 'https://www.dimpack3d.com';
-  const today = new Date().toISOString().slice(0, 10);
-  const urls = EN_ROUTES.map((r) => {
-    const clean = r === '/' ? '' : r;
-    const en = `${site}${clean || '/'}`;
-    const zh = `${site}/zh${clean}`;
-    const alt = (u, l) => `    <xhtml:link rel="alternate" hreflang="${l}" href="${u}"/>`;
-    const block = (loc) => `  <url>
-    <loc>${loc}</loc>
-    <lastmod>${today}</lastmod>
-${alt(en, 'en')}
-${alt(zh, 'zh-Hant')}
-${alt(en, 'x-default')}
-  </url>`;
-    return block(en) + '\n' + block(zh);
-  }).join('\n');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${urls}
-</urlset>
-`;
-  writeFileSync(join('dist', 'sitemap.xml'), xml);
-  console.log(`[prerender] sitemap.xml written (${EN_ROUTES.length * 2} URLs)`);
-}
+import { ROUTES, writeSitemap, fixMeta, validateSnapshot, validateRelease } from './release-routes.mjs';
 
 const CHROME_PATHS = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -118,15 +29,14 @@ const CHROME_PATHS = [
 ];
 const chrome = CHROME_PATHS.find((p) => existsSync(p));
 if (!chrome) {
-  console.warn('[prerender] Chrome not found — skipping prerender (SPA shell only).');
-  process.exit(0);
+  throw new Error('Chrome not found: refusing an incomplete SEO release.');
 }
 
 const PORT = 4173;
 
 // a zombie preview from an earlier run would serve a STALE dist to our
 // snapshots — clear the port before starting
-try { execFileSync('bash', ['-c', `lsof -ti :${PORT} | xargs kill -9`], { stdio: 'ignore' }); } catch { /* none */ }
+// strictPort fails if occupied; never kill an unrelated process.
 
 const preview = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore',
@@ -191,24 +101,6 @@ try {
     child.on('error', () => { clearTimeout(timer); resolve(''); });
   });
 
-  // Every snapshot keeps the index.html template's homepage meta description +
-  // OG tags alongside the route's Helmet ones (data-rh) — Google reads the
-  // first description it sees, so route pages surfaced homepage copy in SERPs.
-  // Drop the template description when Helmet emitted one, and align OG
-  // title/description/url to the route.
-  const fixMeta = (html, route) => {
-    const helmetDesc = html.match(/<meta name="description" content="([^"]*)" data-rh="true"/);
-    if (!helmetDesc) return html;
-    html = html.replace(/<meta name="description"(?![^>]*data-rh)[^>]*>\s*/g, '');
-    const title = (html.match(/<title[^>]*>([^<]*)<\/title>/) || [])[1];
-    if (title) html = html.replace(/<meta property="og:title" content="[^"]*"/, () => `<meta property="og:title" content="${title}"`);
-    html = html.replace(/<meta property="og:description" content="[^"]*"/, () => `<meta property="og:description" content="${helmetDesc[1]}"`);
-    html = html.replace(/<meta property="og:url" content="[^"]*"/, () => `<meta property="og:url" content="https://www.dimpack3d.com${route === '/' ? '' : route}"`);
-    if (title) html = html.replace(/<meta name="twitter:title" content="[^"]*"/, () => `<meta name="twitter:title" content="${title}"`);
-    html = html.replace(/<meta name="twitter:description" content="[^"]*"/, () => `<meta name="twitter:description" content="${helmetDesc[1]}"`);
-    return html;
-  };
-
   let ok = 0;
   const failed = [];
   const snapshotOne = async (route, profile) => {
@@ -227,7 +119,9 @@ try {
       ? join('dist', 'index.html')
       : join('dist', `${route.replace(/^\//, '')}.html`);
     mkdirSync(dirname(outPath), { recursive: true });
-    writeFileSync(outPath, '<!DOCTYPE html>\n' + fixMeta(html, route));
+    const cleaned = fixMeta(html, route);
+    validateSnapshot(cleaned, route);
+    writeFileSync(outPath, '<!DOCTYPE html>\n' + cleaned);
     ok++;
     console.log(`[prerender] ${route} → ${outPath} (${(html.length / 1024).toFixed(0)} KB)`);
   };
@@ -251,7 +145,8 @@ try {
   }
   writeSitemap();
   console.log(`[prerender] done: ${ok}/${ROUTES.length} routes snapshotted`);
-  if (ok === 0) process.exit(1);
+  if (failed.length) throw new Error(`Incomplete release: ${failed.join(', ')}`);
+  validateRelease();
 } finally {
   try { process.kill(-preview.pid, 'SIGTERM'); } catch { preview.kill('SIGTERM'); }
 }

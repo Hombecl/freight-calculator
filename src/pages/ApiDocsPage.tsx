@@ -67,6 +67,37 @@ export default function ApiDocsPage() {
         )}
       </p>
 
+      <section id="order-plan" className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 mb-8 scroll-mt-6">
+        <h2 className="text-xl font-bold mb-2">{T('Multi-pallet order planning API', '混合訂單與多棧板規劃 API')}</h2>
+        <p className="text-slate-700 mb-4">{T('POST /api/order-plan allocates remaining cartons across up to 20 pallets. Send { request, maxPallets }, using the pallet and items fields below. All API dimensions are centimetres and all weights kilograms, even when the website displays inches and pounds.', 'POST /api/order-plan 將剩餘紙箱依序分配至最多 20 個棧板。傳送 { request, maxPallets }，request 使用下方 pallet 與 items 欄位。API 尺寸一律為公分、重量為公斤，即使網站選擇英吋與磅亦相同。')}</p>
+        <Link to="/pallet-height-calculator#api" className="font-bold text-indigo-700 underline">{T('Build an order, compare footprints and download its API request →', '規劃訂單、比較棧板尺寸並下載 API 請求 →')}</Link>
+        <dl className="mt-4 space-y-3 text-sm">
+          <div><dt className="font-bold">status / placedCount / unplacedCount / byItem</dt><dd>{T('Use these top-level fields for the whole order. complete means every carton is placed. partial means some remain, even if individual pallets look full. Always check unplacedCount before quoting a whole shipment.', '這些頂層欄位代表整張訂單。complete 表示全部紙箱已放入；partial 表示尚有餘箱，即使個別棧板已滿。報價前請確認 unplacedCount。')}</dd></div>
+          <div><dt className="font-bold">pallets[] / loadedHeight / boxes</dt><dd>{T('Each pallet contains its height including the base, cargo weight, positions and per-SKU remainder at that allocation step. Box IDs remain unique across the order. py is measured from the pallet deck, not the ground. Sort by py, then pz, then px for bottom-up build steps.', '每個棧板包含連底座高度、貨物重量、擺位及該次分配的各箱型餘數。紙箱 ID 在整張訂單中不重複。py 從棧板表面起算；依 py、pz、px 排序可產生由下至上的擺放步驟。')}</dd></div>
+          <div><dt className="font-bold">{T('Limits and interpretation', '限制與解讀')}</dt><dd>{T('20 carton types, 200 cartons total, maxPallets 1–20, JSON body ≤32 KB. Free beta: 10 requests/minute and 100/day per IP when rate-limit storage is configured. Error codes match the single-pallet endpoint below. This is a heuristic allocation, not proof of minimum height or fewest pallets; support checks do not certify transport stability.', '最多 20 種箱型、總計 200 箱、maxPallets 為 1–20，JSON 不超過 32 KB。設定限流儲存後，免費 Beta 每 IP 每分鐘 10 次、每日 100 次。錯誤碼與下方單棧板接口相同。結果為啟發式分配，不保證最低高度或最少棧板；支撐檢查亦不代表運輸穩定性認證。')}</dd></div>
+        </dl>
+        <h3 className="font-bold mt-5">JavaScript · Node.js 20+</h3><pre className="mt-2 p-4 rounded-lg bg-slate-950 text-slate-100 text-xs overflow-x-auto"><code>{`import { readFile } from 'node:fs/promises';
+const input = JSON.parse(await readFile('order-request.json', 'utf8'));
+const response = await fetch('https://www.dimpack3d.com/api/order-plan', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(input), signal: AbortSignal.timeout(30000)
+});
+if (!response.ok) throw new Error(await response.text());
+const plan = await response.json();
+console.log(plan.status, plan.palletCount, plan.unplacedCount);
+for (const pallet of plan.pallets) console.log(pallet.loadedHeight);`}</code></pre>
+        <h3 className="font-bold mt-5">Python · {T('standard library', '標準函式庫')}</h3><pre className="mt-2 p-4 rounded-lg bg-slate-950 text-slate-100 text-xs overflow-x-auto"><code>{`import json
+from urllib.request import Request, urlopen
+with open('order-request.json', 'rb') as source:
+    request = Request('https://www.dimpack3d.com/api/order-plan',
+        data=source.read(), headers={'Content-Type': 'application/json'})
+with urlopen(request, timeout=30) as response:
+    plan = json.load(response)
+print(plan['status'], plan['palletCount'], plan['unplacedCount'])
+for pallet in plan['pallets']:
+    print(pallet['loadedHeight'])`}</code></pre>
+      </section>
+
       <section id="pallet-height" className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-8 scroll-mt-6">
         <h2 className="text-xl font-bold text-slate-900 mb-2">{T('Estimate a pallet’s loaded height', '估算卡板連底座高度')}</h2>
         <p className="text-slate-600 mb-4">{T('POST /api/pallet-estimate compares three packing approaches and returns the best plan found. Height includes the pallet base. A partial result describes only the cartons placed, not the whole order. Minimum height is not proven.', 'POST /api/pallet-estimate 比較三種擺法，回傳最佳方案。高度包含底座；partial 只代表已放入紙箱，並非整批訂單。結果不是已證明的最低高度。')}</p>

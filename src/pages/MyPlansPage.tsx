@@ -36,13 +36,13 @@ export default function MyPlansPage() {
 
   const roi = useMemo(() => {
     if (!plans || plans.length === 0) return null;
-    const utils = plans.map((p) => Number(p.stats?.volumeUtil ?? 0)).filter((u) => u > 0);
+    const utils = plans.filter(p => p.container_key !== 'pallet-order').map((p) => Number(p.stats?.volumeUtil ?? 0)).filter((u) => u > 0);
     if (!utils.length) return null;
     const avg = utils.reduce((s, u) => s + u, 0) / utils.length;
     const upliftPct = Math.max(0, avg - BASELINE_UTIL);
     // space reclaimed vs baseline ≈ containers you didn't have to book
-    const saved = plans.length * (upliftPct / 100) * DEFAULT_CONTAINER_COST;
-    return { count: plans.length, avg, upliftPct, saved };
+    const saved = utils.length * (upliftPct / 100) * DEFAULT_CONTAINER_COST;
+    return { count: utils.length, avg, upliftPct, saved };
   }, [plans]);
 
   const remove = async (id: string) => {
@@ -157,11 +157,11 @@ export default function MyPlansPage() {
                       </span>
                     </p>
                     <p className="text-xs text-slate-500">
-                      {p.container_key.toUpperCase()} · {Number(p.stats?.volumeUtil ?? 0).toFixed(1)}% · {p.boxes?.length ?? 0} {T('cartons', '箱')} · {new Date(p.updated_at).toLocaleDateString()}
+                      {p.container_key.toUpperCase()} · {p.container_key === 'pallet-order' ? `${p.stats.palletCount} pallets` : `${Number(p.stats?.volumeUtil ?? 0).toFixed(1)}%`} · {p.container_key === 'pallet-order' ? Number(p.stats.placedCount) : p.boxes?.length ?? 0} {T('cartons', '箱')} · {new Date(p.updated_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    {p.container_key !== 'pallet-order' && <button
                       onClick={() => requestReview(p.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${
                         copiedId === p.id ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
@@ -169,9 +169,9 @@ export default function MyPlansPage() {
                       title={T('Copy a review link for an approver', '複製批核連結')}
                     >
                       {copiedId === p.id ? (<><Check size={14} /> {T('Link copied', '已複製')}</>) : (<><UserCheck size={14} /> {T('Review', '批核')}</>)}
-                    </button>
+                    </button>}
                     <Link
-                      to={p.container_key === 'warehouse' ? `/warehouse?saved=${p.id}` : `/planner?saved=${p.id}`}
+                      to={p.container_key === 'pallet-order' ? `/pallet-height-calculator?saved=${p.id}` : p.container_key === 'warehouse' ? `/warehouse?saved=${p.id}` : `/planner?saved=${p.id}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-semibold"
                     >
                       <FolderOpen size={14} /> {T('Open', '打開')}

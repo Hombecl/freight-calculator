@@ -23,10 +23,10 @@ export default function PalletBuilderPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <Helmet>
-        <title>{T('Pallet Builder — build pallets in 3D with layer patterns & weight checks, free | DimPack3D', '卡板砌板工具 — 3D 砌板、逐層擺法同重量檢查 | DimPack3D')}</title>
+        <title>{T('Pallet Builder — build pallets in 3D with layer patterns & weight checks, free | DimPack3D', '3D 棧板堆疊工具 — 排列圖、逐層擺放與重量檢查 | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free 3D pallet builder. Stack your cases on a EUR, GMA 48×40 or Amazon FBA pallet, drag cartons layer by layer, and get overhang, load-height and weight-rating checks as you build — then export the build as a PDF with a packing list. No signup.',
-          '免費 3D 卡板砌板工具。喺歐標、GMA 48×40 或 Amazon FBA 卡板上疊箱,逐層拖拉調整,實時檢查懸出、堆疊高度同載重上限 — 完成後匯出 PDF 連裝箱清單。免費、唔使註冊。')} />
+          '免費 3D 棧板堆疊工具：在歐規、美規 GMA 或 FBA 棧板上排列紙箱，逐層調整並檢查超出板面、堆疊高度和重量。可列印排列圖與裝箱清單，免註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -61,11 +61,12 @@ export default function PalletBuilderPage() {
         </script>
       </Helmet>
 
-      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Pallet Builder', '卡板砌板工具')}</h1>
+      <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Pallet Builder', '3D 棧板堆疊工具')}</h1>
       <p className="text-slate-600 mb-6 max-w-2xl">
         {T('Build the pallet, not just the number. Stack your cases on a EUR, GMA or FBA pallet in interactive 3D — drag cartons, see the layer pattern, and get overhang, height and weight checks as you go.',
            '唔止俾個數,而係砌出成板貨。喺互動 3D 入面將箱疊上歐標、GMA 或 FBA 卡板 — 拖拉紙箱、睇每層擺法,實時檢查懸出、高度同載重。')}
       </p>
+      <p className="mb-8 print:hidden"><Link to="/pallet-height-calculator" className="text-blue-700 font-semibold underline">{T('Mixed cartons or repeat orders? Compare pallets, save your order and print build steps →', '混合箱型或重複訂單？比較棧板、儲存訂單並列印逐箱擺放步驟 →')}</Link></p>
 
       <Link to="/planner?demo=pallet" onClick={() => track('tool_pallet_builder_cta')} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-colors mb-10">
         {T('Open the 3D pallet builder', '開 3D 砌板工具')} <ArrowRight size={16} />
@@ -90,7 +91,7 @@ export default function PalletBuilderPage() {
         <h2 className="text-2xl font-black text-slate-900 mb-3">{T('Builder or calculator?', '砌板定計數?')}</h2>
         <p className="text-slate-600 text-sm mb-4">
           {T('Quoting an order? The pallet calculator gives cases per pallet and pallets needed in seconds. Loading the freight? The builder shows the actual arrangement. Same math underneath — the counts always agree.',
-             '報價用卡板計算器,幾秒得出每板箱數同所需板數;執貨就用砌板工具,睇實際擺法。底層同一套數學 — 兩邊數字永遠一致。')}
+             '報價用卡板計算器,幾秒得出每板箱數同所需板數;執貨就用砌板工具,睇實際擺法。調整擺位後請再次核對已裝箱數與剩餘數量。')}
         </p>
         <div className="text-sm text-slate-500">
           <Link to="/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator', '卡板計算器')}</Link>

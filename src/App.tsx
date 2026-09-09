@@ -48,6 +48,8 @@ export default function App() {
     <Routes>
       {/* Chrome-less widget embed — outside Layout on purpose (no header/footer/canonical) */}
       <Route path="embed" element={<EmbedPage />} />
+      <Route path="pallet-height-calculator" element={<PalletHeightPage />} />
+      {["de", "fr", "es", "pt"].map(lang => <Route key={lang} path={`${lang}/pallet-height-calculator`} element={<PalletHeightPage />} />)}
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="packing" element={<PackingPage />} />
@@ -70,7 +72,6 @@ export default function App() {
         <Route path="pallet-storage-cost-calculator" element={<PalletStorageCostPage />} />
         <Route path="freight-class-calculator" element={<FreightClassCalcPage />} />
         <Route path="ti-hi-calculator" element={<TiHiCalcPage />} />
-        <Route path="pallet-height-calculator" element={<PalletHeightPage />} />
         <Route path="pallet-builder" element={<PalletBuilderPage />} />
         <Route path="pallets-per-container" element={<PalletsPerContainerPage />} />
         <Route path="about" element={<AboutPage />} />
