@@ -16,11 +16,10 @@ import {
   PALLET_COLORS,
   PALLET_LIMITS,
   type PalletEstimate,
-  parsePalletRequest,
   type PalletRequest,
 } from "../lib/palletEstimate";
 import PalletEstimateView from "../components/PalletEstimateView";
-import { parseDelimited } from "../lib/importCartons";
+import { parsePalletTable } from "../lib/palletImport";
 import { track } from "../lib/track";
 
 function inputError(message: string, zh: boolean): string {
@@ -388,38 +387,12 @@ export default function PalletHeightPage() {
                 className={`${buttonStyle} mt-2`}
                 onClick={() => {
                   try {
-                    let rows = parseDelimited(paste);
-                    if (
-                      rows[0] &&
-                      /^(name|label|carton|sku|名稱|箱型)$/i.test(
-                        rows[0][0].trim()
-                      )
-                    )
-                      rows = rows.slice(1);
-                    const items = rows.map((row, i) => {
-                      if (row.length !== 6)
-                        throw new Error(
-                          T(
-                            `Row ${i + 1}: expected six columns.`,
-                            `第 ${i + 1} 列需要六個欄位。`
-                          )
-                        );
-                      return {
-                        label: row[0],
-                        l: Number(row[1]),
-                        w: Number(row[2]),
-                        h: Number(row[3]),
-                        weight: Number(row[4]),
-                        qty: Number(row[5]),
-                        keepUpright: true,
-                      };
-                    });
-                    const next = parsePalletRequest({ ...request, items });
+                    const next = parsePalletTable(paste, request.pallet, zh);
                     setRequest(next);
                     setPasteMessage(
                       T(
-                        `Imported ${items.length} carton types.`,
-                        `已匯入 ${items.length} 種箱型。`
+                        `Imported ${next.items.length} carton type(s).`,
+                        `已匯入 ${next.items.length} 種箱型。`
                       )
                     );
                     track("pallet_height_import");

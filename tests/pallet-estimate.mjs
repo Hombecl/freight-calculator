@@ -1,3 +1,4 @@
+import { parsePalletTable } from "../src/lib/palletImport.ts";
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import {
@@ -156,6 +157,22 @@ test("Strict validation rejects nonfinite, negative, fractional and excessive in
   w.items[0].weight = 0;
   assert.throws(() => parsePalletRequest(w));
   assert.throws(() => parsePalletRequest({}));
+});
+test("Spreadsheet import preserves SKU-named cartons and validates every row", () => {
+  const p = sample().pallet;
+  assert.equal(parsePalletTable("SKU,60,40,30,8,12", p).items[0].label, "SKU");
+  assert.equal(
+    parsePalletTable("name,l,w,h,weight,qty\nSKU,60,40,30,8,12", p).items
+      .length,
+    1
+  );
+  assert.equal(
+    parsePalletTable("名稱\t長\t寬\t高\t重量\t數量\nA\t60\t40\t30\t8\t12", p)
+      .items[0].qty,
+    12
+  );
+  assert.throws(() => parsePalletTable("A,60,40,30,8,12\nB,-1,20,20,4,1", p));
+  assert.throws(() => parsePalletTable("A,60,40,30,8,1.5", p));
 });
 async function post(body, headers = {}) {
   return onRequestPost({
