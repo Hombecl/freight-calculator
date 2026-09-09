@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import { PALLET_EXAMPLE } from '../lib/palletEstimate';
 import { useApp } from '../context/AppContext';
 
 /**
@@ -65,6 +66,19 @@ export default function ApiDocsPage() {
           '同規劃器一樣嘅 Extreme-Point 引擎,一個 HTTP call 用到。重量限制、堆疊規則、易碎、同組聚集、多站卸貨分區 — 全部服務端執行。喺 Bischoff–Ratcliff 學術基準(300 個貨櫃裝載 instance)引擎平均 80% 容積利用率,連全套穩定性約束。CORS 開放:瀏覽器、腳本、AI agent 都可以調用。',
         )}
       </p>
+
+      <section id="pallet-height" className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-8 scroll-mt-6">
+        <h2 className="text-xl font-bold text-slate-900 mb-2">{T('Estimate a pallet’s loaded height', '估算卡板連底座高度')}</h2>
+        <p className="text-slate-600 mb-4">{T('POST /api/pallet-estimate compares three packing approaches and returns the best plan found. Height includes the pallet base. A partial result describes only the cartons placed, not the whole order. Minimum height is not proven.', 'POST /api/pallet-estimate 比較三種擺法，回傳最佳方案。高度包含底座；partial 只代表已放入紙箱，並非整批訂單。結果不是已證明的最低高度。')}</p>
+        <Link to="/pallet-height-calculator#api" className="text-blue-700 font-bold underline">{T('Try an order and download a working request →', '輸入訂單並下載請求範例 →')}</Link>
+        <pre className="mt-4 p-4 rounded-lg bg-slate-950 text-slate-100 text-xs overflow-x-auto"><code>{JSON.stringify(PALLET_EXAMPLE, null, 2)}</code></pre>
+        <dl className="mt-4 space-y-3 text-sm text-slate-600">
+          <div><dt className="font-bold text-slate-900">pallet</dt><dd>{T('l/w: footprint; baseHeight: empty pallet height; maxHeight: total height cap including base; maxWeight: cargo-only payload. All cm/kg. Limits must be supplied.', 'l/w：底面；baseHeight：空板高度；maxHeight：連底座總高度上限；maxWeight：只計貨物的載重。cm/kg，必須提供限制。')}</dd></div>
+          <div><dt className="font-bold text-slate-900">items[]</dt><dd>{T('label, l/w/h, integer qty, positive weight and boolean keepUpright are required. Optional maxStack is the allowed kg on top; 0 prevents stacking. Missing maxStack leaves carton strength unchecked.', '必須提供 label、l/w/h、整數 qty、正數 weight 及布林 keepUpright。可選 maxStack 為上方容許重量，0 表示不可堆疊；未提供則不檢查紙箱承重。')}</dd></div>
+          <div><dt className="font-bold text-slate-900">status / loadedHeight / byItem / boxes</dt><dd>{T('complete means all cartons placed; partial means some remain. loadedHeight includes baseHeight. byItem lists requested, placed and remaining counts. boxes uses px/py/pz min-corner positions, with py measured above the pallet deck. cargoWeight excludes pallet tare.', 'complete 表示全部放入；partial 表示尚有餘箱。loadedHeight 包含 baseHeight。byItem 列出訂購、已放入及剩餘數量。boxes 的 px/py/pz 為最小角位置，py 由板面起計。cargoWeight 不含空板重量。')}</dd></div>
+          <div><dt className="font-bold text-slate-900">{T('Limits and errors', '限制與錯誤')}</dt><dd>{T('20 types / 200 cartons / 32 KB per request. Free beta: 20/min and 200/day per IP when rate-limit storage is configured. HTTP 400: invalid JSON or fields; 413: body too large; 415: wrong content type; 429: rate limit (Retry-After header). Larger production orders: contact us.', '每次 20 種 / 200 箱 / 32 KB。免費 Beta：設定限流儲存後每 IP 每分鐘 20 次、每日 200 次。400：JSON 或欄位錯誤；413：內容過大；415：類型錯誤；429：限流（Retry-After）。大量訂單請聯絡我們。')}</dd></div>
+        </dl>
+      </section>
 
       <h2 className="font-bold text-lg text-slate-900 mb-2">{T('Request', '請求')}</h2>
       <pre className="bg-slate-950 text-slate-100 text-xs rounded-xl p-4 overflow-x-auto mb-6"><code>{EXAMPLE_REQ}</code></pre>
