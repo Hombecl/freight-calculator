@@ -43,6 +43,7 @@ const BASE_ROUTES = [
   '/freight-class-calculator',
   '/ti-hi-calculator',
   '/pallet-builder',
+  '/pallet-height-calculator',
   '/pallets-per-container',
   '/guides/fba-size-tiers-2025',
   '/guides/cbm-calculator-shipping',

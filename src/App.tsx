@@ -26,6 +26,7 @@ const PalletCalcPage = lazy(() => import('./pages/PalletCalcPage'));
 const PalletStorageCostPage = lazy(() => import('./pages/PalletStorageCostPage'));
 const FreightClassCalcPage = lazy(() => import('./pages/FreightClassCalcPage'));
 const TiHiCalcPage = lazy(() => import('./pages/TiHiCalcPage'));
+const PalletHeightPage = lazy(() => import('./pages/PalletHeightPage'));
 const PalletBuilderPage = lazy(() => import('./pages/PalletBuilderPage'));
 const PalletsPerContainerPage = lazy(() => import('./pages/PalletsPerContainerPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="pallet-storage-cost-calculator" element={<PalletStorageCostPage />} />
         <Route path="freight-class-calculator" element={<FreightClassCalcPage />} />
         <Route path="ti-hi-calculator" element={<TiHiCalcPage />} />
+        <Route path="pallet-height-calculator" element={<PalletHeightPage />} />
         <Route path="pallet-builder" element={<PalletBuilderPage />} />
         <Route path="pallets-per-container" element={<PalletsPerContainerPage />} />
         <Route path="about" element={<AboutPage />} />

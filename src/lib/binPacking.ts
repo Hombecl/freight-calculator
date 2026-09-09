@@ -146,7 +146,7 @@ function tryPropagate(
   return true;
 }
 
-export function packContainer(container: PackContainer, specs: PackItemSpec[]): PackResult {
+export function packContainer(container: PackContainer, specs: PackItemSpec[], strategy: 'default' | 'height' | 'footprint' = 'default'): PackResult {
   // expand + heavy-first, then volume-first
   const queue: { spec: PackItemSpec; unit: number }[] = [];
   specs.forEach((s) => { for (let i = 0; i < s.qty; i++) queue.push({ spec: s, unit: i }); });
@@ -155,6 +155,10 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
     // equal, so default behaviour is unchanged
     const ga = a.spec.group ?? '', gb = b.spec.group ?? '';
     if (ga !== gb) return ga < gb ? -1 : 1;
+    if (strategy === 'footprint') {
+      const area = b.spec.l * b.spec.w - a.spec.l * a.spec.w;
+      if (area) return area;
+    }
     if (b.spec.weight !== a.spec.weight) return b.spec.weight - a.spec.weight;
     return (b.spec.l * b.spec.w * b.spec.h) - (a.spec.l * a.spec.w * a.spec.h);
   });
@@ -182,7 +186,12 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
       supporters: Node[]; deltas: Map<Node, number>;
     } | null = null;
 
-    for (const o of orientations(spec)) {
+    const candidates = orientations(spec);
+    if (strategy === 'footprint') {
+      const deckCount = (o: Orient) => Math.floor(container.l / o.l) * Math.floor(container.w / o.w);
+      candidates.sort((a, b) => deckCount(b) - deckCount(a) || a.h - b.h);
+    }
+    for (const o of candidates) {
       for (const ep of eps) {
         const { x, y, z } = ep;
         if (x + o.l > container.l + EPS) continue;
@@ -196,13 +205,14 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[]): 
         // weight / max-stack test
         const deltas = new Map<Node, number>();
         if (!tryPropagate(sup.supporters, spec.weight, deltas)) continue;
-        // merit: bottom, then back, then left
-        if (
-          !best ||
-          y < best.y - EPS ||
+        // Preserve the existing bottom/back/left ordering for all current callers.
+        const lowerPosition = !best || y < best.y - EPS ||
           (Math.abs(y - best.y) <= EPS && z < best.z - EPS) ||
-          (Math.abs(y - best.y) <= EPS && Math.abs(z - best.z) <= EPS && x < best.x - EPS)
-        ) {
+          (Math.abs(y - best.y) <= EPS && Math.abs(z - best.z) <= EPS && x < best.x - EPS);
+        // The height trial also compares the top face, allowing a shorter rotation.
+        const lowerTop = !best || y + o.h < best.y + best.o.h - EPS;
+        const sameTop = best && Math.abs(y + o.h - best.y - best.o.h) <= EPS;
+        if (strategy === 'height' ? lowerTop || (sameTop && lowerPosition) : lowerPosition) {
           best = { x, y, z, o, supporters: sup.supporters, deltas };
         }
       }

@@ -27,6 +27,7 @@ export const PALLET_STEPS = [
 ];
 
 const EXTRAS = [
+  { to: '/pallet-height-calculator', label: () => T('Mixed-carton pallet height', '混合箱型卡板高度') },
   { to: '/ti-hi-calculator', label: () => T('TI × HI', 'TI × HI') },
   { to: '/pallet-builder', label: () => T('See the stack in 3D', '3D 睇實際堆疊') },
   { to: '/cbm-calculator', label: () => T('CBM & chargeable weight', 'CBM 同計費重量') },

@@ -17,6 +17,7 @@ export default function Footer() {
     { to: '/pallet-storage-cost-calculator', label: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器') },
     { to: '/freight-class-calculator', label: T('Freight Class Calculator', '運費等級計算機') },
     { to: '/ti-hi-calculator', label: T('TI HI Calculator', 'TI HI 計算機') },
+    { to: '/pallet-height-calculator', label: T('Pallet Height Calculator', '卡板高度計算器') },
     { to: '/pallet-builder', label: T('Pallet Builder (3D)', '卡板砌板工具 (3D)') },
     { to: '/pallets-per-container', label: T('Pallets per Container', '每櫃卡板數') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
@@ -64,7 +65,7 @@ export default function Footer() {
             </p>
             <ul className="space-y-1.5 text-xs text-slate-500">
               <li>✓ {T('No signup to plan', '規劃無需註冊')}</li>
-              <li>✓ {T('Shipment data never leaves your device', '貨運數據永不離開你部機')}</li>
+              <li>✓ {T('Browser calculations stay local; API calls and saved plans use our servers', '瀏覽器計算留在本機；API 與儲存方案會使用伺服器')}</li>
             </ul>
             <p className="text-sm mt-5">
               {T('Questions, partnerships, feedback:', '查詢、合作、意見:')}{' '}
