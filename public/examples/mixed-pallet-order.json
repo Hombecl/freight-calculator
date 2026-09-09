@@ -1,0 +1,38 @@
+{
+  "format": "dimpack3d-order",
+  "version": 1,
+  "name": "Mixed order: 70 cm total height",
+  "units": "metric",
+  "engine": "order-v1",
+  "request": {
+    "pallet": {
+      "l": 120,
+      "w": 80,
+      "baseHeight": 15,
+      "maxHeight": 70,
+      "maxWeight": 750
+    },
+    "items": [
+      {
+        "label": "Main cartons",
+        "l": 60,
+        "w": 40,
+        "h": 30,
+        "qty": 12,
+        "weight": 8,
+        "keepUpright": true
+      },
+      {
+        "label": "Small cartons",
+        "l": 40,
+        "w": 30,
+        "h": 20,
+        "qty": 8,
+        "weight": 4,
+        "keepUpright": true
+      }
+    ]
+  },
+  "maxPallets": 3,
+  "actuals": {}
+}
