@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { IS_ZH } from '../lib/locale';
 import type { PlannerBox } from '../lib/plannerBox';
 
 // re-exported so existing imports from this component keep working
@@ -795,34 +796,34 @@ export default function InteractiveLoadPlanner({
           disabled={!selected}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
         >
-          Rotate 90°
+          {IS_ZH ? "旋轉 90°" : "Rotate 90°"}
         </button>
         <button
           onClick={dropToFloor}
           disabled={!selected}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
         >
-          Drop to floor
+          {IS_ZH ? "放低至支承面" : "Drop to floor"}
         </button>
         <button
           onClick={deleteSelected}
           disabled={!selected}
           className="px-3 py-1 rounded bg-white border border-red-300 text-red-600 disabled:opacity-40 disabled:border-slate-200 disabled:text-slate-400"
         >
-          Delete
+          {IS_ZH ? "刪除" : "Delete"}
         </button>
         <button
           onClick={undo}
           disabled={histLen === 0}
           className="px-3 py-1 rounded bg-slate-200 text-slate-700 disabled:opacity-40"
         >
-          ↩ Undo
+          {IS_ZH ? "↩ 復原" : "↩ Undo"}
         </button>
         <button
           onClick={resetPlan}
           className="px-3 py-1 rounded bg-slate-200 text-slate-700"
         >
-          Reset to auto
+          {IS_ZH ? "重設自動擺位" : "Reset to auto"}
         </button>
         {selected && (
           <span className="text-slate-500">
@@ -831,7 +832,7 @@ export default function InteractiveLoadPlanner({
         )}
       </div>
       <p className="text-xs text-slate-400">
-        Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom.
+        {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>
     </div>

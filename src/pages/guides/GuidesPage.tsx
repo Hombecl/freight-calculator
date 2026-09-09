@@ -15,6 +15,7 @@ interface GuideCard {
 }
 
 const guides: GuideCard[] = [
+  {slug:'mixed-pallet-height', title:'Mixed Carton Pallet Height: A Worked Order Example', titleZh:'混合紙箱棧板高度：完整訂單實例', description:'Compare one and three pallets for a 20-carton order, then download the example and try the 3D calculator.', descriptionZh:'用 20 箱訂單比較一板與三板，下載範例，再用互動擺位工具試算。', readTime:'4 min', tags:['Pallet','3D','Mixed cartons'], featured:true},
   {
     slug: 'fba-size-tiers-2025',
     title: 'Amazon FBA Size Tiers 2025: Complete Guide to Reduce Fees',

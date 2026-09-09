@@ -13,6 +13,7 @@ const BASE_ROUTES = [
   "/privacy",
   "/terms",
   "/guides",
+  "/guides/mixed-pallet-height",
   "/reality-checks",
   "/warehouse-space-calculator",
   "/forklift-aisle-width-calculator",

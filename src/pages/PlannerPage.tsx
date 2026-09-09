@@ -344,9 +344,9 @@ export default function PlannerPage() {
       </Helmet>
 
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-800">Interactive 3D Load Planner</h1>
+        <h1 className="text-2xl font-bold text-slate-800">{T("Interactive 3D Load Planner", "互動 3D 裝載規劃器")}</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Optimise a container with real bin-packing (weight &amp; stack limits), then fine-tune by hand.
+          {T("Optimise a container with real bin-packing (weight & stack limits), then fine-tune by hand.", "按重量與堆疊限制自動排列紙箱，再手動微調擺位。")}
         </p>
       </div>
 

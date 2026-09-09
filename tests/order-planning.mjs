@@ -149,3 +149,16 @@ storage.set('dp.orders.v1','{broken'); assert.throws(()=>loadDeviceOrders());
 const colors=planOrder({request:tricky,maxPallets:20}).pallets.flatMap(p=>p.boxes).map(b=>b.color);
 assert.ok(colors.every(c=>c===0x14b8a6));
 console.log('PASS saved-order/rule persistence, corruption handling and stable SKU colours');
+
+// The downloadable guide must remain reproducible against the production engine.
+const {readFileSync} = await import('node:fs');
+const guideOrder = readOrderFile(readFileSync(new URL('../public/examples/mixed-pallet-order.json', import.meta.url),'utf8'));
+const guidePlan = planOrder(guideOrder);
+assert.equal(guidePlan.placedCount,20);
+assert.equal(guidePlan.unplacedCount,0);
+assert.deepEqual(guidePlan.pallets.map(p=>p.loadedHeight),[65,45,45]);
+assert.deepEqual(guidePlan.pallets.map(p=>p.boxes.length),[12,4,4]);
+const guidePartial=planOrder({...guideOrder,maxPallets:1});
+assert.equal(guidePartial.unplacedCount,8);
+assert.equal(guidePartial.pallets[0].loadedHeight,65);
+console.log('PASS published mixed-pallet worked example matches the engine');

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   ArrowDownToLine,
@@ -12,6 +12,7 @@ import {
 import {
   PALLET_EXAMPLE,
   parsePalletRequest,
+  PalletInputError,
   type PalletRequest,
 } from "../lib/palletEstimate";
 import {
@@ -48,6 +49,7 @@ import {
 } from "../lib/orderStorage";
 import { parseDelimited } from "../lib/importCartons";
 import { track } from "../lib/track";
+import { VIEW_COPY } from "../lib/orderViewLocale";
 import PalletEstimateView from "../components/PalletEstimateView";
 import { useAuth } from "../hooks/useAuth";
 import { getPlan, savePlan } from "../lib/plans";
@@ -82,13 +84,16 @@ function NumberInput({
   factor = 1,
   onChange,
   optional = false,
+  error,
 }: {
   label: string;
   value: number | undefined;
   factor?: number;
   onChange: (v: number | undefined) => void;
   optional?: boolean;
+  error?: string;
 }) {
+  const errorId = useId();
   const formatted =
     value === undefined || !Number.isFinite(value)
       ? ""
@@ -100,6 +105,9 @@ function NumberInput({
       {label}
       <input
         className={`${inputClass} mt-1`}
+        aria-label={label}
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={!!error}
         type="number"
         step="any"
         value={focused ? draft : formatted}
@@ -119,6 +127,7 @@ function NumberInput({
           );
         }}
       />
+      {error && <span id={errorId} className="block mt-1 text-red-700" role="alert">{error}</span>}
     </label>
   );
 }
@@ -131,6 +140,9 @@ const cloneExample = (lang: OrderLanguage) => {
 export default function PalletHeightPage() {
   const [lang, setLang] = useState<OrderLanguage>(orderLanguage);
   const t = ORDER_COPY[lang];
+  const v = VIEW_COPY[lang];
+  const relatedPrefix = lang === "zh" ? "/zh" : "";
+  const [customFootprint, setCustomFootprint] = useState(false);
   const [request, setRequest] = useState<PalletRequest>(() =>
     cloneExample(orderLanguage())
   );
@@ -192,7 +204,7 @@ export default function PalletHeightPage() {
   }, []);
   useEffect(() => {
     setBusy(true);
-    setPlan(null);
+
     setError(false);
     setComparisons(null);
     setComparing(false);
@@ -207,7 +219,7 @@ export default function PalletHeightPage() {
     worker.onmessage = ({ data }) => {
       setBusy(false);
       setError(Boolean(data.error));
-      setPlan(data.result ?? null);
+      if (data.result) setPlan(data.result);
       if (data.result && edited.current && !activationSent.current) {
         track("order_calculated", data.result.status);
         activationSent.current = true;
@@ -511,7 +523,24 @@ export default function PalletHeightPage() {
   const invalidActual = Object.values(actuals).some(
     (a) => !Number.isFinite(a.height) || a.height <= 0 || a.height > 500
   );
-  const disabled = busy || !plan || error || invalidActual;
+  let invalidField = "";
+  let invalidMessage = "";
+  try {
+    parsePalletRequest(request);
+    if (!Number.isInteger(maxPallets) || maxPallets < 1 || maxPallets > 20)
+      throw new PalletInputError("maxPallets", "must be a whole number from 1 to 20");
+  } catch (e) {
+    if (e instanceof PalletInputError) {
+      invalidField = e.field;
+      const range = e.message.match(/from ([\d.]+) to ([\d.]+)/);
+      const fieldFactor = /(?:weight|maxWeight|maxStack)$/.test(e.field) ? wf : /(?:qty|maxPallets)$/.test(e.field) ? 1 : lf;
+      invalidMessage = range
+        ? `${e.message.includes("whole") ? v.whole : v.number}: ${fmt(+range[1] / fieldFactor)}–${fmt(+range[2] / fieldFactor)}${fieldFactor === wf && /weight|maxWeight|maxStack/.test(e.field) ? ` ${wu}` : /qty|maxPallets/.test(e.field) ? "" : ` ${lu}`}`
+        : e.field.endsWith("label") ? v.name : e.field === "items" ? v.total : v.above;
+    }
+  }
+  const fieldError = (field: string) => invalidField === field ? invalidMessage : undefined;
+  const disabled = busy || !plan || error || !!invalidField || invalidActual;
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Helmet>
@@ -633,6 +662,7 @@ export default function PalletHeightPage() {
             {t[notice]}
           </p>
         )}
+        {!edited.current && <p className="print:hidden rounded-xl bg-blue-50 p-4 mb-5 text-sm text-blue-900">{v.sample}</p>}
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start print:hidden">
           <div className="space-y-6 min-w-0">
             <section className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6">
@@ -642,13 +672,14 @@ export default function PalletHeightPage() {
                 <select
                   className={`${inputClass} mt-1 mb-4`}
                   value={
-                    FOOTPRINTS.find(
+                    customFootprint ? "custom" : FOOTPRINTS.find(
                       (p) =>
                         Math.abs(p.l - request.pallet.l) < 1e-6 &&
                         Math.abs(p.w - request.pallet.w) < 1e-6
                     )?.id ?? "custom"
                   }
                   onChange={(e) => {
+                    setCustomFootprint(e.target.value === "custom");
                     const p = FOOTPRINTS.find((p) => p.id === e.target.value);
                     if (p)
                       replace({
@@ -680,12 +711,14 @@ export default function PalletHeightPage() {
                         maxWeight: t.payload,
                       }[key]
                     } (${key === "maxWeight" ? wu : lu})`}
+                    error={fieldError(`pallet.${key}`)}
                     value={request.pallet[key]}
                     factor={key === "maxWeight" ? wf : lf}
                     onChange={(v) => changePallet(key, v ?? NaN)}
                   />
                 ))}
                 <NumberInput
+                  error={fieldError("maxPallets")}
                   label={t.maxPallets}
                   value={maxPallets}
                   onChange={(v) => replace(request, v ?? NaN)}
@@ -750,12 +783,14 @@ export default function PalletHeightPage() {
                         <input
                           aria-label={`${t.name} ${i + 1}`}
                           className={`${inputClass} mt-1`}
+                          aria-invalid={!!fieldError(`items[${i}].label`)}
                           value={it.label}
                           maxLength={60}
                           onChange={(e) =>
                             changeItem(i, { label: e.target.value })
                           }
                         />
+                        {fieldError(`items[${i}].label`) && <span role="alert" className="text-red-700">{v.name}</span>}
                       </label>
                       <button
                         aria-label={`${t.remove} ${i + 1}`}
@@ -787,7 +822,7 @@ export default function PalletHeightPage() {
                               h: t.height,
                               qty: t.quantity,
                               weight: t.weight,
-                              maxStack: t.topLoad,
+                              maxStack: `${t.topLoad} · ${v.optional}`,
                             }[key]
                           } ${i + 1}${
                             key === "qty"
@@ -798,6 +833,7 @@ export default function PalletHeightPage() {
                                     : lu
                                 })`
                           }`}
+                          error={fieldError(`items[${i}].${key}`)}
                           value={it[key]}
                           optional={key === "maxStack"}
                           factor={
@@ -852,6 +888,7 @@ export default function PalletHeightPage() {
             </section>
           </div>
           <div className="space-y-5 min-w-0 lg:sticky lg:top-4">
+            {plan && (busy || error || invalidField) && <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{v.stale}</p>}
             <section
               aria-label={t.result}
               aria-live="polite"
@@ -859,8 +896,8 @@ export default function PalletHeightPage() {
             >
               {busy ? (
                 <p>{t.calculating}</p>
-              ) : error || !plan ? (
-                <p role="alert">{t.invalid}</p>
+              ) : error || invalidField || !plan ? (
+                <p role="alert">{invalidMessage || t.invalid}</p>
               ) : (
                 <>
                   <p
@@ -879,7 +916,7 @@ export default function PalletHeightPage() {
                       [plan.unplacedCount, t.remaining],
                     ].map(([v, label]) => (
                       <div key={label}>
-                        <p className="text-3xl sm:text-4xl font-black tabular-nums">
+                        <p className="text-2xl sm:text-4xl font-black tabular-nums">
                           {v}
                         </p>
                         <p className="text-xs text-slate-400 mt-2">{label}</p>
@@ -934,7 +971,8 @@ export default function PalletHeightPage() {
                 {chosen && (
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                     <PalletEstimateView
-                      key={`${selectedPallet}-${JSON.stringify(request)}`}
+                      key={`${selectedPallet}-${JSON.stringify(plan.request)}`}
+                      lang={lang}
                       result={chosen}
                       copy={t}
                       length={length}
@@ -1135,8 +1173,8 @@ export default function PalletHeightPage() {
               )}
             </details>
           </section>
-          <section className="rounded-2xl border bg-white p-5 sm:p-6">
-            <h2 className="text-xl font-bold">{t.rules}</h2>
+          <details className="rounded-2xl border bg-white p-5 sm:p-6 self-start">
+            <summary className="text-xl font-bold cursor-pointer">{t.rules}</summary>
             <p className="text-sm text-slate-500 my-3">{t.rulesNote}</p>
             <label className="text-sm font-semibold">
               {t.ruleName}
@@ -1208,7 +1246,7 @@ export default function PalletHeightPage() {
                 </li>
               ))}
             </ul>
-          </section>
+          </details>
         </div>
         {chosen && plan && (
           <section className="print:hidden rounded-2xl border bg-white p-5 sm:p-6 mt-6">
@@ -1259,7 +1297,7 @@ export default function PalletHeightPage() {
             </div>
             {invalidActual && (
               <p role="alert" className="text-red-700 mt-3">
-                {t.invalid} (0 &lt; cm ≤ 500)
+                {t.invalid} (0 &lt; {lu} ≤ {fmt(500 / lf)})
               </p>
             )}
             {actuals[selectedPallet] && (
@@ -1272,11 +1310,11 @@ export default function PalletHeightPage() {
             )}
           </section>
         )}
-        <section
+        <details
           id="api"
           className="print:hidden rounded-2xl border border-indigo-200 bg-indigo-50 p-5 sm:p-6 mt-6"
         >
-          <h2 className="text-xl font-bold">{t.api}</h2>
+          <summary className="text-xl font-bold cursor-pointer">{t.api}</summary>
           <p className="text-sm text-slate-600 my-3">{t.apiNote}</p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -1291,7 +1329,7 @@ export default function PalletHeightPage() {
             <Button disabled={disabled || serverBusy} onClick={serverCheck}>
               {serverBusy ? t.calculating : t.server}
             </Button>
-            <a href="/api-docs#order-plan" className={buttonClass}>
+            <a href={`${relatedPrefix}/api-docs#order-plan`} className={buttonClass}>
               {t.docs}
               <ArrowRight size={14} />
             </a>
@@ -1306,15 +1344,16 @@ export default function PalletHeightPage() {
               'curl https://www.dimpack3d.com/api/order-plan \\\n  -H "Content-Type: application/json" \\\n  --data-binary @order-request.json'
             }
           </pre>
-        </section>
+        </details>
         <section className="print:hidden grid md:grid-cols-2 gap-8 my-10 text-slate-600">
           <article>
             <h2 className="text-xl font-bold text-slate-900 mb-3">
               {t.faqTitle}
             </h2>
             <p>{t.faqBody}</p>
+            <a href={`${relatedPrefix}/guides/mixed-pallet-height`} className="text-blue-700 underline block mt-3">{lang === "zh" ? "混合紙箱高度：可下載的完整訂單實例" : "Mixed pallet height: worked example (English)"}</a>
             <a
-              href="/ti-hi-calculator"
+              href={`${relatedPrefix}/ti-hi-calculator`}
               className="text-blue-700 underline block mt-3"
             >
               {t.sameSize}
@@ -1338,7 +1377,8 @@ export default function PalletHeightPage() {
             <ArrowRight size={16} />
           </a>
         </section>
-        <div className="hidden print:block">
+        {disabled && <p className="hidden print:block">{v.stale}</p>}
+        <div className={disabled ? "hidden" : "hidden print:block"}>
           <h1 className="text-2xl font-black">DimPack3D · {name || t.order}</h1>
           <p>
             {t.build} · {ORDER_ENGINE} ·{" "}
@@ -1367,6 +1407,7 @@ export default function PalletHeightPage() {
               )}
               <div className="max-w-sm">
                 <PalletEstimateView
+                  lang={lang}
                   result={p}
                   copy={t}
                   length={length}
@@ -1422,8 +1463,8 @@ export default function PalletHeightPage() {
         </div>
       </main>
       <footer className="print:hidden border-t py-6 px-4 text-sm text-slate-500 flex flex-wrap justify-center gap-6">
-        <a href="/">{t.home}</a>
-        <a href="/privacy">{t.privacy}</a>
+        <a href={`${relatedPrefix}/`}>{t.home}</a>
+        <a href={`${relatedPrefix}/privacy`}>{t.privacy}</a>
         <span>© {new Date().getFullYear()} DimPack3D</span>
       </footer>
     </div>

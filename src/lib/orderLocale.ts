@@ -278,12 +278,12 @@ const zh: OrderCopy = {
   mismatch: "伺服器結果不同，請下載並核對兩份結果後再使用。",
   serverError: "伺服器核對失敗，請稍後再試。",
   request: "下載 API 請求",
-  docs: "API 文件（英文）",
+  docs: "API 文件",
   pilot: "洽談企業試用",
   pilotNote:
     "需要批次訂單、公司規則或整合支援？請告訴我們您的訂單量及作業限制。",
-  home: "更多工具（英文）",
-  privacy: "私隱政策（英文）",
+  home: "更多工具",
+  privacy: "私隱政策",
   account: "帳戶工作區",
   accountNote:
     "透過「我的方案」登入，即可儲存副本至現有工作區。不登入亦可在裝置上儲存。",
@@ -296,7 +296,7 @@ const zh: OrderCopy = {
   reuseTitle: "規劃一次，重用訂單",
   reuseBody:
     "儲存或下載訂單後，可重新開啟、修改數量及比較板面，毋須逐箱重填。列印擺放順序，並記錄實際堆疊高度。",
-  sameSize: "相同尺寸紙箱：TI-HI 計算器（英文）",
+  sameSize: "相同尺寸紙箱：TI-HI 計算器",
   totalHeight: "總高度包含棧板底座",
   restoreFail: "未能開啟工作區訂單。",
   mainCartons: "主要紙箱",
