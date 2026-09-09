@@ -1,14 +1,27 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import type { PalletEstimate } from "../lib/palletEstimate";
 
 /** Functional isometric diagram of the exact solver coordinates; no external graphics runtime. */
 export default function PalletEstimateView({
   result,
-  zh,
+  zh = false,
+  copy,
+  length = (n: number) => `${n} cm`,
+  weight = (n: number) => `${n} kg`,
 }: {
   result: PalletEstimate;
-  zh: boolean;
+  zh?: boolean;
+  copy?: {
+    diagram: string;
+    turn: string;
+    reveal: string;
+    diagramNote: string;
+    base: string;
+  };
+  length?: (n: number) => string;
+  weight?: (n: number) => string;
 }) {
+  const gridId = useId();
   const [turn, setTurn] = useState(false);
   const [cut, setCut] = useState(100);
   const [selected, setSelected] = useState<string | null>(null);
@@ -92,30 +105,34 @@ export default function PalletEstimateView({
   const chosen = result.boxes.find((b) => b.id === selected);
   return (
     <div>
-      <div className="flex justify-between items-center px-5 pt-4 gap-3">
+      <div className="flex justify-between items-center px-5 pt-4 gap-3 print:hidden">
         <p className="text-sm font-semibold text-slate-600">
-          {zh ? "實際擺位 · 點選紙箱查看" : "Placement view · select a carton"}
+          {copy?.diagram ??
+            (zh
+              ? "實際擺位 · 點選紙箱查看"
+              : "Placement view · select a carton")}
         </p>
         <button
           type="button"
           className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-100"
           onClick={() => setTurn(!turn)}
         >
-          {zh ? "轉換角度" : "Turn view"}
+          {copy?.turn ?? (zh ? "轉換角度" : "Turn view")}
         </button>
       </div>
       <svg
         viewBox="0 0 540 350"
         className="w-full max-h-[390px]"
         aria-label={
-          zh
+          copy?.diagram ??
+          (zh
             ? "卡板與紙箱的互動擺位圖"
-            : "Interactive pallet and carton placement diagram"
+            : "Interactive pallet and carton placement diagram")
         }
       >
         <defs>
           <pattern
-            id="pallet-grid"
+            id={gridId}
             width="24"
             height="24"
             patternUnits="userSpaceOnUse"
@@ -128,7 +145,7 @@ export default function PalletEstimateView({
             />
           </pattern>
         </defs>
-        <rect width="540" height="350" fill="url(#pallet-grid)" />
+        <rect width="540" height="350" fill={`url(#${gridId})`} />
         {cuboid(
           "base",
           0,
@@ -138,7 +155,7 @@ export default function PalletEstimateView({
           p.baseHeight,
           W,
           "#b58a59",
-          zh ? "卡板底座" : "Pallet base",
+          copy?.base ?? (zh ? "卡板底座" : "Pallet base"),
           false
         )}
         {visible.map((b) =>
@@ -151,17 +168,19 @@ export default function PalletEstimateView({
             b.h,
             b.width,
             `#${b.color.toString(16).padStart(6, "0")}`,
-            `${b.label}: ${b.l} × ${b.w} × ${b.h} cm`,
+            `${b.id} · ${b.label}: ${length(b.l)} × ${length(b.w)} × ${length(b.h)}`,
             true
           )
         )}
       </svg>
-      <div className="px-5 pb-5 space-y-3">
+      <div className="px-5 pb-5 space-y-3 print:hidden">
         <label className="block text-sm text-slate-600">
-          {zh ? "逐層查看" : "Reveal the stack"}{" "}
+          {copy?.reveal ?? (zh ? "逐層查看" : "Reveal the stack")}{" "}
           <span className="float-right tabular-nums">{Math.round(cut)}%</span>
           <input
-            aria-label={zh ? "顯示堆疊高度" : "Visible stack height"}
+            aria-label={
+              copy?.reveal ?? (zh ? "顯示堆疊高度" : "Visible stack height")
+            }
             type="range"
             min="1"
             max="100"
@@ -172,10 +191,13 @@ export default function PalletEstimateView({
         </label>
         <p className="text-sm text-slate-500 min-h-5" aria-live="polite">
           {chosen
-            ? `${chosen.label} · ${chosen.l} × ${chosen.w} × ${chosen.h} cm · ${chosen.weight} kg`
-            : zh
-            ? "擺位高度由板面起計；結果包含底座高度。"
-            : "Carton positions start at the deck; the height result includes the base."}
+            ? `${chosen.id} · ${chosen.label} · ${length(chosen.l)} × ${length(
+                chosen.w
+              )} × ${length(chosen.h)} · ${weight(chosen.weight ?? 0)}`
+            : copy?.diagramNote ??
+              (zh
+                ? "擺位高度由板面起計；結果包含底座高度。"
+                : "Carton positions start at the deck; the height result includes the base.")}
         </p>
       </div>
     </div>

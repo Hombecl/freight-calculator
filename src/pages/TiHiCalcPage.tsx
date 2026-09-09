@@ -84,7 +84,7 @@ export default function TiHiCalcPage() {
         <title>{T('TI HI Calculator — cases per layer (TI) × layers high (HI), free | DimPack3D', 'TI HI 計算機 — 每層箱數 (TI) × 層數 (HI) | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free TI HI calculator. Enter case dimensions and pallet type to get TI (cases per layer), HI (layers high), cases per pallet and load height — EUR, US GMA 48×40 and industrial pallets, with a custom max-height option for retailer compliance. No signup.',
-          '免費 TI HI 計算機。輸入箱尺寸同卡板類型,即得 TI(每層箱數)、HI(層數)、每板總箱數同堆疊高度 — 支援歐標、美式 GMA 48×40 同工業卡板,可自訂最大高度以符合零售商要求。免費、唔使註冊。')} />
+          '免費 TI HI 計算機：計算棧板每層箱數（TI）、堆疊層數（HI）、每板總箱數與貨物高度。支援歐規、美規 48×40 英吋及工業棧板，可自訂高度上限，免註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -130,8 +130,9 @@ export default function TiHiCalcPage() {
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('TI HI Calculator', 'TI HI 計算機')}</h1>
       <p className="text-slate-600 mb-8 max-w-2xl">
         {T('TI (cases per layer) × HI (layers high) for your case size on standard pallets — the numbers item-setup forms and ASNs ask for. Inputs stay in the URL — bookmark your case.',
-           '計出你嘅箱喺標準卡板上嘅 TI(每層箱數)× HI(層數)— 即係 item setup 表格同 ASN 要你填嗰兩個數。輸入保存喺網址 — 收藏低你嘅箱。')}
+           '計算標準棧板的 TI（每層箱數）與 HI（堆疊層數），方便填寫商品建檔和預先出貨通知（ASN）。此處貨物高度不含空棧板；如需連底座總高度或混合箱型，請使用混合訂單規劃工具。')}
       </p>
+      <p className="mb-8 print:hidden"><Link to="/pallet-height-calculator" className="text-blue-700 font-semibold underline">{T('Mixed cartons or repeat orders? Compare pallets, save your order and print build steps →', '混合箱型或重複訂單？比較棧板、儲存訂單並列印逐箱擺放步驟 →')}</Link></p>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-8">
         <div className="space-y-4">

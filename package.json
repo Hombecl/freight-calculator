@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
+    "validate:release": "node scripts/validate-release.mjs",
     "build:spa": "vite build",
-    "test": "tsx tests/unit.mjs && tsx tests/functions.mjs && tsx tests/pallet-estimate.mjs",
+    "test": "tsx tests/unit.mjs && tsx tests/functions.mjs && tsx tests/pallet-estimate.mjs && tsx tests/order-planning.mjs",
     "e2e": "node tests/e2e.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json"
   },
