@@ -113,7 +113,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Email lead capture + warehouse waitlist (KV) | ✅ |
 | Secure Pro paywall scaffold (Lemon Squeezy, BILLING-SETUP.md) | ✅ code / 🗺 activate on demand signal |
 | Workspaces/teams (multi-member) | 🗺 1 |
-| Public API `/api/pack` `/api/pallet-estimate` `/api/order-plan` + /api-docs; self-serve free keys (`/api/key`) + /api-pricing tiers (Starter $49 / Business $199, issued by hand) | ✅ |
+| Public API `/api/pack` `/api/pallet-estimate` `/api/order-plan` `/api/order-quote` (+ `/order-quote` page: freight-quote inputs, receiver limit checks, predicted-vs-measured) + /api-docs; self-serve free keys (`/api/key`) + /api-pricing tiers (Starter $49 / Business $199, issued by hand) | ✅ |
 | ERP/WMS connectors (per-client, paid) | 🗺 3 |
 | SSO / audit-log export / SLA page | 🗺 4 (first enterprise deal) |
 

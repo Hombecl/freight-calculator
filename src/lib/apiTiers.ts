@@ -40,6 +40,7 @@ export const ENDPOINT_BASE_LIMITS: Record<string, { perMin: number; perDay: numb
   pack: { perMin: 60, perDay: 1000 },
   'pallet-estimate': { perMin: 20, perDay: 200 },
   'order-plan': { perMin: 10, perDay: 100 },
+  'order-quote': { perMin: 10, perDay: 100 },
 };
 
 export const API_KEY_PREFIX = 'dp_live_';
