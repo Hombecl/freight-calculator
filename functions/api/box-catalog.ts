@@ -19,6 +19,8 @@ export const onRequestGet: PagesFunction = async () => json({
     request: BOX_EXAMPLE,
     limits: BOX_LIMITS,
     response: 'catalog, perOrder, totals, baseline?, savings?, checks, searched, semantics, engineVersion, inputHash, tier, warning?',
+    coverageFirst: 'Defaults to true: maximize count-weighted coverage, then minimize billed weight/cost. false: for analysis only.',
+    savingsBasis: 'Only orders fitting both catalogs; basisOrders and excludedUnfit are counts; partial when exclusions exist. No currentBoxes: baseline and savings omitted.',
     semantics: CHECK_SEMANTICS,
     auth: 'Optional X-API-Key (https://www.dimpack3d.com/api-pricing). Anonymous: 5/min, 50/day per IP.',
     interactive: 'https://www.dimpack3d.com/box-catalog',

@@ -40,11 +40,12 @@ export interface BoxCatalogRequest {
     };
     voidFillCostPerLitre?: number;
     searchBudget?: number;
+    coverageFirst?: boolean;
 }
 export const BOX_LIMITS = {
     skus: 300, orders: 500, candidates: 40, unitsPerOrder: 60, distinctSkus: 10, bodyBytes: 96 * 1024, searchBudget: 1000
 };
-export const BOX_ENGINE = 'box-catalog-v1';
+export const BOX_ENGINE = 'box-catalog-v2';
 const LB = 0.45359237;
 const weight = (kg: number) => ({ kg, lb: kg / LB });
 const volume = (b: {
@@ -127,9 +128,11 @@ export function parseBoxCatalog(input: unknown) {
             };
         });
     }
+    if (o.coverageFirst !== undefined && typeof o.coverageFirst !== 'boolean')
+        throw new PalletInputError('coverageFirst', 'must be boolean');
     const b = obj(o.billing, 'billing');
     return {
-        skus, orders, currentBoxes: boxes(o.currentBoxes, 'currentBoxes'), candidateBoxes: boxes(o.candidateBoxes, 'candidateBoxes'), catalogSize: integer(o.catalogSize, 'catalogSize', 1, 12), billing: {
+        coverageFirst: o.coverageFirst !== false, skus, orders, currentBoxes: boxes(o.currentBoxes, 'currentBoxes'), candidateBoxes: boxes(o.candidateBoxes, 'candidateBoxes'), catalogSize: integer(o.catalogSize, 'catalogSize', 1, 12), billing: {
             unit: units(b.unit, 'billing.unit'), dimDivisor: num(b.dimDivisor, 'billing.dimDivisor', .001, 1000000), minBillableWeight: num(b.minBillableWeight, 'billing.minBillableWeight', 0, 1000000, 0), ...(b.ratePerKgOrLb === undefined ? {} : { ratePerKgOrLb: num(b.ratePerKgOrLb, 'billing.ratePerKgOrLb', 0, 1000000) })
         }, voidFillCostPerLitre: num(o.voidFillCostPerLitre, 'voidFillCostPerLitre', 0, 1000000, 0), searchBudget: integer(o.searchBudget, 'searchBudget', 1, 1000, 200), grid: u === 'in-lb' ? 1.27 : 1
     };
@@ -203,26 +206,27 @@ export async function optimizeBoxCatalog(input: unknown) {
     const score = (c: CatalogBox[]) => {
         combos++;
         const t = evaluate(c).totals;
-        return t.cost ?? t.billedWeight.kg;
+        return { unfit: p.coverageFirst ? t.unfitOrders : 0, charge: t.cost ?? t.billedWeight.kg };
     };
-    const coverage = (b: CatalogBox) => p.orders.reduce((n, o, i) => n + (fits(i, b) ? items[i].reduce((v, s) => v + volume(s) * s.qty, 0) * o.count : 0), 0);
-    const ranked = pool.map(b => ({ b, coverage: coverage(b) })).sort((a, b) => b.coverage - a.coverage || volume(a.b) - volume(b.b));
-    let selected = [ranked[0].b];
+    const better = (a: { unfit: number; charge: number }, b: { unfit: number; charge: number }) =>
+        a.unfit < b.unfit || (a.unfit === b.unfit && a.charge < b.charge - 1e-9);
+    let selected: CatalogBox[] = [];
     const target = Math.min(p.catalogSize, pool.length);
     while (selected.length < target) {
-        let best = pool.find(b => !selected.includes(b))!, bestScore = Infinity;
+        let best = pool.find(b => !selected.includes(b))!, bestScore = { unfit: Infinity, charge: Infinity };
         for (const b of pool.filter(b => !selected.includes(b))) {
             if (combos >= p.searchBudget)
                 break;
             const s = score([...selected, b]);
-            if (s < bestScore) {
+            if (better(s, bestScore)) {
                 best = b;
                 bestScore = s;
             }
         }
         selected.push(best);
     }
-    let currentScore = combos < p.searchBudget ? score(selected) : (evaluate(selected).totals.cost ?? evaluate(selected).totals.billedWeight.kg);
+    const selectedTotals = evaluate(selected).totals;
+    let currentScore = { unfit: p.coverageFirst ? selectedTotals.unfitOrders : 0, charge: selectedTotals.cost ?? selectedTotals.billedWeight.kg };
     let improved = true;
     while (improved && combos < p.searchBudget) {
         improved = false;
@@ -231,17 +235,29 @@ export async function optimizeBoxCatalog(input: unknown) {
                 if (selected.includes(b) || combos >= p.searchBudget)
                     continue;
                 const trial = selected.map((old, j) => j === i ? b : old), s = score(trial);
-                if (s < currentScore - 1e-9) {
+                if (better(s, currentScore)) {
                     selected = trial;
                     currentScore = s;
                     improved = true;
                 }
             }
     }
-    const result = evaluate(selected), baseline = p.currentBoxes ? evaluate(p.currentBoxes).totals : undefined;
+    const result = evaluate(selected), baselineResult = p.currentBoxes ? evaluate(p.currentBoxes) : undefined;
+    const baseline = baselineResult?.totals;
+    const common = result.perOrder.flatMap((o, i) => !o.unfit && baselineResult && !baselineResult.perOrder[i].unfit ? [{ current: o, baseline: baselineResult.perOrder[i] }] : []);
+    const basisOrders = common.reduce((n, o) => n + o.current.count, 0);
+    const baseWeight = common.reduce((n, o) => n + o.baseline.billedWeight.kg * o.current.count, 0);
+    const newWeight = common.reduce((n, o) => n + o.current.billedWeight.kg * o.current.count, 0);
+    const excludedUnfit = result.totals.orders - basisOrders;
+    const savings = baseline ? {
+        basisOrders, excludedUnfit, ...(excludedUnfit ? { partial: true } : {}),
+        billedWeightPct: baseWeight ? (baseWeight - newWeight) / baseWeight * 100 : 0,
+        ...(baseline.cost === undefined ? {} : { costPer1000Orders: basisOrders ? common.reduce((n, o) => n + (o.baseline.cost! - o.current.cost!) * o.current.count, 0) / basisOrders * 1000 : 0 })
+    } : undefined;
+    const unfitSharePct = result.totals.unfitOrders / result.totals.orders * 100;
     const checks: Check[] = [
         {
-            code: 'ALL_ORDERS_FIT', status: result.totals.unfitOrders ? 'fail' : 'pass', observed: result.totals.unfitOrders, limit: 0, assumption: 'Unfit orders are charged using the largest candidate by volume, not a shipping quote.'
+            code: 'ALL_ORDERS_FIT', status: result.totals.unfitOrders ? 'fail' : 'pass', observed: result.totals.unfitOrders, limit: 0, assumption: `${unfitSharePct}% of orders would need a box outside this catalog. Best coverage found within the search budget; fallback charges are estimates only and excluded from savings.`
         },
         {
             code: 'DIVISOR_STATED', status: 'pass', observed: p.billing.dimDivisor, assumption: `User supplied ${p.billing.unit} divisor; no carrier rounding.`
@@ -258,7 +274,7 @@ export async function optimizeBoxCatalog(input: unknown) {
             return {
                 ...b, dims: { cm: { l: b.l, w: b.w, h: b.h }, in: { l: b.l / 2.54, w: b.w / 2.54, h: b.h / 2.54 } }, usedByOrders, sharePct: usedByOrders / result.totals.orders * 100
             };
-        }), ...result, ...(baseline ? { baseline, savings: { billedWeightPct: baseline.billedWeight.kg ? (baseline.billedWeight.kg - result.totals.billedWeight.kg) / baseline.billedWeight.kg * 100 : 0, ...(baseline.cost === undefined ? {} : { costPer1000Orders: (baseline.cost - result.totals.cost!) / baseline.orders * 1000 }) } } : {}), checks, searched: { candidates: pool.length, combos, budget: p.searchBudget }, semantics: CHECK_SEMANTICS, notes: ['HEURISTIC_CATALOG_NOT_OPTIMUM', 'NO_CUSHIONING_MODEL']
+        }), ...result, ...(baseline ? { baseline, savings } : {}), unfitSharePct, checks, searched: { candidates: pool.length, combos, budget: p.searchBudget }, semantics: CHECK_SEMANTICS, notes: ['HEURISTIC_CATALOG_NOT_OPTIMUM', 'NO_CUSHIONING_MODEL', ...(result.totals.unfitOrders ? ['COVERAGE_LIMITED_BY_CATALOG_SIZE'] : [])]
     };
 }
 export type BoxCatalogResult = Awaited<ReturnType<typeof optimizeBoxCatalog>>;

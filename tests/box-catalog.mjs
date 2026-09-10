@@ -35,6 +35,32 @@ await test('happy path, baseline, counts, savings, required checks',async()=>{
  assert.deepEqual(r.checks.map(c=>c.code),['ALL_ORDERS_FIT','DIVISOR_STATED','RATE_PROVIDED','CATALOG_SIZE_RESPECTED']);assert.ok(r.checks.every(c=>c.status==='pass'&&c.assumption));
  assert.equal(r.semantics,CHECK_SEMANTICS);assert.match(r.inputHash,/^[a-f0-9]{64}$/);await geometry(example(),r.catalog);
 });
+const finding = () => ({
+ skus:[{sku:'A',l:20,w:15,h:10,weight:.2},{sku:'B',l:30,w:10,h:10,weight:.2},{sku:'C',l:30,w:15,h:20,weight:.2}],
+ orders:[{orderId:'o1',lines:[{sku:'A',qty:1}],count:500},{orderId:'o2',lines:[{sku:'B',qty:1}],count:300},{orderId:'o3',lines:[{sku:'C',qty:1}],count:200}],
+ currentBoxes:[{id:'old',l:45,w:35,h:30}],catalogSize:2,billing:{unit:'cm-kg',dimDivisor:5000,ratePerKgOrLb:2}
+});
+await test('05b generated 500/300/200 regression, feasible two-box cover and analysis objective',async()=>{
+ const a=finding();const pool=(await optimizeBoxCatalog({...a,catalogSize:12})).catalog;
+ assert.ok(pool.some(b=>b.l===20&&b.w===15&&b.h===10));
+ const covering=pool.find(b=>b.l>=30&&b.w>=15&&b.h>=20);assert.ok(covering);
+ await geometry(a,[pool.find(b=>b.l===20&&b.w===15&&b.h===10),covering]);
+ const r=await optimizeBoxCatalog(a);assert.equal(r.totals.unfitOrders,0);assert.equal(r.catalog.length,2);assert.equal(r.savings.basisOrders,1000);assert.equal(r.savings.excludedUnfit,0);
+ assert.deepEqual(r,await optimizeBoxCatalog({...a,coverageFirst:true}));await geometry(a,r.catalog);
+ const legacy=await optimizeBoxCatalog({...a,coverageFirst:false});assert.equal(legacy.totals.unfitOrders,200);assert.equal(legacy.savings.basisOrders,800);assert.equal(legacy.savings.partial,true);assert.notEqual(legacy.inputHash,r.inputHash);
+ delete a.billing.ratePerKgOrLb;assert.equal((await optimizeBoxCatalog(a)).totals.unfitOrders,0);
+});
+await test('05b impossible two-box cover maximizes counts and excludes unfit savings',async()=>{
+ const a=finding();a.skus=[{sku:'A',l:40,w:5,h:5,weight:.2,keepUpright:true},{sku:'B',l:20,w:20,h:5,weight:.2,keepUpright:true},{sku:'C',l:10,w:10,h:30,weight:.2,keepUpright:true}];
+ a.candidateBoxes=a.skus.map(s=>({id:s.sku,l:s.l,w:s.w,h:s.h}));
+ for(let i=0;i<3;i++){const r=await optimizeBoxCatalog({...a,candidateBoxes:a.candidateBoxes.filter((_,j)=>j!==i)});assert.ok(r.totals.unfitOrders>0);}
+ const r=await optimizeBoxCatalog(a);assert.equal(r.totals.unfitOrders,200);assert.equal(r.unfitSharePct,20);assert.equal(r.checks[0].status,'fail');assert.ok(r.notes.includes('COVERAGE_LIMITED_BY_CATALOG_SIZE'));assert.equal(r.savings.partial,true);assert.equal(r.savings.basisOrders,800);assert.equal(r.savings.excludedUnfit,200);
+ const base=800*45*35*30/5000,newWeight=500*.2+300*.4;close(r.savings.billedWeightPct,(base-newWeight)/base*100);close(r.savings.costPer1000Orders,(base-newWeight)*2/800*1000);
+ assert.equal(r.catalog.reduce((n,b)=>n+b.usedByOrders,0)+r.totals.unfitOrders,1000);await geometry(a,r.catalog);
+ a.currentBoxes=[a.candidateBoxes[0]];const partial=await optimizeBoxCatalog(a);assert.equal(partial.savings.basisOrders,500);assert.equal(partial.savings.excludedUnfit,500);close(partial.savings.billedWeightPct,0);
+ a.currentBoxes=[{id:'tiny',l:1,w:1,h:1}];const none=await optimizeBoxCatalog(a);assert.equal(none.savings.basisOrders,0);assert.equal(none.savings.excludedUnfit,1000);assert.equal(none.savings.partial,true);close(none.savings.billedWeightPct,0);close(none.savings.costPer1000Orders,0);
+ delete a.currentBoxes;const noBaseline=await optimizeBoxCatalog(a);assert.ok(!('baseline' in noBaseline));assert.ok(!('savings' in noBaseline));
+});
 await test('deterministic result and hash; canonical duplicate lines',async()=>{
  const a=example();assert.deepEqual(await optimizeBoxCatalog(a),await optimizeBoxCatalog(a));
  a.orders[1].lines=[{sku:'A',qty:1},{sku:'A',qty:1}];assert.deepEqual(await optimizeBoxCatalog(a),await optimizeBoxCatalog(example()));
@@ -50,7 +76,7 @@ await test('imperial billing, minimum, independent input and billing units',asyn
 await test('void cost, box cost, missing and zero rate, no baseline',async()=>{
  const a=example();a.candidateBoxes=[{id:'b',l:30,w:30,h:30,cost:1}];a.voidFillCostPerLitre=.5;
  let r=await optimizeBoxCatalog(a);close(r.totals.voidLitres,2580);close(r.totals.cost,1080+1290+100);
- delete a.billing.ratePerKgOrLb;delete a.currentBoxes;r=await optimizeBoxCatalog(a);assert.equal(r.checks[2].status,'not_evaluated');assert.ok(!('cost'in r.totals));assert.ok(!('baseline'in r));assert.ok(!('cost'in r.perOrder[0]));
+ delete a.billing.ratePerKgOrLb;delete a.currentBoxes;r=await optimizeBoxCatalog(a);assert.equal(r.checks[2].status,'not_evaluated');assert.ok(!('cost'in r.totals));assert.ok(!('baseline'in r));assert.ok(!('savings'in r));assert.ok(!('cost'in r.perOrder[0]));
  a.billing.ratePerKgOrLb=0;r=await optimizeBoxCatalog(a);close(r.totals.cost,1390);assert.equal(r.checks[2].status,'pass');
 });
 await test('unfit fallback counts all quantities and history occurrences',async()=>{
@@ -82,7 +108,7 @@ await test('history groups duplicate lines and shapes without dropping orders',a
 });
 await test('validation of every request field and limits',async()=>{
  const cases=[];const add=(path,value,field=path)=>cases.push([path,value,field]);
- for(const [p,v] of [['units','mm'],['units',null],['skus',[]],['skus',Array(301).fill({})],['orders',[]],['orders',Array(501).fill({})],['catalogSize',0],['catalogSize',13],['catalogSize',1.5],['billing',null],['billing.unit','kg'],['billing.dimDivisor',0],['billing.minBillableWeight',-1],['billing.ratePerKgOrLb',-1],['voidFillCostPerLitre',-1],['searchBudget',0],['searchBudget',1001],['searchBudget',1.5]])add(p,v);
+ for(const [p,v] of [['coverageFirst','true'],['coverageFirst',null],['coverageFirst',0],['units','mm'],['units',null],['skus',[]],['skus',Array(301).fill({})],['orders',[]],['orders',Array(501).fill({})],['catalogSize',0],['catalogSize',13],['catalogSize',1.5],['billing',null],['billing.unit','kg'],['billing.dimDivisor',0],['billing.minBillableWeight',-1],['billing.ratePerKgOrLb',-1],['voidFillCostPerLitre',-1],['searchBudget',0],['searchBudget',1001],['searchBudget',1.5]])add(p,v);
  for(const p of ['skus.0.sku','orders.0.orderId'])add(p,' ',p.replace('.0','[0]'));
  for(const k of ['l','w','h','weight']){add(`skus.0.${k}`,k==='weight'?-1:0,`skus[0].${k}`);add(`skus.0.${k}`,NaN,`skus[0].${k}`);}
  for(const k of ['fragile','keepUpright'])add(`skus.0.${k}`,'true',`skus[0].${k}`);

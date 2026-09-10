@@ -474,6 +474,24 @@ await test('box-catalog: example catalog and single-order placed count', async (
   if ((await page.getByTestId('box-placed-count').innerText()).trim() !== '2') throw new Error('Expected exactly two packed units');
 }, page);
 
+await test('box-catalog: coverage warning and Advanced analysis toggle', async () => {
+  await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+  await page.getByText('Advanced', { exact: true }).click();
+  const toggle = page.getByTestId('box-coverage-first');
+  if (!await toggle.isChecked()) throw new Error('Coverage must default on');
+  await toggle.uncheck();
+  await page.getByLabel('Candidate boxes (JSON, optional)', { exact: true }).fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-unfit-share').waitFor();
+  if (!await page.getByTestId('box-unfit-share').textContent().then(t => t.includes('100.0% of orders would need a box outside this catalog'))) throw new Error('Missing unfit share');
+  if (!await page.getByText('Partial comparison', { exact: false }).count()) throw new Error('Missing partial savings basis');
+  await page.getByLabel('Current boxes (JSON, optional)', { exact: true }).fill('');
+  await toggle.check();
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-unfit-share').waitFor();
+  if (await page.getByText('Savings per 1,000 comparable orders', { exact: false }).count()) throw new Error('Savings shown without baseline');
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.
