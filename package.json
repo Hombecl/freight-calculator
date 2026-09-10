@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "validate:release": "node scripts/validate-release.mjs",
     "build:spa": "vite build",
-    "test": "node --import tsx tests/unit.mjs && node --import tsx tests/functions.mjs && node --import tsx tests/pallet-estimate.mjs && node --import tsx tests/order-planning.mjs && node --import tsx tests/api-key.mjs && node --import tsx tests/order-quote.mjs && node --import tsx tests/pack-checks.mjs && node --import tsx tests/order-options.mjs",
+    "test": "tsx tests/unit functions pallet-estimate order-planning api-key order-quote pack-checks order-options.mjs && tsx tests/case-design.mjs",
     "e2e": "node tests/e2e.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json"
   },
