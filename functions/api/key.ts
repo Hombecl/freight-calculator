@@ -49,7 +49,7 @@ export const onRequestGet: PagesFunction = async () =>
     endpoint: 'POST /api/key',
     request: { email: 'you@company.com', company: 'Acme Logistics', useCase: 'pallet height at order time' },
     response: { key: 'dp_live_<32 hex>', tier: 'free', limits: limitsForTier('free') },
-    usage: 'Send the key as X-API-Key: <key> (or Authorization: Bearer <key>) on /api/pack, /api/pallet-estimate, /api/order-plan.',
+    usage: 'Send the key as X-API-Key: <key> (or Authorization: Bearer <key>) on /api/pack, /api/pallet-estimate, /api/order-plan, /api/order-quote.',
     docs: DOCS,
   });
 

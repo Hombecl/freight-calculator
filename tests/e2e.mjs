@@ -345,6 +345,33 @@ if (IS_LIVE) {
   }, page);
 }
 
+await test('order-quote: example quotes to carrier-ready pallet lines with checks', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { level: 1 }).filter({ hasText: /pallet quote/i }).waitFor();
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  const result = page.getByTestId('quote-result');
+  await result.waitFor();
+  await result.getByText(/complete/i).first().waitFor();
+  const rows = await result.locator('table tbody tr').count();
+  if (rows < 1) throw new Error('no pallet rows');
+  await result.getByText(/LOADED_HEIGHT/).first().waitFor();
+  await result.getByText(/inputHash/).first().waitFor();
+  // paste import replaces the carton table
+  await page.locator('textarea').fill('sku,l,w,h,weight,qty\nA,40,30,20,5,10\nB,50,40,30,8,4');
+  await page.getByRole('button', { name: /use pasted rows/i }).click();
+  await page.getByText(/2 types/).waitFor();
+}, page);
+
+if (IS_LIVE) {
+  await test('order-quote (live): browser and /api/order-quote agree on inputHash', async () => {
+    await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /quote this order/i }).click();
+    await page.getByTestId('quote-result').waitFor();
+    await page.getByRole('button', { name: /verify against/i }).click();
+    await page.getByText(/Server result matches/i).waitFor({ timeout: 20000 });
+  }, page);
+}
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.

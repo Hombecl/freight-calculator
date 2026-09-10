@@ -19,6 +19,7 @@ const WarehousePage = lazy(() => import('./pages/WarehousePage'));
 const ApiDocsPage = lazy(() => import('./pages/ApiDocsPage'));
 const ApiPricingPage = lazy(() => import('./pages/ApiPricingPage'));
 const CubingSoftwarePage = lazy(() => import('./pages/CubingSoftwarePage'));
+const OrderQuotePage = lazy(() => import('./pages/OrderQuotePage'));
 const RealityChecksPage = lazy(() => import('./pages/RealityChecksPage'));
 const WarehouseSpaceCalcPage = lazy(() => import('./pages/WarehouseSpaceCalcPage'));
 const AisleWidthCalcPage = lazy(() => import('./pages/AisleWidthCalcPage'));
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="api-docs" element={<ApiDocsPage />} />
         <Route path="api-pricing" element={<ApiPricingPage />} />
         <Route path="cubing-software" element={<CubingSoftwarePage />} />
+        <Route path="order-quote" element={<OrderQuotePage />} />
         <Route path="reality-checks" element={<RealityChecksPage />} />
         <Route path="warehouse-space-calculator" element={<WarehouseSpaceCalcPage />} />
         <Route path="forklift-aisle-width-calculator" element={<AisleWidthCalcPage />} />

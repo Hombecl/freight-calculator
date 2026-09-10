@@ -24,6 +24,7 @@ const ENDPOINT_LABEL: Record<string, [string, string]> = {
   pack: ['Container packing', '貨櫃裝箱'],
   'pallet-estimate': ['Pallet height', '卡板高度'],
   'order-plan': ['Multi-pallet order', '多卡板訂單'],
+  'order-quote': ['Order → pallet quote', '訂單→卡板報價'],
 };
 
 type Issued = { key: string; limits: Record<string, { perMin: number; perDay: number }> };
@@ -101,8 +102,8 @@ export default function ApiPricingPage() {
       <h1 className="text-3xl font-black text-slate-900 mb-3">{T('API pricing', 'API 價目')}</h1>
       <p className="text-slate-600 mb-8 max-w-3xl">
         {T(
-          'Three endpoints — container packing, pallet height, multi-pallet order planning — behind one key. Every plan calls the same engine; plans differ only in how many calls you can make and how much help you get. Limits below are the ones the server enforces.',
-          '三個 endpoint — 貨櫃裝箱、卡板高度、多卡板訂單規劃 — 一條 key 通用。所有方案用同一個引擎;分別只在調用次數同支援程度。下面嘅限額就係伺服器實際執行嘅限額。',
+          'Four endpoints — container packing, pallet height, multi-pallet order planning, order → pallet quote — behind one key. Every plan calls the same engine; plans differ only in how many calls you can make and how much help you get. Limits below are the ones the server enforces.',
+          '四個 endpoint — 貨櫃裝箱、卡板高度、多卡板訂單規劃、訂單→卡板報價 — 一條 key 通用。所有方案用同一個引擎;分別只在調用次數同支援程度。下面嘅限額就係伺服器實際執行嘅限額。',
         )}
       </p>
 
@@ -171,7 +172,7 @@ export default function ApiPricingPage() {
       <section className="grid md:grid-cols-3 gap-4 mb-10 text-sm">
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('What counts as a call?', '點樣計一次調用?')}</div>
-          <p className="text-slate-600">{T('One POST to /api/pack, /api/pallet-estimate or /api/order-plan. GET (docs) and OPTIONS are never counted. A 400 for bad input still counts; a 429 does not.', '一次 POST 到 /api/pack、/api/pallet-estimate 或 /api/order-plan。GET(文檔)同 OPTIONS 唔計。輸入錯誤嘅 400 照計;429 唔計。')}</p>
+          <p className="text-slate-600">{T('One POST to /api/pack, /api/pallet-estimate, /api/order-plan or /api/order-quote. GET (docs) and OPTIONS are never counted. A 400 for bad input still counts; a 429 does not.', '一次 POST 到 /api/pack、/api/pallet-estimate 或 /api/order-plan。GET(文檔)同 OPTIONS 唔計。輸入錯誤嘅 400 照計;429 唔計。')}</p>
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('Where does my data go?', '我嘅數據去咗邊?')}</div>
