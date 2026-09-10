@@ -145,7 +145,7 @@ export default function HomePage() {
   const faqs = [
     { q: T('Is it really free?', '真係免費?'), a: T('Yes — planning and optimizing are free. Exporting PDF/CSV just asks for your email.', '係 — 規劃同優化免費,導出 PDF/CSV 只需留 email。') },
     { q: T('Do I need to install anything?', '要安裝嘢嗎?'), a: T('No. It runs in your browser, desktop or tablet.', '唔使,瀏覽器直接用。') },
-    { q: T('Where does my data go?', '數據去咗邊?'), a: T('Nowhere — everything computes on your device. Shipment data never leaves your browser.', '邊度都冇去 — 全部喺你部機計,數據唔會離開瀏覽器。') },
+    { q: T('Where does my data go?', '數據去咗邊?'), a: T('The planner and calculators compute on your device; shipment data stays in your browser unless you create a share link or save a plan. The optional REST API processes requests on our edge servers and does not store them.', '規劃器同計算器喺你部機計,數據留喺瀏覽器,除非你建立分享連結或儲存方案。可選嘅 REST API 喺我哋 edge 伺服器處理請求,唔會儲存。') },
     { q: T('Mixed carton sizes? Weight limits?', '混合尺寸?重量限制?'), a: T('Yes. Mixed sizes, payload limits, per-carton stacking limits, fragile cartons and unload order are all supported.', '支援。混合尺寸、載重、逐箱堆疊上限、易碎、落貨順序全部有。') },
     { q: T('What is the maximum pallet height for a container?', '貨櫃卡板最高可以砌幾高?'), a: T("Plan against the door, not the ceiling. A standard container's door header is ~2.28 m — about 10 cm below the 2.39 m interior — and the forklift needs room to lift and tilt, so loaded pallets are typically planned at 2.15–2.20 m (high-cube doors: ~2.58 m). The planner checks every carton against the door aperture automatically.", '要對住「門」規劃,唔係天花。標準櫃門楣約 2.28 米 — 比 2.39 米內籠低成 10cm — 鏟車仲要位抬高側入,所以卡板一般砌到 2.15–2.20 米(高櫃門約 2.58 米)。Planner 會自動逐箱對照門口檢查。') },
   ];
@@ -669,7 +669,7 @@ export default function HomePage() {
               </ul>
               <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-emerald-300/90 border-t border-slate-800 pt-5">
                 <span className="flex items-center gap-1.5"><ShieldCheck size={15} />{T('100% in-browser', '100% 瀏覽器運行')}</span>
-                <span className="flex items-center gap-1.5"><Check size={15} />{T('Data never leaves your device', '數據永不離開你部機')}</span>
+                <span className="flex items-center gap-1.5"><Check size={15} />{T('Browser data stays on your device', '瀏覽器數據留喺你部機')}</span>
                 <span className="flex items-center gap-1.5"><Check size={15} />{T('No license seats', '冇 license 座位')}</span>
               </div>
             </div>

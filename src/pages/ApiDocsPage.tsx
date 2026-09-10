@@ -26,6 +26,10 @@ const EXAMPLE_RESP = `{
   "stats": { "volumeUtil": 78.4, "totalWeight": 2340, "weightUtil": 8.3,
              "cog": { "x": 271, "y": 63, "z": 115 }, "cogOffsetPct": { "x": -8, "z": -2 } },
   "zones": [ { "unloadOrder": 1, "xStart": 0, "xEnd": 589, "count": 150 } ],
+  "checks": [ { "code": "DOOR_APERTURE", "status": "not_evaluated",
+                "assumption": "Send container.door {w,h} or container.preset to evaluate…" },
+              { "code": "HEAVY_OVER_LIGHT", "status": "pass", "observed": "none", "assumption": "…" }, … ],
+  "checksSummary": { "evaluated": 7, "notEvaluated": ["DOOR_APERTURE","AXLE_LOADS","VGM"], "failed": [], "warned": [] },
   "computeMs": 41,
   "engine": "dimpack3d-extreme-point"
 }`;
@@ -33,6 +37,10 @@ const EXAMPLE_RESP = `{
 const FIELDS: [string, string][] = [
   ['container.l/w/h', 'Internal dimensions in cm (required)'],
   ['container.maxWeight', 'Payload limit in kg (optional)'],
+  ['container.preset', '"20gp" | "40gp" | "40hq" — fills interior, payload, door aperture and tare; explicit fields override'],
+  ['container.door', '{w,h} door aperture in cm (optional) — enables the DOOR_APERTURE check'],
+  ['container.axles', '{frontPos, rearPos, frontLimit, rearLimit} cm/kg (optional, trucks) — enables AXLE_LOADS'],
+  ['container.tare', 'Container tare kg (optional) — shown on the VGM line; VGM is never declared here'],
   ['items[].l/w/h', 'Item dimensions in cm (required)'],
   ['items[].qty', 'Units of this item (default 1; ≤2,000 total per request)'],
   ['items[].weight', 'kg per unit (optional; enables weight/CoG stats)'],
@@ -152,6 +160,14 @@ for pallet in plan['pallets']:
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700 mb-6">
+        <p className="font-bold mb-1">{T('checks[] — every response, every check, explicit status', 'checks[] — 每個回應、每項檢查、明確狀態')}</p>
+        <p>{T(
+          'Each /api/pack response carries the reality-check library as checks[] with status pass | fail | warn | not_evaluated, the observed value, the limit and the assumption used: PLACEMENT_COMPLETE, DOOR_APERTURE, PAYLOAD, STACK_LIMITS_PROVIDED, HEAVY_OVER_LIGHT, COG_HEIGHT, LOAD_VOIDS, AXLE_LOADS, VGM, ZONE_SEGREGATION. A check whose input you did not send comes back not_evaluated with the field to add — it is never silently a pass. checksSummary lists what was evaluated, failed and warned. /api/pallet-estimate, /api/order-plan and /api/order-quote carry the pallet equivalents. These are screens against your numbers, not certification of stability, road legality, dangerous-goods compatibility or receiver acceptance.',
+          '每個 /api/pack 回應都附帶 checks[]:狀態 pass | fail | warn | not_evaluated、觀察值、限制同所用假設:PLACEMENT_COMPLETE、DOOR_APERTURE、PAYLOAD、STACK_LIMITS_PROVIDED、HEAVY_OVER_LIGHT、COG_HEIGHT、LOAD_VOIDS、AXLE_LOADS、VGM、ZONE_SEGREGATION。你冇提供輸入嘅檢查會回 not_evaluated 並指明要加邊個欄位 — 永遠唔會靜靜當通過。checksSummary 列出已評估、失敗同警告項目。/api/pallet-estimate、/api/order-plan、/api/order-quote 帶有卡板版本。呢啲係對你提供數字嘅篩查,唔係穩定性、道路合法性、危險品相容或收貨方接受嘅認證。',
+        )}</p>
       </div>
 
       <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-600 space-y-2 mb-8">
