@@ -519,12 +519,12 @@ await test('box-catalog: coverage warning and Advanced analysis toggle', async (
   const toggle = page.getByTestId('box-coverage-first');
   if (!await toggle.isChecked()) throw new Error('Coverage must default on');
   await toggle.uncheck();
-  await page.getByLabel('Candidate boxes (JSON, optional)', { exact: true }).fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
+  await page.locator('label', { hasText: 'Candidate boxes (JSON, optional)' }).locator('textarea').fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
   await page.getByTestId('box-optimize').click();
   await page.getByTestId('box-unfit-share').waitFor();
   if (!await page.getByTestId('box-unfit-share').textContent().then(t => t.includes('100.0% of orders would need a box outside this catalog'))) throw new Error('Missing unfit share');
   if (!await page.getByText('Partial comparison', { exact: false }).count()) throw new Error('Missing partial savings basis');
-  await page.getByLabel('Current boxes (JSON, optional)', { exact: true }).fill('');
+  await page.locator('label', { hasText: 'Current boxes (JSON, optional)' }).locator('textarea').fill('');
   await toggle.check();
   await page.getByTestId('box-optimize').click();
   await page.getByTestId('box-unfit-share').waitFor();
