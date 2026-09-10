@@ -19,8 +19,8 @@ export default function PrivacyPage() {
       h: T('The short version', '重點'),
       body: [
         T(
-          'Your shipment data stays on your device. All packing and calculator computations run in your browser; carton lists and load plans are not uploaded unless you explicitly create a share link. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
-          '你嘅貨運數據留喺你部機。所有裝箱同計算都喺瀏覽器進行;除非你主動建立分享連結,箱單同裝載方案唔會上傳。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
+          'Your shipment data stays on your device when you use the planner and calculators: those computations run in your browser, and carton lists and load plans are not uploaded unless you explicitly create a share link or save a plan to your account. If you call the REST API (/api/*), the request is processed on Cloudflare edge servers and is not stored; we keep only per-key rate-limit counters. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
+          '用規劃器同計算器時,你嘅貨運數據留喺你部機:計算喺瀏覽器進行,除非你主動建立分享連結或儲存方案,箱單同裝載方案唔會上傳。如果你調用 REST API(/api/*),請求會喺 Cloudflare edge 伺服器處理,唔會儲存;我哋只保留每條 key 嘅限流計數。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
         ),
       ],
     },
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
       h: T('What we do NOT collect', '我哋唔收集啲乜'),
       body: [
         T(
-          'We do not collect names, accounts, payment details, or the contents of your planning sessions. Calculator inputs and 3D plans never leave your browser in normal use. Local preferences (units, language) are stored in your own browser\'s localStorage.',
+          'We do not collect names, accounts, payment details, or the contents of your planning sessions. Calculator inputs and 3D plans do not leave your browser in normal use; API requests are processed server-side without being stored. Local preferences (units, language) are stored in your own browser\'s localStorage.',
           '我哋唔收集姓名、帳戶、付款資料或你規劃過程嘅內容。正常使用下,計算輸入同 3D 方案永不離開你嘅瀏覽器。本地偏好(單位、語言)存喺你自己瀏覽器嘅 localStorage。',
         ),
       ],

@@ -1,4 +1,5 @@
 import { packContainer, type PackItemSpec } from "./binPacking";
+import { palletChecks, CHECK_SEMANTICS } from "./packChecks";
 
 export const PALLET_LIMITS = {
   types: 20,
@@ -217,6 +218,8 @@ export function estimatePallet(input: unknown) {
     pallet,
     byItem,
     boxes: best.boxes,
+    checks: palletChecks({ boxes: best.boxes, specs, unplaced: best.unplaced, cargoWeight: best.stats.totalWeight, maxWeight: pallet.maxWeight }),
+    semantics: CHECK_SEMANTICS,
     notes,
     method: {
       name: "best-of-three-heuristics",

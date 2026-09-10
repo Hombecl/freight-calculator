@@ -263,6 +263,7 @@ export async function quoteOrder(input: unknown) {
     } else {
       checks.push({ code: 'GROSS_WEIGHT', pallet: i, status: 'not_evaluated', observed: round(grossWeight), assumption: 'No limits.maxGrossWeight supplied; only the payload envelope (pallet.maxWeight) was enforced.' });
     }
+    for (const ec of p.checks) if (!['PLACEMENT_COMPLETE', 'PAYLOAD'].includes(ec.code)) checks.push({ ...ec, pallet: i });
     checks.push({
       code: 'FOOTPRINT', pallet: i, status: 'pass',
       observed: `${round(pallet.l)}×${round(pallet.w)} cm`,
