@@ -4,11 +4,11 @@ import {
   PalletInputError,
 } from "../../src/lib/palletEstimate";
 import { planOrder, ORDER_ENGINE } from "../../src/lib/orderPlanning";
-import { rateLimit, tooManyRequests, type RateLimitEnv } from "./_rateLimit";
+import { rateLimitKeyed, tooManyRequests, type RateLimitEnv } from "./_rateLimit";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-API-Key, Authorization",
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -28,10 +28,10 @@ export const onRequestGet: PagesFunction = async () =>
     limits: { ...PALLET_LIMITS, pallets: 20, engine: ORDER_ENGINE },
     docs: "https://www.dimpack3d.com/api-docs#order-plan",
     notes:
-      "Height includes the pallet base. maxWeight is cargo payload, excluding pallet tare. A partial result does not fit the whole order. Best of three heuristics; minimum height is not proven. Free beta, 10 requests/minute and 100/day per IP when rate-limit storage is configured.",
+      "Height includes the pallet base. maxWeight is cargo payload, excluding pallet tare. A partial result does not fit the whole order. Best of three heuristics; minimum height is not proven. Free beta, 10 requests/minute and 100/day per IP when rate-limit storage is configured. A free API key (X-API-Key) raises limits 5x: https://www.dimpack3d.com/api-pricing",
   });
 export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
-  const limit = await rateLimit(ctx.env, ctx.request, [
+  const limit = await rateLimitKeyed(ctx.env, ctx.request, [
     { name: "order-plan", limit: 10, windowSec: 60 },
     { name: "order-plan", limit: 100, windowSec: 86400 },
   ]);

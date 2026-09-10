@@ -113,6 +113,101 @@
       ],
       "pricingEn": "Paid Windows licence after a 30-day fully-featured trial; the vendor does not publish a price on the product page (verify with vendor).",
       "pricingZh": "30 日全功能試用後需購買 Windows 授權;官網產品頁未有公開價錢(以官方報價為準)。"
+    },
+    {
+      "slug": "cubemaster-alternative",
+      "name": "CubeMaster",
+      "url": "https://www.cubemaster.net",
+      "summaryEn": "CubeMaster (Logen Solutions) is a long-established load planning and palletization suite: it cascades cases into pallets and pallets into trucks, containers, rail cars and air ULDs, sold as Windows desktop licences and as CubeMaster Online subscriptions.",
+      "summaryZh": "CubeMaster(Logen Solutions)係老牌裝載規劃同砌板軟件:由箱到卡板、由卡板到貨車、貨櫃、火車同航空 ULD 逐層計算,以 Windows 桌面授權同 CubeMaster Online 訂閱形式出售。",
+      "theyHaveEn": [
+        "Case → pallet → vehicle cascade with mixed-size cargo across trucks, containers, rail cars and ULDs",
+        "Desktop, online and API editions with an enterprise track record since the 1990s",
+        "Palletization patterns and packaging design as first-class features"
+      ],
+      "theyHaveZh": [
+        "箱→卡板→車輛逐層計算,支援貨車、貨櫃、火車同 ULD 嘅混合尺寸貨物",
+        "桌面版、網上版同 API 版齊備,企業客戶歷史可追溯至 1990 年代",
+        "砌板圖案同包裝設計係核心功能"
+      ],
+      "pricingEn": "CubeMaster Online subscriptions are listed from about US$49/month (Standard), with Premium and Collaboration tiers above; desktop perpetual licences are listed from roughly US$995 to US$2,495 per seat. Verify current prices on their pricing page.",
+      "pricingZh": "CubeMaster Online 訂閱由約 US$49/月(Standard)起,另有 Premium 同 Collaboration 級別;桌面永久授權每席約 US$995 至 US$2,495。請以佢哋官方價目頁為準。"
+    },
+    {
+      "slug": "searates-load-calculator-alternative",
+      "name": "SeaRates Load Calculator",
+      "url": "https://www.searates.com/load-calculator/",
+      "summaryEn": "SeaRates Load Calculator is the container and truck stuffing tool inside the SeaRates (DP World) freight-rate platform. It is free to try with a daily quota, and paid subscriptions unlock more calculations plus the wider SeaRates logistics toolkit.",
+      "summaryZh": "SeaRates Load Calculator 係 SeaRates(DP World)運價平台入面嘅貨櫃同貨車裝載工具。有每日免費配額,付費訂閱解鎖更多計算次數同整套 SeaRates 物流工具。",
+      "theyHaveEn": [
+        "Sits next to live freight rates, tracking and booking in one platform",
+        "Cylindrical cargo and palletization options",
+        "Backed by DP World with an API for logistics integrations"
+      ],
+      "theyHaveZh": [
+        "同即時運價、追蹤同訂艙放喺同一平台",
+        "支援圓柱形貨物同砌板選項",
+        "由 DP World 支持,提供物流整合 API"
+      ],
+      "pricingEn": "Per SeaRates' own pricing page: unregistered users get 1 free calculation per day; registered users get 20 per month (max 3 per day). Higher volumes need a paid SeaRates subscription (quote-based; 15% discount on annual plans).",
+      "pricingZh": "按 SeaRates 官方價目頁:未登入每日 1 次免費計算;已註冊每月 20 次(每日最多 3 次)。更高用量需要付費訂閱(報價制,年繳有 15% 折扣)。"
+    },
+    {
+      "slug": "tops-pro-alternative",
+      "name": "TOPS Pro",
+      "url": "https://www.topseng.com",
+      "summaryEn": "TOPS Pro (TOPS Engineering) is Windows packaging-design software used by CPG packaging engineers: it sizes primary packs and shipcases, builds pallet patterns, estimates stacking strength and places pallets in trucks.",
+      "summaryZh": "TOPS Pro(TOPS Engineering)係消費品包裝工程師常用嘅 Windows 包裝設計軟件:由內包裝同外箱尺寸、砌板圖案、堆疊強度估算,到卡板上車一氣呵成。",
+      "theyHaveEn": [
+        "Full packaging hierarchy: primary pack → shipcase → pallet → truck in one model",
+        "Stacking-strength and compression analysis for corrugated design",
+        "Decades of adoption in consumer-goods packaging departments"
+      ],
+      "theyHaveZh": [
+        "完整包裝層級:內包裝→外箱→卡板→貨車一個模型搞掂",
+        "針對紙箱設計嘅堆疊強度同抗壓分析",
+        "消費品包裝部門幾十年嘅採用歷史"
+      ],
+      "pricingEn": "The vendor does not publish prices; third-party software directories list TOPS Pro as quote-based licensing with a free trial on request. Contact TOPS Engineering for a quote.",
+      "pricingZh": "廠商唔公開價錢;第三方軟件目錄列為報價制授權,可申請試用。請直接向 TOPS Engineering 索取報價。"
+    },
+    {
+      "slug": "stackbuilder-alternative",
+      "name": "StackBuilder",
+      "url": "https://www.plmpack.com",
+      "summaryEn": "StackBuilder is treeDiM's Windows palletizing and case-packing tool, part of the PLMPack packaging suite: it generates pallet patterns and truck loads from case dimensions and is popular with packaging engineers who want a desktop workflow.",
+      "summaryZh": "StackBuilder 係 treeDiM 嘅 Windows 砌板同裝箱工具,屬 PLMPack 包裝套件一部分:由箱尺寸生成砌板圖案同貨車裝載,深受想用桌面流程嘅包裝工程師歡迎。",
+      "theyHaveEn": [
+        "Detailed palletizing patterns (interlocking, column, pinwheel) with case-packing analysis",
+        "Integrates with the Picador CAD suite for packaging design drawings",
+        "Desktop, offline workflow with no per-calculation quota"
+      ],
+      "theyHaveZh": [
+        "詳細砌板圖案(交錯、直排、風車)連裝箱分析",
+        "同 Picador CAD 套件整合,可出包裝設計圖",
+        "桌面離線流程,冇計算次數限制"
+      ],
+      "pricingEn": "treeDiM publishes StackBuilder as a free Windows download; the wider PLMPack/Picador CAD suite is commercial and quote-based per third-party listings. Verify current terms with treeDiM.",
+      "pricingZh": "treeDiM 以免費 Windows 下載形式發佈 StackBuilder;整套 PLMPack/Picador CAD 套件為商業報價制(據第三方目錄)。請向 treeDiM 核實最新條款。"
+    },
+    {
+      "slug": "packapp-alternative",
+      "name": "PackApp",
+      "url": "https://www.packapp.io",
+      "summaryEn": "PackApp is a load planning application for trailers, containers and railcars that suggests one or more load plans from a packing list, including paper rolls, pallets and skids, and exposes a REST API for ERP/TMS integration.",
+      "summaryZh": "PackApp 係針對拖車、貨櫃同火車車廂嘅裝載規劃應用,由裝箱單建議一個或多個裝載方案,支援紙卷、卡板同滑板,並提供 REST API 整合 ERP/TMS。",
+      "theyHaveEn": [
+        "Paper rolls, skids and pallets alongside boxes, with centre-of-gravity output",
+        "Picks the smallest suitable container and only proposes high-cube, open-top or flat-rack when needed",
+        "REST API for automatic ERP/TMS linking"
+      ],
+      "theyHaveZh": [
+        "除箱之外支援紙卷、滑板同卡板,並輸出重心",
+        "自動揀最細合用貨櫃,只喺必要時建議高櫃、開頂或平板櫃",
+        "REST API 自動連接 ERP/TMS"
+      ],
+      "pricingEn": "The vendor does not publish prices publicly; third-party listings describe subscription licensing on request. Contact PackApp for a quote.",
+      "pricingZh": "廠商未公開價錢;第三方目錄描述為按需訂閱授權。請向 PackApp 索取報價。"
     }
   ]
 }

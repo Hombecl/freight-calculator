@@ -90,7 +90,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Feature | Status |
 |---|---|
 | 63 answers pages ×2 locales (containers/pallets/trucks) | ✅ |
-| 3 honest compare pages | ✅ |
+| 11 honest compare pages (competitors.json) + /cubing-software category page | ✅ |
 | 9 guides | ✅ |
 | Prerender all routes (170) for no-JS/AI crawlers; 4-worker pool | ✅ |
 | llms.txt + AI-crawler robots allowlist | ✅ |
@@ -113,7 +113,7 @@ _Legend: ✅ shipped · 🔨 building now · 🗺 roadmap (ordered) · Last upda
 | Email lead capture + warehouse waitlist (KV) | ✅ |
 | Secure Pro paywall scaffold (Lemon Squeezy, BILLING-SETUP.md) | ✅ code / 🗺 activate on demand signal |
 | Workspaces/teams (multi-member) | 🗺 1 |
-| Public API `/api/pack` + /api-docs (free beta; keys later) | ✅ |
+| Public API `/api/pack` `/api/pallet-estimate` `/api/order-plan` + /api-docs; self-serve free keys (`/api/key`) + /api-pricing tiers (Starter $49 / Business $199, issued by hand) | ✅ |
 | ERP/WMS connectors (per-client, paid) | 🗺 3 |
 | SSO / audit-log export / SLA page | 🗺 4 (first enterprise deal) |
 

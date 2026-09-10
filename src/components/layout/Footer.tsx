@@ -21,6 +21,7 @@ export default function Footer() {
     { to: '/pallet-builder', label: T('Pallet Builder (3D)', '卡板砌板工具 (3D)') },
     { to: '/pallets-per-container', label: T('Pallets per Container', '每櫃卡板數') },
     { to: '/api-docs', label: T('Bin-Packing API (free beta)', '裝箱 API(免費 Beta)') },
+    { to: '/api-pricing', label: T('API pricing & keys', 'API 價目與 key') },
   ];
 
   const guides = [
@@ -29,6 +30,7 @@ export default function Footer() {
     { to: '/guides/cbm-calculator-shipping', label: T('CBM & Shipping Costs', 'CBM 與運費') },
     { to: '/guides/pallet-calculator', label: T('Pallet Calculator Guide', '卡板計算指南') },
     { to: '/guides/fba-size-tiers-2025', label: T('FBA Size Tiers 2025', 'FBA 尺寸分級 2025') },
+    { to: '/cubing-software', label: T('Cubing software explained', 'Cubing software 係咩') },
     { to: '/guides', label: T('All guides →', '全部指南 →') },
   ];
 

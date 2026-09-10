@@ -18,8 +18,64 @@
  * otherwise be worst.
  */
 
+import { API_KEY_RE, planFor, type ApiTier } from '../../src/lib/apiTiers';
+
 export interface RateLimitEnv {
   LEADS: KVNamespace;
+}
+
+/** Stored under `apikey|<key>` in LEADS KV by /api/key. */
+export interface ApiKeyRecord {
+  email: string;
+  tier: ApiTier;
+  company?: string;
+  useCase?: string;
+  createdAt: string;
+  /** set by hand to cut a key off without deleting its history */
+  revokedAt?: string;
+}
+
+export const apiKeyKvKey = (key: string) => `apikey|${key}`;
+
+/**
+ * Read the API key from `X-API-Key` or `Authorization: Bearer dp_live_…`.
+ * Returns null when absent or malformed — callers treat that as anonymous,
+ * never as an error, so a typo degrades to per-IP limits instead of a 401.
+ */
+export function extractApiKey(request: Request): string | null {
+  const direct = request.headers.get('X-API-Key')?.trim();
+  if (direct && API_KEY_RE.test(direct)) return direct;
+  const auth = request.headers.get('Authorization')?.trim();
+  if (auth?.toLowerCase().startsWith('bearer ')) {
+    const tok = auth.slice(7).trim();
+    if (API_KEY_RE.test(tok)) return tok;
+  }
+  return null;
+}
+
+export interface ResolvedSubject {
+  /** bucket id: `key:<key>` or `ip:<ip>` (or null when unknown → fail open) */
+  subject: string | null;
+  tier: ApiTier;
+  /** true when a syntactically valid key was sent but is unknown or revoked */
+  invalidKey: boolean;
+}
+
+/** Decide who is being rate-limited and at which tier. */
+export async function resolveSubject(env: RateLimitEnv, request: Request): Promise<ResolvedSubject> {
+  const ip = request.headers.get('CF-Connecting-IP');
+  const anon: ResolvedSubject = { subject: ip ? `ip:${ip}` : null, tier: 'anonymous', invalidKey: false };
+  const key = extractApiKey(request);
+  if (!key || !env?.LEADS) return anon;
+  const raw = await env.LEADS.get(apiKeyKvKey(key)).catch(() => null);
+  if (!raw) return { ...anon, invalidKey: true };
+  try {
+    const rec = JSON.parse(raw) as ApiKeyRecord;
+    if (rec.revokedAt) return { ...anon, invalidKey: true };
+    return { subject: `key:${key}`, tier: rec.tier ?? 'free', invalidKey: false };
+  } catch {
+    return { ...anon, invalidKey: true };
+  }
 }
 
 export interface RateLimitRule {
@@ -40,8 +96,8 @@ export interface RateLimitResult {
 }
 
 /** Fixed-window counter key: one per IP per rule per window. */
-const keyFor = (rule: RateLimitRule, ip: string, nowSec: number) =>
-  `rl|${rule.name}|${rule.windowSec}|${ip}|${Math.floor(nowSec / rule.windowSec)}`;
+const keyFor = (rule: RateLimitRule, subject: string, nowSec: number) =>
+  `rl|${rule.name}|${rule.windowSec}|${subject}|${Math.floor(nowSec / rule.windowSec)}`;
 
 /**
  * Check (and consume) quota for `ip` against every rule. Returns ok:false on the
@@ -59,6 +115,35 @@ export async function rateLimit(
 ): Promise<RateLimitResult> {
   const ip = request.headers.get('CF-Connecting-IP');
   if (!ip || !env?.LEADS) return { ok: true };
+  return rateLimitSubject(env, `ip:${ip}`, rules, nowSec);
+}
+
+/**
+ * Key-aware variant: resolves the caller (API key → its tier, else IP), scales
+ * every rule by the tier multiplier, and buckets by key instead of IP. This is
+ * what the public endpoints call. Anonymous behaviour is byte-for-byte the old
+ * rateLimit() — same limits, same keys modulo the `ip:` prefix.
+ */
+export async function rateLimitKeyed(
+  env: RateLimitEnv,
+  request: Request,
+  rules: RateLimitRule[],
+  nowSec = Math.floor(Date.now() / 1000),
+): Promise<RateLimitResult & { tier: ApiTier; invalidKey: boolean }> {
+  const who = await resolveSubject(env, request);
+  if (!who.subject || !env?.LEADS) return { ok: true, tier: who.tier, invalidKey: who.invalidKey };
+  const mult = planFor(who.tier).multiplier;
+  const scaled = rules.map((r) => ({ ...r, limit: r.limit * mult }));
+  const res = await rateLimitSubject(env, who.subject, scaled, nowSec);
+  return { ...res, tier: who.tier, invalidKey: who.invalidKey };
+}
+
+async function rateLimitSubject(
+  env: RateLimitEnv,
+  ip: string,
+  rules: RateLimitRule[],
+  nowSec: number,
+): Promise<RateLimitResult> {
 
   const counts = await Promise.all(
     rules.map(async (rule) => {
@@ -100,7 +185,7 @@ export function tooManyRequests(result: RateLimitResult, cors: Record<string, st
       error: 'rate limit exceeded',
       limit: result.tripped ? `${result.tripped.limit} requests per ${result.tripped.windowSec}s` : undefined,
       retryAfterSeconds: retry,
-      note: 'Free while in beta. Need higher limits? hello@dimpack3d.com',
+      note: 'Need higher limits? A free API key raises them 5x: https://www.dimpack3d.com/api-pricing',
       docs,
     }),
     {

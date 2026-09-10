@@ -302,6 +302,49 @@ await test('compare: easycargo page renders honestly', async () => {
   await page.getByText(/what each competitor does better|choose easycargo if/i).first().waitFor();
 }, page);
 
+await test('compare: newly added competitor pages render from competitors.json', async () => {
+  for (const slug of ['cubemaster-alternative', 'searates-load-calculator-alternative', 'tops-pro-alternative', 'stackbuilder-alternative', 'packapp-alternative']) {
+    await page.goto(`${BASE}/compare/${slug}`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { level: 1 }).filter({ hasText: /alternative/i }).waitFor();
+    await page.getByText(/Pricing:/).first().waitFor();
+  }
+}, page);
+
+await test('cubing-software: category page lists every competitor + FAQ schema', async () => {
+  await page.goto(`${BASE}/cubing-software`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { level: 1 }).filter({ hasText: /cubing software/i }).waitFor();
+  const rows = await page.locator('table tbody tr').count();
+  if (rows < 12) throw new Error(`expected DimPack3D + 11 competitors, got ${rows} rows`);
+  const lds = await page.locator('script[type="application/ld+json"]').allTextContents();
+  if (!lds.some((t) => /FAQPage/.test(t))) throw new Error(`FAQPage schema missing (${lds.length} ld+json blocks)`);
+  await page.getByText(/Cube a shipment now/i).waitFor();
+}, page);
+
+await test('api-pricing: plans read from apiTiers + key form present', async () => {
+  await page.goto(`${BASE}/api-pricing`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { level: 1 }).filter({ hasText: /API pricing/i }).waitFor();
+  // anonymous pack = 60/min; free key = 300/min (5x) — the page must show both
+  await page.getByText(/60\/min/).first().waitFor();
+  await page.getByText(/300\/min/).first().waitFor();
+  await page.getByText(/\$49/).first().waitFor();
+  await page.locator('input[type="email"]').waitFor();
+  await page.getByRole('button', { name: /create my key/i }).waitFor();
+}, page);
+
+if (IS_LIVE) {
+  await test('api-pricing (live): free key is issued and accepted by /api/pack', async () => {
+    const r = await page.request.post(`${BASE}/api/key`, { data: { email: `e2e+${Date.now()}@dimpack3d.com`, company: 'e2e', useCase: 'e2e' } });
+    if (r.status() !== 200) throw new Error(`/api/key ${r.status()}`);
+    const { key } = await r.json();
+    if (!/^dp_live_[0-9a-f]{32}$/.test(key)) throw new Error(`bad key ${key}`);
+    const p = await page.request.post(`${BASE}/api/pack`, {
+      headers: { 'X-API-Key': key },
+      data: { container: { l: 589, w: 235, h: 239 }, items: [{ l: 60, w: 40, h: 40, qty: 3 }] },
+    });
+    if (p.status() !== 200) throw new Error(`/api/pack with key ${p.status()}`);
+  }, page);
+}
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.

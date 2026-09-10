@@ -9,6 +9,8 @@ const BASE_ROUTES = [
   "/fba",
   "/answers",
   "/api-docs",
+  "/api-pricing",
+  "/cubing-software",
   "/about",
   "/privacy",
   "/terms",

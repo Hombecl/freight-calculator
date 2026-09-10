@@ -16,10 +16,10 @@ import { packWithConstraints, type PackItemSpec } from '../../src/lib/binPacking
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization',
 };
 
-import { rateLimit, tooManyRequests, type RateLimitEnv } from './_rateLimit';
+import { rateLimitKeyed, tooManyRequests, type RateLimitEnv } from './_rateLimit';
 
 /**
  * Per-IP limits. Generous enough that a developer evaluating the API or a small
@@ -43,7 +43,8 @@ const USAGE = {
     items: [{ label: 'Carton A', l: 60, w: 40, h: 40, weight: 18, qty: 100, maxStack: 0, keepUpright: false, group: 'PO-1', unloadOrder: 1 }],
   },
   response: 'boxes (placed with px/py/pz min-corner positions), unplaced count, stats (volumeUtil, totalWeight, cog), zones (LIFO unload zones)',
-  limits: `${MAX_ITEMS} item types, ${MAX_QTY} total units per request; ${RATE_RULES[0].limit} requests/min and ${RATE_RULES[1].limit}/day per IP. Free while in beta; volume licensing: hello@dimpack3d.com`,
+  limits: `${MAX_ITEMS} item types, ${MAX_QTY} total units per request; ${RATE_RULES[0].limit} requests/min and ${RATE_RULES[1].limit}/day per IP. Free while in beta; a free API key raises limits 5x: https://www.dimpack3d.com/api-pricing`,
+  auth: 'Optional. X-API-Key: dp_live_… (get one at https://www.dimpack3d.com/api-pricing)',
   interactive: 'https://www.dimpack3d.com/planner',
   docs: 'https://www.dimpack3d.com/api-docs',
 };
@@ -64,7 +65,7 @@ export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
 
   // Cost control before any work is done. GET (docs) and OPTIONS stay unlimited
   // — they are cheap and blocking them would break CORS preflight.
-  const rl = await rateLimit(ctx.env, ctx.request, RATE_RULES);
+  const rl = await rateLimitKeyed(ctx.env, ctx.request, RATE_RULES);
   if (!rl.ok) return tooManyRequests(rl, CORS, USAGE.docs);
 
   let body: any;

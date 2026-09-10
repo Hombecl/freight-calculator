@@ -178,8 +178,8 @@ export default function ComparePage() {
       </div>
       <p className="text-[11px] text-slate-400 mt-6">
         {T(
-          `${c.name} is a trademark of its owner; facts above are from public pages or attributed third-party listings as of July 2026. Corrections: hello@dimpack3d.com.`,
-          `${c.name} 商標屬其擁有者;以上資料截至 2026 年 7 月來自公開頁面或已註明嘅第三方目錄。指正:hello@dimpack3d.com。`,
+          `${c.name} is a trademark of its owner; facts above are from public pages or attributed third-party listings as of September 2026. Corrections: hello@dimpack3d.com.`,
+          `${c.name} 商標屬其擁有者;以上資料截至 2026 年 9 月來自公開頁面或已註明嘅第三方目錄。指正:hello@dimpack3d.com。`,
         )}
       </p>
     </div>
