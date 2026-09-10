@@ -97,3 +97,7 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 - POST /api/case-design (GET for schema/example): cm-kg or in-lb; 24 sampled quantities, 400 designs, 2,000 floor-load cases, up to 10 results. Anonymous 10/min, 100/day; 32 KB.
 - Deterministic best options found, not optimum. Explicit checks and assumptions, engineVersion and SHA-256 inputHash. Board mass estimated at 0.6 kg/m²; column stacks only; structural ECT/BCT excluded.
 - Documentation: /api-docs#case-design
+
+## Multi-PO container consolidation
+- /consolidation (also /zh/consolidation): same origin region / one destination, PO ready-date window, priority, supplier caps, whole-PO preference and unloading zones. Up to three heuristic container plans with read-only 3D, CSV/JSON/curl exports and LCL remainder estimates using user quotes. Not a booking or optimum.
+- POST /api/consolidate; GET returns request example and documentation. 30 POs, 60 types, 3000 cartons, 64 KB; anonymous 5/min, 50/day. 40 packing runs by default, max 120. Both units, SHA-256 hashes, explicit screening checks. See /api-docs#consolidate.

@@ -489,6 +489,20 @@ await test('case designer: defaults, candidate detail and rendered count agree',
   if (Number(await page.getByTestId('design-placed-count').textContent()) !== count) throw new Error('3D count differs from candidate');
 }, page);
 
+await test('consolidation: example POs plan containers and read-only 3D count matches', async () => {
+  await page.goto(`${BASE}/consolidation`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('consolidation-run').click();
+  const card = page.getByTestId('container-card').first();
+  await card.waitFor();
+  const expected = Number(await card.getByTestId('card-placed-count').textContent());
+  if (!(expected > 0)) throw new Error('no cartons placed');
+  await card.getByTestId('open-container').click();
+  const count = page.getByTestId('container-placed-count');
+  await count.waitFor();
+  if (Number(await count.textContent()) !== expected) throw new Error('3D count differs from plan');
+  if (await page.getByTestId('container-view').getByRole('button', { name: /delete|rotate 90/i }).count()) throw new Error('editable container view');
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.

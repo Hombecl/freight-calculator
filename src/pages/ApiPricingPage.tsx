@@ -21,6 +21,7 @@ import { API_PLANS, ENDPOINT_BASE_LIMITS, type ApiPlan } from '../lib/apiTiers';
  */
 
 const ENDPOINT_LABEL: Record<string, [string, string]> = {
+  consolidate: ['PO consolidation', '多訂單併櫃'],
   pack: ['Container packing', '貨櫃裝箱'],
   'pallet-estimate': ['Pallet height', '卡板高度'],
   'order-plan': ['Multi-pallet order', '多卡板訂單'],
