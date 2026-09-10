@@ -185,14 +185,37 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
              p.z > b.pz + EPS && p.z < b.pz + b.w - EPS;
     });
 
-  type Placement = { x: number; y: number; z: number; o: Orient; supporters: Node[]; deltas: Map<Node, number> };
+  type Placement = { x: number; y: number; z: number; o: Orient; supporters: Node[]; deltas: Map<Node, number>; rebuilt?: { nodes: Node[]; supporters: Map<Node, Node[]>; loads: Map<Node, number> } };
   const placement = (spec: PackItemSpec, o: Orient, x: number, y: number, z: number): Placement | null => {
     if (totalWeight + spec.weight > maxW + EPS || x + o.l > container.l + EPS ||
         y + o.h > container.h + EPS || z + o.w > container.w + EPS ||
         nodes.some(n => overlaps3D(x, y, z, o.l, o.h, o.w, n))) return null;
     const sup = findSupport(x, y, z, o.l, o.w, nodes);
     const deltas = new Map<Node, number>();
-    if (sup.ratio < SUPPORT_RATIO - EPS || !tryPropagate(sup.supporters, spec.weight, deltas)) return null;
+    if (sup.ratio < SUPPORT_RATIO - EPS) return null;
+    const lateSupport = nodes.some(n => Math.abs(y + o.h - n.box.py) <= EPS &&
+      footOverlapArea(x, z, o.l, o.w, n.box.px, n.box.pz, n.box.l, n.box.w) > EPS);
+    if (lateSupport) {
+      // Trial graph is isolated: rejected positions cannot change existing loads.
+      const candidate: Node = { box: { id: '', label: spec.label, color: spec.color,
+        px: x, py: y, pz: z, ...o, weight: spec.weight },
+        supporters: sup.supporters, loadAbove: 0, maxStack: spec.maxStack ?? Infinity };
+      const all = [...nodes, candidate];
+      const supporters = new Map(all.map(n => [n, findSupport(n.box.px, n.box.py,
+        n.box.pz, n.box.l, n.box.w, all.filter(other => other !== n)).supporters]));
+      const loads = new Map(all.map(n => [n, 0]));
+      // Highest first aggregates every incoming path before splitting the load.
+      for (const n of [...all].sort((a, b) => b.box.py - a.box.py)) {
+        const load = loads.get(n)!;
+        if (load > n.maxStack + EPS) return null;
+        const parents = supporters.get(n)!;
+        for (const parent of parents) loads.set(parent,
+          loads.get(parent)! + (n.box.weight + load) / parents.length);
+      }
+      return { x, y, z, o, supporters: sup.supporters, deltas,
+        rebuilt: { nodes: all, supporters, loads } };
+    }
+    if (!tryPropagate(sup.supporters, spec.weight, deltas)) return null;
     return { x, y, z, o, supporters: sup.supporters, deltas };
   };
   const commit = (spec: PackItemSpec, best: Placement) => {
@@ -211,8 +234,19 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
       box, supporters: best.supporters, loadAbove: 0,
       maxStack: spec.maxStack ?? Infinity,
     };
-    best.deltas.forEach((inc, n) => { n.loadAbove += inc; });
-    nodes.push(node);
+    if (best.rebuilt) {
+      const rebuilt = best.rebuilt;
+      const candidate = rebuilt.nodes[rebuilt.nodes.length - 1];
+      candidate.box = box;
+      for (const n of rebuilt.nodes) {
+        n.supporters = rebuilt.supporters.get(n)!;
+        n.loadAbove = rebuilt.loads.get(n)!;
+      }
+      nodes.push(candidate);
+    } else {
+      best.deltas.forEach((inc, n) => { n.loadAbove += inc; });
+      nodes.push(node);
+    }
     totalWeight += spec.weight;
 
     // spawn new extreme points, drop the consumed one, prune covered/out-of-bounds
@@ -256,7 +290,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
         // A complete layer is transactional: a failed crush/support/payload
         // check restores all ancestors and EPs before remainder packing.
         const oldLength = nodes.length, oldWeight = totalWeight, oldCounter = counter;
-        const oldLoads = nodes.map(n => n.loadAbove), oldPoints = [...eps];
+        const oldLoads = nodes.map(n => n.loadAbove), oldSupporters = nodes.map(n => n.supporters), oldPoints = [...eps];
         let complete = true;
         for (let z = 0; z < nz && complete; z++) for (let x = 0; x < nx; x++) {
           const p = placement(spec, o, x * o.l, y, z * o.w);
@@ -265,7 +299,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
         }
         if (!complete) {
           nodes.length = oldLength;
-          nodes.forEach((n, i) => { n.loadAbove = oldLoads[i]; });
+          nodes.forEach((n, i) => { n.loadAbove = oldLoads[i]; n.supporters = oldSupporters[i]; });
           totalWeight = oldWeight; counter = oldCounter;
           eps.length = 0; eps.push(...oldPoints);
           break;
@@ -283,10 +317,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
   for (const { spec } of queue) {
     if (totalWeight + spec.weight > maxW + EPS) { unplaced++; continue; }
 
-    let best: {
-      x: number; y: number; z: number; o: Orient;
-      supporters: Node[]; deltas: Map<Node, number>;
-    } | null = null;
+    let best: Placement | null = null;
 
     const candidates = orientations(spec);
     if (strategy === 'footprint') {
@@ -299,14 +330,8 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
         if (x + o.l > container.l + EPS) continue;
         if (y + o.h > container.h + EPS) continue;
         if (z + o.w > container.w + EPS) continue;
-        // overlap test
-        if (nodes.some((n) => overlaps3D(x, y, z, o.l, o.h, o.w, n))) continue;
-        // support test
-        const sup = findSupport(x, y, z, o.l, o.w, nodes);
-        if (sup.ratio < SUPPORT_RATIO - EPS) continue;
-        // weight / max-stack test
-        const deltas = new Map<Node, number>();
-        if (!tryPropagate(sup.supporters, spec.weight, deltas)) continue;
+        const trial = placement(spec, o, x, y, z);
+        if (!trial) continue;
         // Preserve the existing bottom/back/left ordering for all current callers.
         const lowerPosition = !best || y < best.y - EPS ||
           (Math.abs(y - best.y) <= EPS && z < best.z - EPS) ||
@@ -315,7 +340,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
         const lowerTop = !best || y + o.h < best.y + best.o.h - EPS;
         const sameTop = best && Math.abs(y + o.h - best.y - best.o.h) <= EPS;
         if (strategy === 'height' ? lowerTop || (sameTop && lowerPosition) : lowerPosition) {
-          best = { x, y, z, o, supporters: sup.supporters, deltas };
+          best = trial;
         }
       }
     }

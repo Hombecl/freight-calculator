@@ -1,3 +1,4 @@
+import { canonicalJson } from './hashing';
 import { PalletInputError, estimatePallet } from './palletEstimate';
 import { perLayer, layerArrangement, palletBoxes, floorFit, PALLET_TARE_KG } from './pallets';
 import { packContainer } from './binPacking';
@@ -137,7 +138,7 @@ export async function designCases(input: unknown) {
   }
   candidates.sort((a,b) => (r.costs ? (a.costPerUnit?.value ?? Infinity) - (b.costPerUnit?.value ?? Infinity) : 0) || (b.container?.unitsPerContainer ?? 0) - (a.container?.unitsPerContainer ?? 0) || (b.pallet?.cubeUtilPct ?? 0) - (a.pallet?.cubeUtilPct ?? 0) || a.id.localeCompare(b.id));
   const selected = candidates.slice(0,r.candidates);
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ engine: CASE_ENGINE, request: r })));
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJson({ engine: CASE_ENGINE, request: r })));
   const checks: Check[] = ['CASE_WEIGHT','CASE_DIM','PALLET_HEIGHT','PALLET_PAYLOAD','BOARD_MASS_ASSUMED','COST_INPUTS_PROVIDED'].map(code => {
     const list = selected.map(c => c.checks.find(k => k.code === code)!);
     return list.length ? { ...list[0], observed: list[0].observed === undefined ? undefined : Math.max(...list.map(c => Number(c.observed))), ids: selected.map(c => c.id) } : { code, status: code === 'BOARD_MASS_ASSUMED' ? 'warn' : 'not_evaluated', assumption: 'No feasible candidate found within bounded search; no plan passes by implication.' };

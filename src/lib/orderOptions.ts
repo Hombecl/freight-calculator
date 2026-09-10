@@ -1,3 +1,4 @@
+import { canonicalJson } from './hashing';
 import { quoteOrder, parseQuoteRequest, QUOTE_LIMITS, type OrderQuoteRequest, type OrderQuote } from './orderQuote';
 import { PalletInputError } from './palletEstimate';
 import { CHECK_SEMANTICS, type Check } from './packChecks';
@@ -36,10 +37,7 @@ const money = (v: unknown, field: string) => {
   if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1e12) throw new PalletInputError(field, 'must be a finite non-negative number up to 1000000000000');
   return v;
 };
-// Sort object keys recursively, preserving array order (SKU order affects packing).
-const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object'
-  ? Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, x]) => [k, stable(x)])) : v;
-const hash = async (v: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(stable(v))))), b => b.toString(16).padStart(2, '0')).join('');
+const hash = async (v: unknown) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJson(v)))), b => b.toString(16).padStart(2, '0')).join('');
 
 const suppliedCost = (map: Record<string, number> | undefined, sku: string) => map && Object.prototype.hasOwnProperty.call(map, sku) ? map[sku] : undefined;
 

@@ -1,3 +1,4 @@
+import { canonicalJson } from './hashing';
 import { packContainer, type PackItemSpec } from './binPacking';
 import { CHECK_SEMANTICS, type Check } from './packChecks';
 import { PalletInputError } from './palletEstimate';
@@ -134,7 +135,7 @@ export function parseBoxCatalog(input: unknown) {
     return {
         coverageFirst: o.coverageFirst !== false, skus, orders, currentBoxes: boxes(o.currentBoxes, 'currentBoxes'), candidateBoxes: boxes(o.candidateBoxes, 'candidateBoxes'), catalogSize: integer(o.catalogSize, 'catalogSize', 1, 12), billing: {
             unit: units(b.unit, 'billing.unit'), dimDivisor: num(b.dimDivisor, 'billing.dimDivisor', .001, 1000000), minBillableWeight: num(b.minBillableWeight, 'billing.minBillableWeight', 0, 1000000, 0), ...(b.ratePerKgOrLb === undefined ? {} : { ratePerKgOrLb: num(b.ratePerKgOrLb, 'billing.ratePerKgOrLb', 0, 1000000) })
-        }, voidFillCostPerLitre: num(o.voidFillCostPerLitre, 'voidFillCostPerLitre', 0, 1000000, 0), searchBudget: integer(o.searchBudget, 'searchBudget', 1, 1000, 200), grid: u === 'in-lb' ? 1.27 : 1
+        }, voidFillCostPerLitre: num(o.voidFillCostPerLitre, 'voidFillCostPerLitre', 0, 1000000, 0), searchBudget: integer(o.searchBudget, 'searchBudget', 1, 1000, 200)
     };
 }
 type Parsed = ReturnType<typeof parseBoxCatalog>;
@@ -167,7 +168,8 @@ function generated(p: Parsed): CatalogBox[] {
         }
         if (fit.unplaced)
             throw new PalletInputError('orders', 'candidate generation could not fit all units');
-        const ceil = (n: number) => Math.ceil((n - 1e-8) / p.grid) * p.grid;
+        // Canonical 1 cm grid for metric and imperial requests; output includes both units.
+        const ceil = (n: number) => Math.ceil(n - 1e-8);
         const b = {
             id: '', l: ceil(Math.max(...fit.boxes.map(b => b.px + b.l))), w: ceil(Math.max(...fit.boxes.map(b => b.pz + b.w))), h: ceil(Math.max(...fit.boxes.map(b => b.py + b.h)))
         };
@@ -267,8 +269,9 @@ export async function optimizeBoxCatalog(input: unknown) {
             code: 'CATALOG_SIZE_RESPECTED', status: 'pass', observed: selected.length, limit: p.catalogSize, assumption: 'Catalog size is a maximum; fewer candidates means fewer boxes.'
         },
     ];
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ engine: BOX_ENGINE, ...p })));
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJson({ engine: BOX_ENGINE, ...p })));
     return {
+        status: result.totals.unfitOrders === 0 ? 'complete' as const : 'partial' as const,
         engineVersion: BOX_ENGINE, inputHash: [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join(''), catalog: selected.map(b => {
             const usedByOrders = result.perOrder.filter(o => o.boxId === b.id).reduce((n, o) => n + o.count, 0);
             return {

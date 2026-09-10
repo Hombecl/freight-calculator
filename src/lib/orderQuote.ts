@@ -1,3 +1,4 @@
+import { canonicalJson } from './hashing';
 import type { PackingOptions } from './binPacking';
 import { CHECK_SEMANTICS } from './packChecks';
 /**
@@ -225,7 +226,7 @@ export type ParsedQuote = ReturnType<typeof parseQuoteRequest>;
 
 /** SHA-256 hex of the canonical cm/kg planning input — stable across unit systems. */
 export async function inputHash(parsed: ParsedQuote): Promise<string> {
-  const payload = JSON.stringify({
+  const payload = canonicalJson({
     engine: [ORDER_ENGINE, QUOTE_ENGINE],
     pallet: parsed.pallet,
     tare: parsed.tare ?? null,

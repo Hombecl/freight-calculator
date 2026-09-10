@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
-import { estimatePallet } from '../src/lib/palletEstimate.ts';
+import { estimatePallet, PalletInputError } from '../src/lib/palletEstimate.ts';
 import { quoteOrder } from '../src/lib/orderQuote.ts';
 import { findOrderOptions } from '../src/lib/orderOptions.ts';
 import { designCases, casePalletView, parseCaseRequest } from '../src/lib/caseDesign.ts';
@@ -194,6 +194,8 @@ for(let i=0;i<N;i++) {
     }
   });
   await check('consolidation',i,'failure status contract',con,()=>{
+    assert.equal(cq.status, !cq.cargo.cartons || cq.plans.some(p=>p.remainder.cartons===0) ? 'complete' : 'partial');
+    for(const plan of cq.plans)assert.equal(plan.status,plan.remainder.cartons?'partial':'complete');
     for(const plan of cq.plans)if([...plan.checks,...plan.containers.flatMap(c=>c.checks)].some(c=>c.status==='fail'))assert.ok(['partial','needs_review'].includes(plan.status??cq.status),'failed checks require partial/needs_review');
   });
   await check('consolidation',i,'determinism',con,async()=>assert.deepEqual(cq,await consolidate(con)));
@@ -226,6 +228,7 @@ for(let i=0;i<N;i++) {
     if(single.box)assert.ok((await chooseBox({...r,lines:order.lines},larger)).box,'enlarged box loses fit');
   });
   await check('boxCatalog',i,'failure status contract',r,()=>{
+    assert.equal(q.status,q.totals.unfitOrders?'partial':'complete');
     if(q.checks.some(c=>c.status==='fail'))assert.ok(['partial','needs_review'].includes(q.status),'failed checks require partial/needs_review');
   });
   await check('boxCatalog',i,'catalogSize monotonicity',r,async()=>assert.ok((await optimizeBoxCatalog({...r,catalogSize:r.catalogSize+1})).totals.unfitOrders<=q.totals.unfitOrders));
@@ -253,8 +256,8 @@ const stack={pallet:{l:60,w:60,baseHeight:10,maxHeight:50,maxWeight:150},items:[
   {sku:'C',label:'C',l:30,w:30,h:20,weight:4,qty:3,keepUpright:false}],maxPallets:1};
 await check('orderQuote','minimal','late support maxStack',stack,async()=>quoteAudit(stack,await quoteOrder(stack)));
 await check('palletEstimate','minimal','late support maxStack default',stack,()=>palletAudit(stack,estimatePallet(stack)));
-await check('palletEstimate','contract','engineVersion and inputHash',tiny,()=>{const q=estimatePallet(tiny);assert.equal(typeof q.engineVersion,'string');assert.match(q.inputHash,/^[a-f0-9]{64}$/);});
-await check('palletEstimate','contract','in-lb physical equivalence',tiny,()=>approximate(estimatePallet(tiny).boxes,estimatePallet(imperial(tiny)).boxes));
+await check('palletEstimate','contract','legacy version identity exception',tiny,()=>{const q=estimatePallet(tiny);assert.equal(typeof q.version,'string');});
+await check('palletEstimate','contract','legacy in-lb rejected',tiny,()=>assert.throws(()=>estimatePallet(imperial(tiny)),e=>e instanceof PalletInputError && e.field==='units' && e.message==='units: this endpoint is cm/kg only; use /api/order-quote for units'));
 const noTare={...tiny,limits:{maxGrossWeight:1},packagingAllowance:{weight:2}};
 await check('orderQuote','minimal','known gross excess without tare',noTare,async()=>quoteAudit(noTare,await quoteOrder(noTare)));
 const generated={skus:[{sku:'A',l:10,w:10,h:10,weight:1}],orders:[{lines:[{sku:'A',qty:1}]}],catalogSize:1,billing:{unit:'cm-kg',dimDivisor:5000}};

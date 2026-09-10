@@ -53,6 +53,23 @@ function verifyPacking(q, r) {
     assert.equal(it.placed + it.remaining, q.items[i].qty);
   }
 }
+test("Late supporters redistribute all ancestor loads without exceeding maxStack", () => {
+  const q = { pallet: { l: 60, w: 60, baseHeight: 10, maxHeight: 50, maxWeight: 150 }, items: [
+    { sku: 'A', label: 'A', l: 10, w: 30, h: 50, weight: 14, qty: 1, keepUpright: false, maxStack: 0 },
+    { sku: 'B', label: 'B', l: 50, w: 10, h: 50, weight: 8, qty: 1, keepUpright: false, maxStack: 0 },
+    { sku: 'C', label: 'C', l: 30, w: 30, h: 20, weight: 4, qty: 3, keepUpright: false },
+  ], maxPallets: 1 };
+  for (const options of [{}, ...['default', 'height', 'footprint', 'layered'].map(strategy => ({ strategy }))]) {
+    verifyPacking(q, estimatePallet(q, options));
+  }
+});
+test("Legacy pallet requests reject any supplied units field", () => {
+  for (const units of ['in-lb', 'cm-kg', undefined, null]) {
+    assert.throws(() => parsePalletRequest({ ...simple(), units }),
+      { field: 'units', message: 'units: this endpoint is cm/kg only; use /api/order-quote for units' });
+    assert.throws(() => planOrder({ request: { ...simple(), units }, maxPallets: 1 }), { field: 'units' });
+  }
+});
 test("Tea and teaware fit on one pallet", () => {
   const q = layeredCase();
   const r = planOrder({ ...q, maxPallets: 20 });

@@ -95,7 +95,7 @@ await test('single order chooses billed weight even with different box costs',as
 });
 await test('size and bounded budgets, generation and rounding',async()=>{
  for (const budget of [1,2,5,200,1000]) {const a=example();a.searchBudget=budget;a.catalogSize=3;const r=await optimizeBoxCatalog(a);assert.equal(r.catalog.length,3);assert.ok(r.searched.combos<=budget);}
- for (const units of ['cm-kg','in-lb']) {const a=example();a.units=units;delete a.candidateBoxes;const r=await optimizeBoxCatalog(a);assert.equal(r.totals.unfitOrders,0);assert.ok(r.searched.candidates<=40);for(const b of r.catalog)for(const n of Object.values(units==='in-lb'?b.dims.in:b.dims.cm))close(n/(units==='in-lb'?.5:1),Math.round(n/(units==='in-lb'?.5:1)));const cat=r.catalog.map(b=>({...b,...(units==='in-lb'?b.dims.in:b.dims.cm)}));await geometry(a,cat);}
+ for (const units of ['cm-kg','in-lb']) {const a=example();a.units=units;delete a.candidateBoxes;const r=await optimizeBoxCatalog(a);assert.equal(r.totals.unfitOrders,0);assert.ok(r.searched.candidates<=40);for(const b of r.catalog)for(const n of Object.values(b.dims.cm))close(n,Math.round(n));const cat=r.catalog.map(b=>({...b,...(units==='in-lb'?b.dims.in:b.dims.cm)}));await geometry(a,cat);}
  const a=example();a.catalogSize=12;assert.equal((await optimizeBoxCatalog(a)).catalog.length,3);
 });
 await test('generated large boxes remain usable by the single-order picker',async()=>{

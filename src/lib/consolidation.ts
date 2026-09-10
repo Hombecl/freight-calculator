@@ -1,3 +1,4 @@
+import { canonicalJson } from './hashing';
 import { computeStats, packWithConstraints, type PackItemSpec, type ZoneInfo } from './binPacking';
 import { containerChecks, CONTAINER_PRESETS, CHECK_SEMANTICS, fitsDoor, type Check } from './packChecks';
 import { PalletInputError } from './palletEstimate';
@@ -45,7 +46,7 @@ const volume = (s: { l: number; w: number; h: number; qty?: number }) => s.l * s
 const weight = (kg: number) => ({ kg, lb: kg / 0.45359237 });
 const dimensions = (cm: number) => ({ cm, in: cm / 2.54 });
 async function hash(v: unknown) {
-  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(v)));
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalJson(v)));
   return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, '0')).join('');
 }
 export function parseConsolidationRequest(input: unknown) {
@@ -104,6 +105,7 @@ export interface ConsolidationContainer {
   dimensions: { l: { cm: number; in: number }; w: { cm: number; in: number }; h: { cm: number; in: number } };
 }
 export interface ConsolidationPlan {
+  status: 'complete' | 'partial';
   id: string; containers: ConsolidationContainer[];
   remainder: { cartons: number; cbm: number; byPo: Array<{ poId: string; cartons: number; cbm: number; items: Array<{ sku: string; qty: number }> }> };
   lcl?: { cbm: number; cost?: number };
@@ -212,14 +214,14 @@ export async function consolidate(input: unknown) {
       { code: 'WINDOW_RESPECTED', status: p.window.from || p.window.to ? 'pass' : 'not_evaluated', assumption: p.window.from || p.window.to ? 'Inclusive ready-date window; missing dates excluded. Priority does not override eligibility.' : 'No shipment window supplied.' },
       { code: 'RATES_PROVIDED', status: rated ? 'pass' : 'not_evaluated', assumption: 'All used containers and any LCL remainder need rates in one user-supplied currency; origin/destination charges and cut-offs are not modelled.' },
     ];
-    const plan = { id: `mix-${searchedMixes}`, containers, remainder, ...(p.lcl ? { lcl: { cbm: lclCbm, ...(lclCost === undefined ? {} : { cost: lclCost }) } } : {}),
+    const plan = { status: remainder.cartons === 0 ? 'complete' as const : 'partial' as const, id: `mix-${searchedMixes}`, containers, remainder, ...(p.lcl ? { lcl: { cbm: lclCbm, ...(lclCost === undefined ? {} : { cost: lclCost }) } } : {}),
       cost: rated ? { containers: containerCost, lcl: lclCost ?? 0, total: containerCost + (lclCost ?? 0), perUnit: cargo.cartons ? (containerCost + (lclCost ?? 0)) / cargo.cartons : 0, currency: 'user-supplied' } : null, checks };
     const { id: _id, ...candidate } = plan;
     const candidateHash = await hash({ inputHash, ...candidate });
     if (!plans.some(p => p.candidateHash === candidateHash)) plans.push({ ...plan, candidateHash });
   }
   plans.sort((a, b) => Number(!!a.remainder.cartons) - Number(!!b.remainder.cartons) || (a.cost && b.cost ? a.cost.total - b.cost.total : 0) || a.containers.length - b.containers.length || b.containers.reduce((s, c) => s + c.volumeUtilPct, 0) / (b.containers.length || 1) - a.containers.reduce((s, c) => s + c.volumeUtilPct, 0) / (a.containers.length || 1) || cmp(a.id, b.id));
-  return { engineVersion: CONSOLIDATION_ENGINE, inputHash, eligible: { poIds: pos.map(po => po.poId), skipped }, cargo, plans: plans.slice(0, 3),
+  return { status: !cargo.cartons || plans.some(plan => plan.status === 'complete') ? 'complete' as const : 'partial' as const, engineVersion: CONSOLIDATION_ENGINE, inputHash, eligible: { poIds: pos.map(po => po.poId), skipped }, cargo, plans: plans.slice(0, 3),
     outcome: (plans.some(p => p.containers.length > 0) || !cargo.cartons ? 'found' : 'none_fit_budget') as 'found' | 'none_fit_budget', searched: { mixes: searchedMixes, packs, budget: p.searchBudget }, semantics: CHECK_SEMANTICS,
     notes: ['Bounded deterministic heuristic: best options found, not an optimum or a booking. Rates are yours, in one currency. Origin/destination charges and cut-offs are not modelled unless included in your rates.', 'Boxes and zones use cm/kg; dimensions and weights also include in/lb. Missing suppliers count separately. Default maxCount is 12 per preset. Fragile means zero weight on top.', ...(usedFallback ? ['No mix in the 55–85% volume band; closest-volume allowed mixes were screened as an explicit fallback.'] : [])] };
 }

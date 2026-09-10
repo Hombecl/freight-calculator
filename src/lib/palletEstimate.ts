@@ -83,6 +83,7 @@ function number(
 export function parsePalletRequest(input: unknown): PalletRequest {
   const body = obj(input),
     p = obj(body.pallet);
+  if ('units' in body) throw new PalletInputError('units', 'this endpoint is cm/kg only; use /api/order-quote for units');
   const pallet = {
     l: number(p.l, "pallet.l", 1, 300),
     w: number(p.w, "pallet.w", 1, 300),
