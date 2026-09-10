@@ -44,6 +44,7 @@ export const ENDPOINT_BASE_LIMITS: Record<string, { perMin: number; perDay: numb
   'case-design': { perMin: 10, perDay: 100 },
   'order-options': { perMin: 5, perDay: 50 },
   'box-catalog': { perMin: 5, perDay: 50 },
+  'receiver-check': { perMin: 10, perDay: 100 },
   'order-quote': { perMin: 10, perDay: 100 },
 };
 

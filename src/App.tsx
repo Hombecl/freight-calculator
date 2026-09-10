@@ -22,6 +22,8 @@ const CubingSoftwarePage = lazy(() => import('./pages/CubingSoftwarePage'));
 const CaseDesignerPage = lazy(() => import('./pages/CaseDesignerPage'));
 const ConsolidationPage = lazy(() => import('./pages/ConsolidationPage'));
 const BoxCatalogPage = lazy(() => import('./pages/BoxCatalogPage'));
+const ReceiverProfilesPage = lazy(() => import('./pages/ReceiverProfilesPage'));
+const BuildSheetPage = lazy(() => import('./pages/BuildSheetPage'));
 const OrderQuotePage = lazy(() => import('./pages/OrderQuotePage'));
 const RealityChecksPage = lazy(() => import('./pages/RealityChecksPage'));
 const WarehouseSpaceCalcPage = lazy(() => import('./pages/WarehouseSpaceCalcPage'));
@@ -75,6 +77,8 @@ export default function App() {
         <Route path="case-designer" element={<CaseDesignerPage />} />
         <Route path="consolidation" element={<ConsolidationPage />} />
         <Route path="box-catalog" element={<BoxCatalogPage />} />
+        <Route path="receiver-profiles" element={<ReceiverProfilesPage />} />
+        <Route path="build-sheet" element={<BuildSheetPage />} />
         <Route path="order-quote" element={<OrderQuotePage />} />
         <Route path="reality-checks" element={<RealityChecksPage />} />
         <Route path="warehouse-space-calculator" element={<WarehouseSpaceCalcPage />} />

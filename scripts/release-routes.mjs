@@ -14,6 +14,8 @@ const BASE_ROUTES = [
   "/case-designer",
   "/consolidation",
   "/box-catalog",
+  "/receiver-profiles",
+  "/build-sheet",
   "/order-quote",
   "/about",
   "/privacy",

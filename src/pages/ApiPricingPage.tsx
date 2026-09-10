@@ -28,6 +28,7 @@ const ENDPOINT_LABEL: Record<string, [string, string]> = {
   'case-design': ['Case designer', '外箱設計'],
   'order-options': ['Order options', '訂單方案'],
   'box-catalog': ['Box catalog', '紙箱目錄'],
+  'receiver-check': ['Receiver profile screening', '收貨方設定篩查'],
   'order-quote': ['Order → pallet quote', '訂單→卡板報價'],
 };
 

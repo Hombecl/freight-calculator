@@ -22,6 +22,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
    return ()=>clearInterval(timer);
  },[playing,steps.length]);
  useEffect(()=>{if(step>=steps.length)setPlaying(false);},[step,steps.length]);
+ useEffect(()=>{const showAll=()=>{setPlaying(false);setStep(result.boxes.length);};window.addEventListener('beforeprint',showAll);return()=>window.removeEventListener('beforeprint',showAll);},[result.boxes.length]);
  const scale=Math.min(410/Math.hypot(p.l,p.w),260/Math.max(result.loadedHeight,Math.hypot(p.l,p.w)))*zoom;
  const project=(v:number[])=>{
    const x=v[0]-p.l/2,y=v[1]-result.loadedHeight/2,z=v[2]-p.w/2;

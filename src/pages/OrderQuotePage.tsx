@@ -1,3 +1,5 @@
+import { applyProfile, attachProfile, loadProfiles, parseProfile } from '../lib/receiverProfiles';
+import { deviceProfiles, quoteStorageKey, SHEET_STORAGE } from '../lib/receiverStorage';
 import PalletEstimateView from '../components/PalletEstimateView';
 import { findOrderOptions, type OrderOptions, type OrderOptionsRequest } from '../lib/orderOptions';
 import { parseQuoteRequest } from '../lib/orderQuote';
@@ -51,7 +53,7 @@ const toUnits = (req: OrderQuoteRequest, from: QuoteUnits, to: QuoteUnits): Orde
   };
 };
 
-const storageKey = (orderId?: string) => `dp_quote_${(orderId || 'draft').replace(/[^\w-]/g, '_')}`;
+const storageKey = quoteStorageKey;
 
 function download(text: string, filename: string, type: string) {
   const a = document.createElement('a');
@@ -64,7 +66,11 @@ function download(text: string, filename: string, type: string) {
 export default function OrderQuotePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
-  const [req, setReq] = useState<OrderQuoteRequest>(() => structuredClone(QUOTE_EXAMPLE));
+  const [profiles, setProfiles] = useState(() => { try { return deviceProfiles(localStorage.getItem('dp_receiver_profiles')); } catch { return loadProfiles(); } });
+  const [profileId, setProfileId] = useState('');
+  const selectedProfile = profiles.find(p => p.id === profileId);
+  const [profileChecks, setProfileChecks] = useState<Awaited<ReturnType<typeof attachProfile>>['profileChecks']>([]);
+  const [req, setReq] = useState<OrderQuoteRequest>(() => { try { const carried = JSON.parse(sessionStorage.getItem(SHEET_STORAGE) || '{}'); if (carried.request) { parseQuoteRequest(carried.request); return carried.request; } } catch { /* use example when no valid carried request */ } return structuredClone(QUOTE_EXAMPLE); });
   const units: QuoteUnits = req.units ?? 'cm-kg';
   const lu = units === 'in-lb' ? 'in' : 'cm';
   const wu = units === 'in-lb' ? 'lb' : 'kg';
@@ -84,8 +90,10 @@ export default function OrderQuotePage() {
     try {
       const raw = localStorage.getItem(storageKey(req.orderId));
       if (raw) {
-        const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals'] };
-        if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: saved.actuals }));
+        const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals']; actualsUnits?: QuoteUnits; request?: OrderQuoteRequest };
+        if ('profileSnapshot' in saved && saved.profileSnapshot) { const p = parseProfile(saved.profileSnapshot); setProfiles(old => [...old.filter(v => v.id !== p.id), p]); setProfileId(p.id); }
+        if (saved.request) { setReq(saved.request); if ('pallets' in saved) { setQuote(saved as unknown as OrderQuote); setQuotedRequest(saved.request); if ('profileChecks' in saved && Array.isArray(saved.profileChecks)) setProfileChecks(saved.profileChecks); } return; }
+        if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: toUnits({...r, actuals:saved.actuals},saved.actualsUnits??r.units??'cm-kg',r.units??'cm-kg').actuals }));
       }
     } catch { /* */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,11 +106,13 @@ export default function OrderQuotePage() {
   const run = async () => {
     setBusy(true); setError(null); setServerState('');
     try {
-      const q = await quoteOrder(req);
+      const base = await quoteOrder(req);
+      const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+      setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
       setQuote(q);
       setQuotedRequest(structuredClone(req));
       track('order_quote_run', q.status);
-      try { localStorage.setItem(storageKey(req.orderId), JSON.stringify({ actuals: req.actuals ?? {}, at: new Date().toISOString() })); } catch { /* */ }
+      try { const old = JSON.parse(localStorage.getItem(storageKey(req.orderId)) || '{}'); localStorage.setItem(storageKey(req.orderId), JSON.stringify({ ...old, ...q, profileSnapshot: selectedProfile, request: req, actuals: req.actuals ?? {}, actualsUnits: req.units ?? 'cm-kg', at: new Date().toISOString() })); } catch { /* */ }
     } catch (e) {
       setQuote(null);
       setError(String((e as Error).message || e));
@@ -156,6 +166,9 @@ export default function OrderQuotePage() {
           '貼上訂單箱單,即得板數、外尺寸同毛重(連板底同包裝),並對照你嘅承運商或收貨方限制 — 報 LTL 運費之前先知道。確定性、同 API 同一引擎、承運商輸入 CSV、預測 vs 實量記錄。',
         )} />
       </Helmet>
+      <label className="block my-4">{T('Receiver profile', '收貨方設定')}<select data-testid="quote-profile" className={inputCls} value={profileId} onChange={e => { const p = profiles.find(p => p.id === e.target.value); setProfileId(e.target.value); setQuote(null); setProfileChecks([]); if (p) setReq(r => applyProfile(r,p)); }}><option value="">{T('No profile', '未選設定')}</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+      {selectedProfile?.template && <p className="bg-amber-100 p-2">{T('Verify with your buyer', '請同買家核實')} {selectedProfile.unverified?.join(', ')}</p>}
+      <Link to={lang === 'zh' ? '/zh/receiver-profiles' : '/receiver-profiles'}>{T('Manage receiver profiles', '管理收貨方設定')}</Link>
 
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Order → pallet quote', '訂單 → 卡板報價')}</h1>
       <p className="text-slate-600 mb-1 max-w-3xl">{T(
@@ -261,9 +274,11 @@ export default function OrderQuotePage() {
               const qty = change?.to ?? it.qty;
               return qty ? [{ ...it, qty }] : [];
             }), actuals: { summary: { selectedOptionId: option.id } } };
-            const q = await quoteOrder(next);
+            const base = await quoteOrder(next);
+            const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+            setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
             setReq(next); setQuotedRequest(structuredClone(next)); setQuote(q); setServerState('');
-            try { localStorage.setItem(storageKey(next.orderId), JSON.stringify({ actuals: next.actuals })); } catch { /* device storage optional */ }
+            try { localStorage.setItem(storageKey(next.orderId), JSON.stringify({ ...q, profileSnapshot: selectedProfile, request: next, actuals: next.actuals, actualsUnits: next.units ?? 'cm-kg' })); } catch { /* device storage optional */ }
           }} />}
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm border-collapse">
@@ -296,6 +311,7 @@ export default function OrderQuotePage() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
+            <Link className={btnCls} to={lang === 'zh' ? '/zh/build-sheet' : '/build-sheet'} onClick={e => {try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
             <button className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv'); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
             <button className={btnCls} onClick={() => { download(JSON.stringify({ ...req, actuals: undefined }, null, 2), 'order-quote-request.json', 'application/json'); track('order_quote_request_json'); }}><Download size={14} />{T('API request JSON', 'API 請求 JSON')}</button>
             <button className={btnCls} onClick={() => { download(JSON.stringify(quote, null, 2), `${req.orderId || 'order'}-quote.json`, 'application/json'); }}><Download size={14} />{T('Full result JSON', '完整結果 JSON')}</button>
@@ -308,8 +324,8 @@ export default function OrderQuotePage() {
           <details className="rounded-xl border border-slate-200 p-4 mb-4">
             <summary className="cursor-pointer font-bold text-slate-900 text-sm">{T('What was checked and what was assumed', '檢查咗啲乜、假設咗啲乜')}</summary>
             <ul className="mt-3 space-y-2 text-xs text-slate-700">
-              {[...quote.checks, ...quote.pallets.flatMap((p) => p.checks)].map((c, i) => (
-                <li key={i} className="flex gap-2"><span className={`shrink-0 font-bold px-1.5 py-0.5 rounded ${badge(c.status)}`}>{c.status}</span><span><b>{c.code}{c.pallet !== undefined ? ` · pallet #${c.pallet + 1}` : ''}</b>{c.observed !== undefined && <> — {T('observed', '觀察')} {String(c.observed)}{c.limit !== undefined && <> / {T('limit', '限制')} {String(c.limit)}</>}</>}<br /><span className="text-slate-500">{c.assumption}</span></span></li>
+              {[...quote.checks, ...quote.pallets.flatMap((p) => p.checks), ...profileChecks].map((c, i) => (
+                <li key={i} className="flex gap-2"><span className={`shrink-0 font-bold px-1.5 py-0.5 rounded ${badge(c.status)}`}>{c.status}</span><span><b>{c.code}{'pallet' in c && c.pallet !== undefined ? ` · pallet #${c.pallet + 1}` : ''}</b>{c.observed !== undefined && <> — {T('observed', '觀察')} {String(c.observed)}{c.limit !== undefined && <> / {T('limit', '限制')} {String(c.limit)}</>}</>}<br /><span className="text-slate-500">{c.assumption}</span></span></li>
               ))}
             </ul>
             <p className="text-[11px] text-slate-500 mt-3">{quote.notes.join(' ')}</p>

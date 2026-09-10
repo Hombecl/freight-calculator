@@ -21,6 +21,8 @@ export default function Footer() {
     { to: '/case-designer', label: T('Case designer', '外箱設計') },
     { to: '/consolidation', label: T('PO consolidation', '多訂單併櫃') },
     { to: '/box-catalog', label: T('Box catalog', '紙箱目錄') },
+    { to: '/receiver-profiles', label: T('Receiver profiles', '收貨方設定') },
+    { to: '/build-sheet', label: T('Crew build sheet', '倉務砌板單') },
     { to: '/order-quote', label: T('Order → Pallet Quote', '訂單 → 卡板報價') },
     { to: '/pallet-builder', label: T('Pallet Builder (3D)', '卡板砌板工具 (3D)') },
     { to: '/pallets-per-container', label: T('Pallets per Container', '每櫃卡板數') },

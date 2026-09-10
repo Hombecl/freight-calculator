@@ -336,6 +336,7 @@ export async function quoteOrder(input: unknown) {
   const maxOuterH = pallets.reduce((m, p) => Math.max(m, p.outerDims.h.cm), 0);
   return {
     semantics: CHECK_SEMANTICS,
+    buildInput: { pallet: { ...pallet, tareWeight: tare }, items: parsed.canonical.items, packagingAllowance: allowance },
     ...(parsed.actualSummary === undefined ? {} : { variance: { summary: parsed.actualSummary } }),
     engineVersion: `${ORDER_ENGINE}+${QUOTE_ENGINE}`,
     inputHash: hash,

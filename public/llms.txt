@@ -106,3 +106,8 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 - https://www.dimpack3d.com/box-catalog (also /zh/box-catalog): import SKUs and order history, compare a small catalog against current boxes, choose a box for one order with a read-only 3D packing preview. Downloads CSV and request JSON.
 - POST https://www.dimpack3d.com/api/box-catalog: units, skus, orders with counts, optional currentBoxes/candidateBoxes, catalogSize 1–12, billing{dimDivisor,unit,minBillableWeight?,ratePerKgOrLb?}, voidFillCostPerLitre?, searchBudget? (200 default, 1000 max). GET gives example. 96 KB; 300 SKUs, 500 shapes, 60 units and 10 distinct SKUs/shape, 40 candidates. Anonymous 5/min, 50/day. Returns catalog, perOrder, totals, baseline, savings, checks, semantics, engineVersion, inputHash, tier.
 - Deterministic heuristic, not optimum; no cushioning model. Unfit orders counted and charged at largest candidate for comparison, not a shipping quote. Missing rate means costs not evaluated. DIM presets are templates: verify with buyer/carrier.
+
+## Receiver profiles and crew build sheets
+- /receiver-profiles (also /zh/receiver-profiles): local customer-approved profiles, JSON import/export, source dates and unverified template fields. Verify with your buyer.
+- /build-sheet (also /zh/build-sheet): order-quote JSON to animated pallet build steps, manual checklist, printable sheets and device-only measured actuals/photos.
+- POST /api/receiver-check: order-quote request + profileId or profile; returns quote, versioned profile, profileChecks and needs_review on failed rules. GET lists templates. 10/min, 100/day anonymous. Screening only, not acceptance or chargeback prediction.
