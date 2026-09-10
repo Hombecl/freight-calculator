@@ -564,6 +564,20 @@ await test('build sheet: stored quote steps and actuals round trip', async () =>
   await page.getByText(new RegExp(`H \\+${100-quote.pallets[0].outerDims.h.cm}`)).first().waitFor();
 }, page);
 
+await test('verify-batch: box single-order DOM count matches Node library', async () => {
+  const { register } = await import('tsx/esm/api');
+  const unregister = register();
+  try {
+    const { chooseBox, BOX_EXAMPLE } = await import('../src/lib/boxCatalog.ts');
+    const result = await chooseBox({ ...BOX_EXAMPLE, lines: [{ sku: 'A', qty: 2 }] }, BOX_EXAMPLE.candidateBoxes);
+    await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('box-optimize').click();
+    await page.getByTestId('box-choose').click();
+    await page.getByTestId('box-placed-count').waitFor();
+    if (Number(await page.getByTestId('box-placed-count').textContent()) !== result.plan.boxes.length) throw new Error('Rendered count differs from Node plan');
+  } finally { unregister(); }
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.
