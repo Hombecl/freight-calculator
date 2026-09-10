@@ -364,16 +364,8 @@ export default function InteractiveLoadPlanner({
       lastPointerRef.current = performance.now();
       setNdc(e);
       last = { x: e.clientX, y: e.clientY };
-<<<<<<< HEAD
       const id = pickBox();
       if (id && !readOnlyRef.current) {
-||||||| 9b5d0c5
-      const id = pickBox();
-      if (id) {
-=======
-      const id = readOnly ? null : pickBox();
-      if (id) {
->>>>>>> feat/05-batch
         const b = boxesRef.current.find((x) => x.id === id)!;
         setSelectedId(id);
         if (selectedIdRef.current !== id) onSelect?.(id);
@@ -807,14 +799,8 @@ export default function InteractiveLoadPlanner({
         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700">
           Boxes: <span data-testid={placedCountTestId}>{boxesRef.current.length}</span>
         </span>
-<<<<<<< HEAD
         {!readOnly && <>
         <button
-||||||| 9b5d0c5
-        <button
-=======
-        {!readOnly && <> <button
->>>>>>> feat/05-batch
           onClick={rotateSelected}
           disabled={!selected}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
@@ -855,13 +841,7 @@ export default function InteractiveLoadPlanner({
           </span>
         )}
       </div>
-<<<<<<< HEAD
       {readOnly ? <p className="text-xs text-slate-400">{IS_ZH ? "唯讀 · 拖動旋轉視角 · 滾動縮放" : "Read-only · drag to orbit · scroll to zoom"}</p> : <p className="text-xs text-slate-400">
-||||||| 9b5d0c5
-      <p className="text-xs text-slate-400">
-=======
-      {!readOnly && <p className="text-xs text-slate-400">
->>>>>>> feat/05-batch
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>}
