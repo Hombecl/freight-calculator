@@ -27,6 +27,7 @@ const ENDPOINT_LABEL: Record<string, [string, string]> = {
   'order-plan': ['Multi-pallet order', '多卡板訂單'],
   'case-design': ['Case designer', '外箱設計'],
   'order-options': ['Order options', '訂單方案'],
+  'box-catalog': ['Box catalog', '紙箱目錄'],
   'order-quote': ['Order → pallet quote', '訂單→卡板報價'],
 };
 

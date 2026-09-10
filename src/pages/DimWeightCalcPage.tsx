@@ -1,3 +1,4 @@
+import { DIM_PRESETS as CARRIERS } from '../lib/dimPresets';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -17,12 +18,7 @@ import { track } from '../lib/track';
 // system: which unit the carrier's divisor is defined in.
 //   metric   → dim kg  = (L×W×H cm) ÷ divisor
 //   imperial → dim lb  = (L×W×H in) ÷ divisor
-const CARRIERS = [
-  { key: 'amazon', label: 'Amazon US FBA', system: 'imperial', divisor: 139, note: 'lb · ÷139 (in³/lb)' },
-  { key: 'express', label: 'UPS / FedEx / DHL — international express', system: 'metric', divisor: 5000, note: 'kg · ÷5000 (cm³/kg)' },
-  { key: 'courier-us', label: 'UPS / FedEx — US domestic', system: 'imperial', divisor: 139, note: 'lb · ÷139 (in³/lb)' },
-  { key: 'air', label: 'Air freight (IATA volumetric)', system: 'metric', divisor: 6000, note: 'kg · ÷6000 (cm³/kg)' },
-] as const;
+
 
 const CM_PER_IN = 2.54;
 const CM3_PER_IN3 = 16.387064;

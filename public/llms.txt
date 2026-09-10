@@ -101,3 +101,8 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 ## Multi-PO container consolidation
 - /consolidation (also /zh/consolidation): same origin region / one destination, PO ready-date window, priority, supplier caps, whole-PO preference and unloading zones. Up to three heuristic container plans with read-only 3D, CSV/JSON/curl exports and LCL remainder estimates using user quotes. Not a booking or optimum.
 - POST /api/consolidate; GET returns request example and documentation. 30 POs, 60 types, 3000 cartons, 64 KB; anonymous 5/min, 50/day. 40 packing runs by default, max 120. Both units, SHA-256 hashes, explicit screening checks. See /api-docs#consolidate.
+
+## Box catalog optimizer
+- https://www.dimpack3d.com/box-catalog (also /zh/box-catalog): import SKUs and order history, compare a small catalog against current boxes, choose a box for one order with a read-only 3D packing preview. Downloads CSV and request JSON.
+- POST https://www.dimpack3d.com/api/box-catalog: units, skus, orders with counts, optional currentBoxes/candidateBoxes, catalogSize 1–12, billing{dimDivisor,unit,minBillableWeight?,ratePerKgOrLb?}, voidFillCostPerLitre?, searchBudget? (200 default, 1000 max). GET gives example. 96 KB; 300 SKUs, 500 shapes, 60 units and 10 distinct SKUs/shape, 40 candidates. Anonymous 5/min, 50/day. Returns catalog, perOrder, totals, baseline, savings, checks, semantics, engineVersion, inputHash, tier.
+- Deterministic heuristic, not optimum; no cushioning model. Unfit orders counted and charged at largest candidate for comparison, not a shipping quote. Missing rate means costs not evaluated. DIM presets are templates: verify with buyer/carrier.
