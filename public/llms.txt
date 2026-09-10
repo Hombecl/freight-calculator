@@ -83,3 +83,11 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 ## Mixed-carton pallet height
 - [Pallet height calculator](https://www.dimpack3d.com/pallet-height-calculator): loaded height including pallet base, actual placements, payload limits and explicit complete/partial results. Best of three heuristics; not a proven minimum.
 - POST https://www.dimpack3d.com/api/pallet-estimate accepts the same request as the interactive calculator. GET returns an example and limits. cm/kg; 20 carton types, 200 total cartons, 32 KB body.
+
+## Order options: avoid another pallet
+- Interactive panel: https://www.dimpack3d.com/order-quote after a quote with at least two pallets.
+- POST https://www.dimpack3d.com/api/order-options: order-quote fields plus targetPalletCount (default baseline−1, min 1), adjustments[{sku,minQty,maxQty,qtyStep?}] (default all locked; bounds include current; steps anchored at current), economics{palletFreight,handlingPerPallet,contributionPerUnit,deferralCostPerUnit,currency}, searchBudget (default 60, max 200). GET returns an example. Body max 48 KB; anonymous 5/min, 50/day; optional X-API-Key or Authorization.
+- Searches unchanged quantities with three packing strategies and four orderings before permitted single-SKU/pair changes. Returns ≤3 complete alternatives, full quotes, quantityChanges, candidateHash, economics, baseline, target, searched counts, outcome found|none_within_search|already_at_target, checks, semantics, engineVersion and inputHash. Never relaxes supplied limits. Added units may use spare capacity at the baseline pallet count. Target is a goal, not a filter on incremental improvements.
+- Best option found within the candidate budget, not a proven minimum. Costs are supplied by the customer; missing required economics returns netSavings:null. Screens do not certify transport stability or receiver acceptance.
+- quoteOrder accepts actuals.summary{actualPalletCount,selectedOptionId,measuredAt} and echoes variance.summary. The optional packing{strategy,ordering} field reproduces a selected option with its changed quantities.
+- Full reference: https://www.dimpack3d.com/api-docs#order-options

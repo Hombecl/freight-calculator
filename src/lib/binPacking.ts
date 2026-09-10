@@ -146,7 +146,10 @@ function tryPropagate(
   return true;
 }
 
-export function packContainer(container: PackContainer, specs: PackItemSpec[], strategy: 'default' | 'height' | 'footprint' = 'default'): PackResult {
+export type PackingOrder = 'heaviest-first' | 'largest-footprint-first' | 'tallest-first' | 'reverse';
+export interface PackingOptions { strategy?: 'default' | 'height' | 'footprint'; ordering?: PackingOrder }
+
+export function packContainer(container: PackContainer, specs: PackItemSpec[], strategy: 'default' | 'height' | 'footprint' = 'default', ordering?: PackingOrder): PackResult {
   // expand + heavy-first, then volume-first
   const queue: { spec: PackItemSpec; unit: number }[] = [];
   specs.forEach((s) => { for (let i = 0; i < s.qty; i++) queue.push({ spec: s, unit: i }); });
@@ -155,6 +158,10 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
     // equal, so default behaviour is unchanged
     const ga = a.spec.group ?? '', gb = b.spec.group ?? '';
     if (ga !== gb) return ga < gb ? -1 : 1;
+    if (ordering === 'reverse') return specs.indexOf(b.spec) - specs.indexOf(a.spec);
+    if (ordering === 'tallest-first') return b.spec.h - a.spec.h;
+    if (ordering === 'largest-footprint-first') return b.spec.l * b.spec.w - a.spec.l * a.spec.w;
+    if (ordering === 'heaviest-first') return b.spec.weight - a.spec.weight;
     if (strategy === 'footprint') {
       const area = b.spec.l * b.spec.w - a.spec.l * a.spec.w;
       if (area) return area;

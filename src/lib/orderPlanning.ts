@@ -1,3 +1,4 @@
+import type { PackingOptions } from './binPacking';
 import {
   estimatePallet,
   PALLET_COLORS,
@@ -30,7 +31,7 @@ export function parseOrder(input: unknown): {
   return { request: parsePalletRequest(o.request ?? o), maxPallets };
 }
 /** Repeated bounded packing, retaining original SKU identity across every pallet. */
-export function planOrder(input: unknown) {
+export function planOrder(input: unknown, options: PackingOptions = {}) {
   const { request, maxPallets } = parseOrder(input);
   const placed = request.items.map(() => 0);
   const pallets: PalletEstimate[] = [];
@@ -45,7 +46,7 @@ export function planOrder(input: unknown) {
         ...request.items[i],
         qty: request.items[i].qty - placed[i],
       })),
-    });
+    }, options);
     if (!estimate.placedCount) break;
     const serials = [...placed];
     estimate.boxes = estimate.boxes.map((box) => {
@@ -111,7 +112,7 @@ export function compareOrders(input: unknown) {
   });
 }
 /** Positive carton heights mean every supporting carton precedes its dependants. */
-export function buildSteps(pallet: PalletEstimate) {
+export function buildSteps(pallet: Pick<PalletEstimate, "boxes">) {
   return [...pallet.boxes].sort(
     (a, b) =>
       a.py - b.py || a.pz - b.pz || a.px - b.px || a.id.localeCompare(b.id)

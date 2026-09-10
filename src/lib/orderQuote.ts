@@ -1,3 +1,5 @@
+import type { PackingOptions } from './binPacking';
+import { CHECK_SEMANTICS } from './packChecks';
 /**
  * orderQuote.ts — "pallet count and loaded dimensions BEFORE freight quoting".
  *
@@ -32,6 +34,8 @@ const CM_PER_IN = 2.54;
 const KG_PER_LB = 0.45359237;
 
 export interface OrderQuoteRequest {
+  /** Optional reproducible packing selection; omitted preserves the original best-of-three behavior. */
+  packing?: PackingOptions;
   /** caller's order reference; echoed back and used as the meter id */
   orderId?: string;
   /** units of every dimension/weight in THIS request; default cm-kg */
@@ -62,7 +66,7 @@ export interface OrderQuoteRequest {
   }>;
   maxPallets?: number;
   /** measured results, keyed by pallet index ("0", "1", …), same units as request */
-  actuals?: Record<string, { height?: number; grossWeight?: number; note?: string }>;
+  actuals?: { [index: `${number}`]: { height?: number; grossWeight?: number; note?: string }; summary?: { actualPalletCount?: number; selectedOptionId?: string; measuredAt?: string } };
 }
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'not_evaluated';
@@ -101,6 +105,19 @@ const round = (n: number, dp = 2) => Math.round(n * 10 ** dp) / 10 ** dp;
 export function parseQuoteRequest(input: unknown) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new PalletInputError('request', 'must be an object');
   const o = input as Record<string, unknown>;
+  const packing: PackingOptions = {};
+  if (o.packing !== undefined) {
+    if (!o.packing || typeof o.packing !== 'object' || Array.isArray(o.packing)) throw new PalletInputError('packing', 'must be an object');
+    const p = o.packing as Record<string, unknown>;
+    if (p.strategy !== undefined) {
+      if (!['default', 'height', 'footprint'].includes(p.strategy as string)) throw new PalletInputError('packing.strategy', 'unknown strategy');
+      packing.strategy = p.strategy as PackingOptions['strategy'];
+    }
+    if (p.ordering !== undefined) {
+      if (!['heaviest-first', 'largest-footprint-first', 'tallest-first', 'reverse'].includes(p.ordering as string)) throw new PalletInputError('packing.ordering', 'unknown ordering');
+      packing.ordering = p.ordering as PackingOptions['ordering'];
+    }
+  }
   const units: QuoteUnits = o.units === undefined ? 'cm-kg' : o.units === 'cm-kg' || o.units === 'in-lb' ? o.units : (() => { throw new PalletInputError('units', "must be 'cm-kg' or 'in-lb'"); })();
   const L = units === 'in-lb' ? CM_PER_IN : 1;
   const W = units === 'in-lb' ? KG_PER_LB : 1;
@@ -162,9 +179,28 @@ export function parseQuoteRequest(input: unknown) {
   if (!Number.isInteger(maxPallets)) throw new PalletInputError('maxPallets', 'must be a whole number');
 
   const actuals: Record<string, { height?: number; grossWeight?: number; note?: string }> = {};
+  let actualSummary: NonNullable<OrderQuoteRequest['actuals']>['summary'];
   if (o.actuals !== undefined) {
     if (!o.actuals || typeof o.actuals !== 'object' || Array.isArray(o.actuals)) throw new PalletInputError('actuals', 'must be an object keyed by pallet index');
     for (const [k, v] of Object.entries(o.actuals as Record<string, unknown>)) {
+      if (k === 'summary') {
+        if (!v || typeof v !== 'object' || Array.isArray(v)) throw new PalletInputError('actuals.summary', 'must be an object');
+        const a = v as Record<string, unknown>;
+        for (const key of ['actualPalletCount', 'selectedOptionId', 'measuredAt']) {
+          if (a[key] === null || a[key] === '') throw new PalletInputError(`actuals.summary.${key}`, 'must not be null or empty');
+        }
+        const count = num(a.actualPalletCount, 'actuals.summary.actualPalletCount', 0, 100000);
+        if (count !== undefined && !Number.isInteger(count)) throw new PalletInputError('actuals.summary.actualPalletCount', 'must be a whole number');
+        const selectedOptionId = str(a.selectedOptionId, 'actuals.summary.selectedOptionId', 80);
+        const measuredAt = str(a.measuredAt, 'actuals.summary.measuredAt', 40);
+        if (measuredAt !== undefined) {
+          const match = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(measuredAt);
+          const calendar = match && new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00Z`);
+          if (!match || !calendar || !Number.isFinite(calendar.getTime()) || calendar.toISOString().slice(0, 10) !== measuredAt.slice(0, 10) || !Number.isFinite(Date.parse(measuredAt))) throw new PalletInputError('actuals.summary.measuredAt', 'must be a valid ISO timestamp with timezone');
+        }
+        actualSummary = { ...(count === undefined ? {} : { actualPalletCount: count }), ...(selectedOptionId === undefined ? {} : { selectedOptionId }), ...(measuredAt === undefined ? {} : { measuredAt }) };
+        continue;
+      }
       if (!/^\d+$/.test(k) || +k >= maxPallets) throw new PalletInputError(`actuals.${k}`, 'key must be a pallet index below maxPallets');
       const av = (v ?? {}) as Record<string, unknown>;
       const height = num(av.height, `actuals.${k}.height`, 0.1, 1000);
@@ -183,7 +219,7 @@ export function parseQuoteRequest(input: unknown) {
     pallet,
     items: items.map(({ sku: _sku, ...rest }) => rest),
   };
-  return { orderId, units, pallet, tare, allowance, limits, items, maxPallets, actuals, canonical };
+  return { orderId, units, packing, pallet, tare, allowance, limits, items, maxPallets, actuals, actualSummary, canonical };
 }
 export type ParsedQuote = ReturnType<typeof parseQuoteRequest>;
 
@@ -197,6 +233,7 @@ export async function inputHash(parsed: ParsedQuote): Promise<string> {
     limits: parsed.limits,
     items: parsed.items,
     maxPallets: parsed.maxPallets,
+    ...(Object.keys(parsed.packing).length ? { packing: parsed.packing } : {}),
   });
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -208,7 +245,7 @@ const bothW = (kg: number) => ({ kg: round(kg), lb: round(kg / KG_PER_LB) });
 export async function quoteOrder(input: unknown) {
   const parsed = parseQuoteRequest(input);
   const { pallet, tare, allowance, limits, items, maxPallets, actuals } = parsed;
-  const plan: OrderPlan = planOrder({ request: parsed.canonical, maxPallets });
+  const plan: OrderPlan = planOrder({ request: parsed.canonical, maxPallets }, parsed.packing);
   const hash = await inputHash(parsed);
 
   const orderChecks: QuoteCheck[] = [];
@@ -218,7 +255,7 @@ export async function quoteOrder(input: unknown) {
     status: plan.status === 'complete' ? 'pass' : 'fail',
     observed: `${plan.placedCount}/${plan.requestedCount} cartons placed on ${plan.palletCount} pallet(s)`,
     limit: `maxPallets ${maxPallets}`,
-    assumption: 'Best-of-three heuristics; fewer pallets or a lower height may exist. A partial order must not be quoted as a whole shipment.',
+    assumption: `${Object.keys(parsed.packing).length ? 'Selected packing heuristic' : 'Best-of-three heuristics'}; fewer pallets or a lower height may exist. A partial order must not be quoted as a whole shipment.`,
   });
   orderChecks.push({
     code: 'TARE_PROVIDED',
@@ -298,6 +335,8 @@ export async function quoteOrder(input: unknown) {
   const totalGross = pallets.reduce((s, p) => s + p.grossWeight.kg, 0);
   const maxOuterH = pallets.reduce((m, p) => Math.max(m, p.outerDims.h.cm), 0);
   return {
+    semantics: CHECK_SEMANTICS,
+    ...(parsed.actualSummary === undefined ? {} : { variance: { summary: parsed.actualSummary } }),
     engineVersion: `${ORDER_ENGINE}+${QUOTE_ENGINE}`,
     inputHash: hash,
     orderId: parsed.orderId ?? null,

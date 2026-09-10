@@ -1,4 +1,4 @@
-import { packContainer, type PackItemSpec } from "./binPacking";
+import { packContainer, type PackingOptions, type PackItemSpec } from "./binPacking";
 import { palletChecks, CHECK_SEMANTICS } from "./packChecks";
 
 export const PALLET_LIMITS = {
@@ -145,7 +145,7 @@ export function parsePalletRequest(input: unknown): PalletRequest {
   return { pallet, items };
 }
 const round = (n: number) => Math.round(n * 1000) / 1000;
-export function estimatePallet(input: unknown) {
+export function estimatePallet(input: unknown, options: PackingOptions = {}) {
   const request = parsePalletRequest(input),
     { pallet, items } = request;
   const specs: PackItemSpec[] = items.map((it, i) => ({
@@ -159,9 +159,9 @@ export function estimatePallet(input: unknown) {
     h: pallet.maxHeight - pallet.baseHeight,
     maxWeight: pallet.maxWeight,
   };
-  const trials = (["default", "height", "footprint"] as const).map(
+  const trials = (options.strategy ? [options.strategy] : ["default", "height", "footprint"] as const).map(
     (strategy) => {
-      const result = packContainer(container, specs, strategy);
+      const result = packContainer(container, specs, strategy, options.ordering);
       const cargoHeight = result.boxes.reduce(
         (h, b) => Math.max(h, b.py + b.h),
         0
@@ -222,7 +222,7 @@ export function estimatePallet(input: unknown) {
     semantics: CHECK_SEMANTICS,
     notes,
     method: {
-      name: "best-of-three-heuristics",
+      name: options.strategy ? "selected-heuristic" : "best-of-three-heuristics",
       optimalityProven: false,
       strategy: best.strategy,
     },

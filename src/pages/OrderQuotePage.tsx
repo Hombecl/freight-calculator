@@ -1,3 +1,6 @@
+import PalletEstimateView from '../components/PalletEstimateView';
+import { findOrderOptions, type OrderOptions, type OrderOptionsRequest } from '../lib/orderOptions';
+import { parseQuoteRequest } from '../lib/orderQuote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -44,7 +47,7 @@ const toUnits = (req: OrderQuoteRequest, from: QuoteUnits, to: QuoteUnits): Orde
     packagingAllowance: { height: l(req.packagingAllowance?.height), weight: w(req.packagingAllowance?.weight) },
     limits: { ...req.limits, maxLoadedHeight: l(req.limits?.maxLoadedHeight), maxGrossWeight: w(req.limits?.maxGrossWeight) },
     items: req.items.map((it) => ({ ...it, l: l(it.l)!, w: l(it.w)!, h: l(it.h)!, weight: w(it.weight)!, maxStack: w(it.maxStack) })),
-    actuals: req.actuals && Object.fromEntries(Object.entries(req.actuals).map(([k, a]) => [k, { ...a, height: l(a.height), grossWeight: w(a.grossWeight) }])),
+    actuals: req.actuals && Object.fromEntries(Object.entries(req.actuals).map(([k, a]) => [k, k === 'summary' ? a : { ...a, height: l(('height' in a ? a.height : undefined)), grossWeight: w(('grossWeight' in a ? a.grossWeight : undefined)) }])) as OrderQuoteRequest['actuals'],
   };
 };
 
@@ -65,6 +68,7 @@ export default function OrderQuotePage() {
   const units: QuoteUnits = req.units ?? 'cm-kg';
   const lu = units === 'in-lb' ? 'in' : 'cm';
   const wu = units === 'in-lb' ? 'lb' : 'kg';
+  const [quotedRequest, setQuotedRequest] = useState<OrderQuoteRequest | null>(null);
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,6 +100,7 @@ export default function OrderQuotePage() {
     try {
       const q = await quoteOrder(req);
       setQuote(q);
+      setQuotedRequest(structuredClone(req));
       track('order_quote_run', q.status);
       try { localStorage.setItem(storageKey(req.orderId), JSON.stringify({ actuals: req.actuals ?? {}, at: new Date().toISOString() })); } catch { /* */ }
     } catch (e) {
@@ -248,6 +253,18 @@ export default function OrderQuotePage() {
             <p className="text-[11px] text-slate-500 mt-2 font-mono">inputHash {quote.inputHash.slice(0, 16)}… · {quote.engineVersion} · meter {quote.meter.unit}:{quote.meter.id}</p>
           </div>
 
+          {quote.summary.palletCount >= 2 && quotedRequest && JSON.stringify(req) === JSON.stringify(quotedRequest) && <OrderOptionsPanel key={quote.inputHash} request={quotedRequest} baseline={quote} onUse={async (option) => {
+            if (!window.confirm(T('Apply these quantity changes and use this pallet build?', '套用呢啲數量變更同砌板方案？'))) return;
+            const normalized = parseQuoteRequest(quotedRequest);
+            const next: OrderQuoteRequest = { ...quotedRequest, packing: option.packing, items: quotedRequest.items.flatMap((it, i) => {
+              const change = option.quantityChanges.find(c => c.sku === normalized.items[i].sku);
+              const qty = change?.to ?? it.qty;
+              return qty ? [{ ...it, qty }] : [];
+            }), actuals: { summary: { selectedOptionId: option.id } } };
+            const q = await quoteOrder(next);
+            setReq(next); setQuotedRequest(structuredClone(next)); setQuote(q); setServerState('');
+            try { localStorage.setItem(storageKey(next.orderId), JSON.stringify({ actuals: next.actuals })); } catch { /* device storage optional */ }
+          }} />}
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm border-collapse">
               <thead><tr className="text-left text-slate-500 border-b border-slate-200">
@@ -255,7 +272,7 @@ export default function OrderQuotePage() {
               </tr></thead>
               <tbody>
                 {quote.pallets.map((p) => {
-                  const a = req.actuals?.[String(p.index)] ?? {};
+                  const a = req.actuals?.[`${p.index}`] ?? {};
                   return (
                     <tr key={p.index} className="border-b border-slate-100 align-top">
                       <td className="py-2 pr-3 font-bold">#{p.index + 1}</td>
@@ -318,4 +335,67 @@ export default function OrderQuotePage() {
       </section>
     </div>
   );
+}
+
+function OrderOptionsPanel({ request, baseline, onUse }: { request: OrderQuoteRequest; baseline: OrderQuote; onUse: (option: OrderOptions['alternatives'][number]) => Promise<void> }) {
+  const { lang } = useApp();
+  const T = (en: string, zh: string) => lang === 'zh' ? zh : en;
+  const [target, setTarget] = useState(Math.max(1, baseline.summary.palletCount - 1));
+  const [adjustments, setAdjustments] = useState<NonNullable<OrderOptionsRequest['adjustments']>>([]);
+  const [economics, setEconomics] = useState<NonNullable<OrderOptionsRequest['economics']>>({});
+  const [result, setResult] = useState<OrderOptions | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const parsed = useMemo(() => parseQuoteRequest(request), [request]);
+  const numeric = (s: string) => s === '' ? undefined : Number(s);
+  const search = async () => {
+    setBusy(true); setError(''); setResult(null); setOpen(null);
+    try {
+      const r = await findOrderOptions({ ...request, targetPalletCount: target, adjustments, economics });
+      setResult(r); track('order_options_run', r.outcome);
+    } catch (e) { setError(String((e as Error).message)); }
+    finally { setBusy(false); }
+  };
+  const invalidate = () => { setResult(null); setOpen(null); };
+  return <section data-testid="order-options" className="rounded-2xl border border-blue-200 bg-blue-50/30 p-5 mb-6 space-y-4">
+    <h2 className="text-xl font-bold">{T('Avoid another pallet', '慳返下一板')}</h2>
+    <p className="text-sm text-slate-600">{T('Try another build first. Quantities stay locked unless you permit a change below. Added units may fit without another pallet. Costs are supplied by you.', '先試其他砌法。除非你喺下面准許更改，否則數量鎖定。加貨可能唔使加板。費用由你提供。')}</p>
+    <fieldset disabled={busy} className="space-y-3">
+      <label className="block text-sm">{T('Target pallets', '目標板數')}<input data-testid="option-target" className={inputCls} type="number" min={1} max={20} value={target} onChange={e => { setTarget(+e.target.value); invalidate(); }} /></label>
+      {parsed.items.map(it => {
+        const a = adjustments.find(a => a.sku === it.sku);
+        return <div key={it.sku} className="rounded-lg border p-3 space-y-2">
+          <label className="font-semibold text-sm"><input type="checkbox" checked={!!a} onChange={e => { setAdjustments(old => e.target.checked ? [...old, { sku: it.sku, minQty: it.qty, maxQty: it.qty, qtyStep: 1 }] : old.filter(a => a.sku !== it.sku)); invalidate(); }} /> {it.sku} — {T('Adjustable', '可改數量')} ({it.qty})</label>
+          {a && <div className="grid grid-cols-3 gap-2">{(['minQty', 'maxQty', 'qtyStep'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Min quantity', '最少數量'), T('Max quantity', '最多數量'), T('Quantity step', '數量步幅')][i]}<input className={inputCls} type="number" min={key === 'qtyStep' ? 1 : 0} max={200} value={a[key]} onChange={e => { setAdjustments(old => old.map(v => v.sku === it.sku ? { ...v, [key]: +e.target.value } : v)); invalidate(); }} /></label>)}</div>}
+          <div className="grid grid-cols-2 gap-2">{(['contributionPerUnit', 'deferralCostPerUnit'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Contribution/unit (optional)', '每件貢獻利潤（選填）'), T('Deferral cost/unit (optional)', '每件延後出貨費（選填）')][i]}<input className={inputCls} type="number" min={0} step="any" value={economics[key]?.[it.sku] ?? ''} onChange={e => {
+            const values = { ...economics[key] }; const value = numeric(e.target.value);
+            if (value === undefined) delete values[it.sku]; else values[it.sku] = value;
+            setEconomics(old => ({ ...old, [key]: values })); invalidate();
+          }} /></label>)}</div>
+        </div>;
+      })}
+      <div className="grid sm:grid-cols-3 gap-2">
+        {(['palletFreight', 'handlingPerPallet'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Freight/pallet (optional)', '每板運費（選填）'), T('Handling/pallet (optional)', '每板處理費（選填）')][i]}<input className={inputCls} type="number" min={0} step="any" value={economics[key] ?? ''} onChange={e => { setEconomics(old => ({ ...old, [key]: numeric(e.target.value) })); invalidate(); }} /></label>)}
+        <label className="text-xs">{T('Currency (optional)', '貨幣（選填）')}<input className={inputCls} placeholder="USD" maxLength={3} value={economics.currency ?? ''} onChange={e => { setEconomics(old => ({ ...old, currency: e.target.value.toUpperCase() || undefined })); invalidate(); }} /></label>
+      </div>
+      <button className={primaryCls} onClick={() => void search()}>{busy ? T('Searching…', '搜尋中…') : T('Search options', '搜尋方案')}</button>
+    </fieldset>
+    {error && <p role="alert" className="text-red-700">{error}</p>}
+    {result && <div className="space-y-3" aria-live="polite">
+      <p className="font-semibold">{result.alternatives.length ? T(`Best option found within ${result.searched.candidates} candidates`, `喺 ${result.searched.candidates} 個候選入面搵到嘅最佳方案`) : T(`Searched ${result.searched.candidates} candidates`, `已搜尋 ${result.searched.candidates} 個候選`)}</p>
+      {!result.alternatives.length && <p data-testid="option-none">{result.outcome === 'already_at_target' ? T('Already at target.', '已達目標。') : T('No option found within this search.', '今次搜尋搵唔到合適方案。')}</p>}
+      <div className="flex flex-wrap gap-2">{result.checks.map(c => <span key={c.code} title={c.assumption} className="rounded bg-white border px-2 py-1 text-xs">{c.code}: {c.status}</span>)}</div>
+      {result.alternatives.map(a => <article key={a.id} data-testid="option-card" className="rounded-xl border bg-white p-4 space-y-3">
+        <h3 className="font-bold">{a.palletCount} {T('pallet(s)', '板')} · <span data-testid="option-carton-count">{a.quote.summary.cartonsPlaced}</span> {T('cartons', '箱')}</h3>
+        <p className="text-xs text-slate-600">{a.strategy} · {a.palletCount <= result.target ? T('Target met', '達到目標') : T('Above target', '未達目標')}</p>
+        {a.quantityChanges.length ? <table className="w-full text-sm"><thead><tr>{['SKU', T('From', '原數量'), T('To', '新數量'), T('Change', '變更')].map(h => <th className="text-left" key={h}>{h}</th>)}</tr></thead><tbody>{a.quantityChanges.map(c => <tr key={c.sku}><td>{c.sku}</td><td>{c.from}</td><td>{c.to}</td><td>{c.delta > 0 ? '+' : ''}{c.delta}</td></tr>)}</tbody></table> : <p>{T('Repack only — quantities unchanged.', '只改砌法，數量不變。')}</p>}
+        <p>{a.economics.netSavings === null ? T('Add costs to compute', '加入費用先可以計算') : `${T('Net savings', '淨節省')}: ${a.economics.netSavings.toFixed(2)} ${economics.currency ?? ''}`}</p>
+        <div className="flex flex-wrap gap-1">{[...a.quote.checks, ...a.quote.pallets.flatMap(p => p.checks)].map((c, i) => <span key={i} title={c.assumption} className={`rounded px-2 py-1 text-xs ${c.status === 'pass' ? 'bg-emerald-100' : c.status === 'warn' ? 'bg-amber-100' : 'bg-slate-100'}`}>{c.code}: {c.status}</span>)}</div>
+        <div className="flex gap-2"><button className={btnCls} aria-expanded={open === a.id} onClick={() => setOpen(open === a.id ? null : a.id)}>{T('View build', '睇砌板步驟')}</button><button className={primaryCls} disabled={busy} onClick={async () => { setBusy(true); try { await onUse(a); } catch (e) { setError(String((e as Error).message)); } finally { setBusy(false); } }}>{T('Use this option', '用呢個方案')}</button></div>
+        {open === a.id && a.quote.pallets.map(p => <div key={p.index} data-testid="option-pallet" data-carton-count={p.cartonCount}><h4 className="font-semibold">#{p.index + 1} · {p.cartonCount} {T('cartons', '箱')}</h4><PalletEstimateView countTestId="option-placed-count" zh={lang === 'zh'} result={{ boxes: p.boxes, pallet: parsed.pallet, loadedHeight: p.loadedHeight.cm }} /></div>)}
+      </article>)}
+      <p className="text-xs text-slate-600">{T('Screening against your supplied limits; this does not certify stability or receiver acceptance. An exhausted budget does not prove no better option exists.', '只按你提供嘅限制做篩查，唔代表穩定性或收貨方接受嘅認證。用盡搜尋額度唔代表冇更好方案。')}</p>
+    </div>}
+  </section>;
 }
