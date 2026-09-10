@@ -18,6 +18,7 @@ export default function Footer() {
     { to: '/freight-class-calculator', label: T('Freight Class Calculator', '運費等級計算機') },
     { to: '/ti-hi-calculator', label: T('TI HI Calculator', 'TI HI 計算機') },
     { to: '/pallet-height-calculator', label: T('Pallet Height Calculator', '卡板高度計算器') },
+    { to: '/consolidation', label: T('PO consolidation', '多訂單併櫃') },
     { to: '/order-quote', label: T('Order → Pallet Quote', '訂單 → 卡板報價') },
     { to: '/pallet-builder', label: T('Pallet Builder (3D)', '卡板砌板工具 (3D)') },
     { to: '/pallets-per-container', label: T('Pallets per Container', '每櫃卡板數') },

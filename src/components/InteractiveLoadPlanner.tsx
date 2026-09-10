@@ -30,6 +30,8 @@ export type { PlannerBox };
 
 
 interface Props {
+  readOnly?: boolean;
+  placedCountTestId?: string;
   className?: string;
   container: { l: number; w: number; h: number };
   boxes: PlannerBox[];
@@ -97,6 +99,8 @@ const useThree = (): boolean => {
 };
 
 export default function InteractiveLoadPlanner({
+  readOnly = false,
+  placedCountTestId,
   className = '',
   container,
   boxes,
@@ -116,6 +120,8 @@ export default function InteractiveLoadPlanner({
   onChange,
   registerSnapshot,
 }: Props) {
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
   const undoRef = useRef<() => void>(() => {});
@@ -359,7 +365,7 @@ export default function InteractiveLoadPlanner({
       setNdc(e);
       last = { x: e.clientX, y: e.clientY };
       const id = pickBox();
-      if (id) {
+      if (id && !readOnlyRef.current) {
         const b = boxesRef.current.find((x) => x.id === id)!;
         setSelectedId(id);
         if (selectedIdRef.current !== id) onSelect?.(id);
@@ -665,6 +671,7 @@ export default function InteractiveLoadPlanner({
   // Only when the pointer has interacted with this editor and no input focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (readOnlyRef.current) return;
       const tag = (document.activeElement?.tagName ?? '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (!interactedRef.current) return;
@@ -789,8 +796,9 @@ export default function InteractiveLoadPlanner({
           Utilization: {util.toFixed(1)}%
         </span>
         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700">
-          Boxes: {boxesRef.current.length}
+          Boxes: <span data-testid={placedCountTestId}>{boxesRef.current.length}</span>
         </span>
+        {!readOnly && <>
         <button
           onClick={rotateSelected}
           disabled={!selected}
@@ -825,16 +833,17 @@ export default function InteractiveLoadPlanner({
         >
           {IS_ZH ? "重設自動擺位" : "Reset to auto"}
         </button>
+        </>}
         {selected && (
           <span className="text-slate-500">
             Selected: {selected.label} ({selected.l}×{selected.w}×{selected.h} {unitLabel})
           </span>
         )}
       </div>
-      <p className="text-xs text-slate-400">
+      {readOnly ? <p className="text-xs text-slate-400">{IS_ZH ? "唯讀 · 拖動旋轉視角 · 滾動縮放" : "Read-only · drag to orbit · scroll to zoom"}</p> : <p className="text-xs text-slate-400">
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
-      </p>
+      </p>}
     </div>
   );
 }

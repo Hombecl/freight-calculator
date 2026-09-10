@@ -11,6 +11,7 @@ const BASE_ROUTES = [
   "/api-docs",
   "/api-pricing",
   "/cubing-software",
+  "/consolidation",
   "/order-quote",
   "/about",
   "/privacy",
