@@ -67,6 +67,13 @@ export default function ApiDocsPage() {
         )}
       </p>
 
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mb-8 text-sm text-slate-700">
+        <b>{T('Authentication', '認證')}:</b> {T(
+          'none required. Optionally send X-API-Key: dp_live_… (or Authorization: Bearer) to get your own rate-limit bucket at 5× the anonymous limits — issued instantly, free.',
+          '毋須認證。可選加上 X-API-Key: dp_live_…(或 Authorization: Bearer)取得自己嘅限額配額,係匿名限額 5 倍 — 即時發出,免費。',
+        )} <Link to="/api-pricing" className="text-blue-700 font-bold">{T('Get a key / see plans →', '攞 key / 睇方案 →')}</Link>
+      </div>
+
       <section id="order-plan" className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 mb-8 scroll-mt-6">
         <h2 className="text-xl font-bold mb-2">{T('Multi-pallet order planning API', '混合訂單與多棧板規劃 API')}</h2>
         <p className="text-slate-700 mb-4">{T('POST /api/order-plan allocates remaining cartons across up to 20 pallets. Send { request, maxPallets }, using the pallet and items fields below. All API dimensions are centimetres and all weights kilograms, even when the website displays inches and pounds.', 'POST /api/order-plan 將剩餘紙箱依序分配至最多 20 個棧板。傳送 { request, maxPallets }，request 使用下方 pallet 與 items 欄位。API 尺寸一律為公分、重量為公斤，即使網站選擇英吋與磅亦相同。')}</p>
@@ -133,7 +140,7 @@ for pallet in plan['pallets']:
 
       <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-600 space-y-2 mb-8">
         <p><b>{T('Units', '單位')}:</b> cm / kg. <b>{T('Limits', '限制')}:</b> {T('100 item types, 2,000 total units per request. Positions are min-corner (px, py, pz) with the door at +X.', '每次 100 種箱型、共 2,000 件。位置為最小角 (px, py, pz),櫃門喺 +X 方向。')}</p>
-        <p><b>{T('Terms', '條款')}:</b> {T('Free during beta, fair use. Results are estimates — verify critical loads. Volume or commercial licensing:', 'Beta 期間免費,合理使用。結果屬估算 — 重要裝載請核實。批量或商業授權:')} <a className="text-blue-700 font-medium" href="mailto:hello@dimpack3d.com">hello@dimpack3d.com</a></p>
+        <p><b>{T('Terms', '條款')}:</b> {T('Free during beta, fair use. Results are estimates — verify critical loads. Higher limits and commercial plans:', 'Beta 期間免費,合理使用。結果屬估算 — 重要裝載請核實。更高限額同商業方案:')} <Link to="/api-pricing" className="text-blue-700 font-medium">/api-pricing</Link></p>
       </div>
 
       <Link to="/planner" className="text-blue-700 font-bold">{T('Prefer a UI? Open the interactive planner →', '想用介面?打開互動規劃器 →')}</Link>

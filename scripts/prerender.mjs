@@ -22,6 +22,8 @@ import { tmpdir } from 'node:os';
 
 import { ROUTES, writeSitemap, fixMeta, validateSnapshot, validateRelease } from './release-routes.mjs';
 
+const stripInjected = (html) => html.replace(/<script[^>]*data-three-cdn[^>]*>\s*<\/script>/g, '');
+
 const CHROME_PATHS = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/google-chrome',
@@ -38,7 +40,10 @@ const PORT = 4173;
 // snapshots — clear the port before starting
 // strictPort fails if occupied; never kill an unrelated process.
 
-const preview = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
+// --host 127.0.0.1: vite's default host "localhost" can bind IPv6-only (::1)
+// on recent Node/macOS, while the readiness probe and Chrome use 127.0.0.1 —
+// the preview then looks "not up" forever and the build times out (2026-09-10).
+const preview = spawn('npx', ['vite', 'preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore',
   detached: true, // own process group so we can kill vite itself, not just npx
 });
@@ -119,7 +124,12 @@ try {
       ? join('dist', 'index.html')
       : join('dist', `${route.replace(/^\//, '')}.html`);
     mkdirSync(dirname(outPath), { recursive: true });
-    const cleaned = fixMeta(html, route);
+    // ⛔ Runtime-injected <script> tags must never be baked into a snapshot.
+    // three.js is appended to <head> by useThree() when a 3D component mounts;
+    // a snapshot that contains it ships a 603 KB script to pages that never use
+    // it. Stripping is safe because any page that needs three.js re-injects it
+    // on mount.
+    const cleaned = stripInjected(fixMeta(html, route));
     validateSnapshot(cleaned, route);
     writeFileSync(outPath, '<!DOCTYPE html>\n' + cleaned);
     ok++;
@@ -127,7 +137,10 @@ try {
   };
 
   // worker pool: CONCURRENCY Chrome instances, each with its own profile dir
-  const queue = [...ROUTES];
+  // '/' goes LAST: until its snapshot is written, dist/index.html is the clean
+  // build template and therefore a clean SPA fallback. Rendering it first let
+  // its runtime-injected tags leak into every subsequent route's snapshot.
+  const queue = [...ROUTES.filter((r) => r !== '/'), ...(ROUTES.includes('/') ? ['/'] : [])];
   await Promise.all(profiles.map(async (profile) => {
     while (queue.length) {
       const route = queue.shift();

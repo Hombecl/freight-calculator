@@ -41,6 +41,8 @@ Bound to the `dimpack3d` Pages project (wrangler.toml). Key patterns:
 | `<ISO-date>_<rand>` | Email leads (export gate, waitlists) |
 | `ev_…` / `ev2|…` | Legacy analytics events (90-day TTL; no new writes after the Analytics Engine migration) |
 | `share_<10-char-id>` | Shared load plans (1-year TTL) |
+| `apikey|dp_live_<32 hex>` | API key record `{email, tier, company?, useCase?, createdAt, revokedAt?}` — issued by `POST /api/key` (free tier, 5/IP/day). Upgrade a customer by editing `tier` to `starter`/`business`; revoke by setting `revokedAt`. Tier multipliers live in `src/lib/apiTiers.ts`. A companion lead row (`source: "api-key"`) is written alongside. |
+| `rl|<rule>|<window>|ip:<ip>\|key:<key>|<bucket>` | Rate-limit counters (fixed window, TTL 2× window). Keyed callers get their own bucket at tier × limits. |
 
 `GET /api/stats?k=<key>` continues to return leads, shares, and the legacy KV
 event window. The key is at `~/.dimpack3d-stats-key` (local only), Pages secret
