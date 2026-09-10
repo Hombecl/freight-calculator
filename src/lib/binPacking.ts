@@ -147,9 +147,9 @@ function tryPropagate(
 }
 
 export type PackingOrder = 'heaviest-first' | 'largest-footprint-first' | 'tallest-first' | 'reverse';
-export interface PackingOptions { strategy?: 'default' | 'height' | 'footprint'; ordering?: PackingOrder }
+export interface PackingOptions { strategy?: 'default' | 'height' | 'footprint' | 'layered'; ordering?: PackingOrder }
 
-export function packContainer(container: PackContainer, specs: PackItemSpec[], strategy: 'default' | 'height' | 'footprint' = 'default', ordering?: PackingOrder): PackResult {
+export function packContainer(container: PackContainer, specs: PackItemSpec[], strategy: 'default' | 'height' | 'footprint' | 'layered' = 'default', ordering?: PackingOrder): PackResult {
   // expand + heavy-first, then volume-first
   const queue: { spec: PackItemSpec; unit: number }[] = [];
   specs.forEach((s) => { for (let i = 0; i < s.qty; i++) queue.push({ spec: s, unit: i }); });
@@ -184,6 +184,101 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
              p.y > b.py + EPS && p.y < b.py + b.h - EPS &&
              p.z > b.pz + EPS && p.z < b.pz + b.w - EPS;
     });
+
+  type Placement = { x: number; y: number; z: number; o: Orient; supporters: Node[]; deltas: Map<Node, number> };
+  const placement = (spec: PackItemSpec, o: Orient, x: number, y: number, z: number): Placement | null => {
+    if (totalWeight + spec.weight > maxW + EPS || x + o.l > container.l + EPS ||
+        y + o.h > container.h + EPS || z + o.w > container.w + EPS ||
+        nodes.some(n => overlaps3D(x, y, z, o.l, o.h, o.w, n))) return null;
+    const sup = findSupport(x, y, z, o.l, o.w, nodes);
+    const deltas = new Map<Node, number>();
+    if (sup.ratio < SUPPORT_RATIO - EPS || !tryPropagate(sup.supporters, spec.weight, deltas)) return null;
+    return { x, y, z, o, supporters: sup.supporters, deltas };
+  };
+  const commit = (spec: PackItemSpec, best: Placement) => {
+    // commit
+    const box: PlannerBox & { weight: number } = {
+      id: `${spec.id}-${counter++}`,
+      label: spec.label,
+      l: best.o.l, w: best.o.w, h: best.o.h,
+      px: best.x, py: best.y, pz: best.z,
+      color: spec.color,
+      weight: spec.weight,
+      group: spec.group,
+      unloadOrder: spec.unloadOrder,
+    };
+    const node: Node = {
+      box, supporters: best.supporters, loadAbove: 0,
+      maxStack: spec.maxStack ?? Infinity,
+    };
+    best.deltas.forEach((inc, n) => { n.loadAbove += inc; });
+    nodes.push(node);
+    totalWeight += spec.weight;
+
+    // spawn new extreme points, drop the consumed one, prune covered/out-of-bounds
+    const spawn = [
+      { x: best.x + best.o.l, y: best.y, z: best.z },
+      { x: best.x, y: best.y + best.o.h, z: best.z },
+      { x: best.x, y: best.y, z: best.z + best.o.w },
+    ];
+    const merged = eps
+      .filter((p) => !(Math.abs(p.x - best.x) < EPS && Math.abs(p.y - best.y) < EPS && Math.abs(p.z - best.z) < EPS))
+      .concat(spawn)
+      .filter((p) => p.x < container.l - EPS && p.y < container.h - EPS && p.z < container.w - EPS)
+      .filter((p) => !insideAnyBox(p));
+    // dedupe
+    const uniq = new Map<string, { x: number; y: number; z: number }>();
+    merged.forEach((p) => uniq.set(`${p.x.toFixed(3)},${p.y.toFixed(3)},${p.z.toFixed(3)}`, p));
+    eps.length = 0;
+    eps.push(...uniq.values());
+  };
+
+  if (strategy === 'layered') {
+    // Each SKU retains its own dimensions, rotations and crush limit. Stronger
+    // bases precede weaker layers; weight breaks ties to keep heavy cargo low.
+    const groups = [...specs].sort((a, b) => {
+      const ga = a.group ?? '', gb = b.group ?? '';
+      if (ga !== gb) return ga < gb ? -1 : 1;
+      const strengthA = a.maxStack ?? Infinity, strengthB = b.maxStack ?? Infinity;
+      return (strengthA === strengthB ? 0 : strengthA > strengthB ? -1 : 1) || b.weight - a.weight;
+    });
+    let y = 0;
+    for (const spec of groups) {
+      const layouts = orientations(spec).map(o => ({ o,
+        nx: Math.floor(container.l / o.l + EPS), nz: Math.floor(container.w / o.w + EPS),
+      })).filter(a => a.nx * a.nz > 0 && a.o.h <= container.h + EPS);
+      layouts.sort((a, b) => b.nx * b.nz - a.nx * a.nz || a.o.h - b.o.h);
+      const layout = layouts[0];
+      if (!layout) continue;
+      const { o, nx, nz } = layout, count = nx * nz;
+      let packed = 0;
+      while (packed + count <= spec.qty && y + o.h <= container.h + EPS) {
+        // A complete layer is transactional: a failed crush/support/payload
+        // check restores all ancestors and EPs before remainder packing.
+        const oldLength = nodes.length, oldWeight = totalWeight, oldCounter = counter;
+        const oldLoads = nodes.map(n => n.loadAbove), oldPoints = [...eps];
+        let complete = true;
+        for (let z = 0; z < nz && complete; z++) for (let x = 0; x < nx; x++) {
+          const p = placement(spec, o, x * o.l, y, z * o.w);
+          if (!p) { complete = false; break; }
+          commit(spec, p);
+        }
+        if (!complete) {
+          nodes.length = oldLength;
+          nodes.forEach((n, i) => { n.loadAbove = oldLoads[i]; });
+          totalWeight = oldWeight; counter = oldCounter;
+          eps.length = 0; eps.push(...oldPoints);
+          break;
+        }
+        packed += count;
+        y += o.h;
+      }
+      // Remove only committed units; every other unit still enters the EP pass.
+      for (let i = queue.length - 1; i >= 0 && packed > 0; i--) {
+        if (queue[i].spec === spec) { queue.splice(i, 1); packed--; }
+      }
+    }
+  }
 
   for (const { spec } of queue) {
     if (totalWeight + spec.weight > maxW + EPS) { unplaced++; continue; }
@@ -227,41 +322,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
 
     if (!best) { unplaced++; continue; }
 
-    // commit
-    const box: PlannerBox & { weight: number } = {
-      id: `${spec.id}-${counter++}`,
-      label: spec.label,
-      l: best.o.l, w: best.o.w, h: best.o.h,
-      px: best.x, py: best.y, pz: best.z,
-      color: spec.color,
-      weight: spec.weight,
-      group: spec.group,
-      unloadOrder: spec.unloadOrder,
-    };
-    const node: Node = {
-      box, supporters: best.supporters, loadAbove: 0,
-      maxStack: spec.maxStack ?? Infinity,
-    };
-    best.deltas.forEach((inc, n) => { n.loadAbove += inc; });
-    nodes.push(node);
-    totalWeight += spec.weight;
-
-    // spawn new extreme points, drop the consumed one, prune covered/out-of-bounds
-    const spawn = [
-      { x: best.x + best.o.l, y: best.y, z: best.z },
-      { x: best.x, y: best.y + best.o.h, z: best.z },
-      { x: best.x, y: best.y, z: best.z + best.o.w },
-    ];
-    const merged = eps
-      .filter((p) => !(Math.abs(p.x - best!.x) < EPS && Math.abs(p.y - best!.y) < EPS && Math.abs(p.z - best!.z) < EPS))
-      .concat(spawn)
-      .filter((p) => p.x < container.l - EPS && p.y < container.h - EPS && p.z < container.w - EPS)
-      .filter((p) => !insideAnyBox(p));
-    // dedupe
-    const uniq = new Map<string, { x: number; y: number; z: number }>();
-    merged.forEach((p) => uniq.set(`${p.x.toFixed(3)},${p.y.toFixed(3)},${p.z.toFixed(3)}`, p));
-    eps.length = 0;
-    eps.push(...uniq.values());
+    commit(spec, best);
   }
 
   const boxes = nodes.map((n) => n.box);

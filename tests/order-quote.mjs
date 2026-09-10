@@ -10,10 +10,12 @@ import { onRequestPost, onRequestGet } from '../functions/api/order-quote.ts';
 
 const clone = () => structuredClone(QUOTE_EXAMPLE);
 
-// ---- example is complete, carrier-ready, deterministic ----
+// ---- all cargo fits; packaging exceeds the receiver limit, deterministically ----
 {
   const q = await quoteOrder(clone());
-  assert.equal(q.status, 'complete', JSON.stringify(q.reviewReasons));
+  assert.equal(q.status, 'needs_review');
+  assert.deepEqual(q.reviewReasons, ['LOADED_HEIGHT@pallet0']);
+  assert.equal(q.summary.palletCount, 1);
   assert.equal(q.orderId, 'SO-10482');
   assert.equal(q.meter.id, 'SO-10482');
   assert.match(q.inputHash, /^[0-9a-f]{64}$/);
@@ -24,10 +26,10 @@ const clone = () => structuredClone(QUOTE_EXAMPLE);
   for (const p of q.pallets) {
     // gross = cargo + tare + allowance
     assert.equal(p.grossWeight.kg, Math.round((p.cargoWeight.kg + 22 + 1.5) * 100) / 100);
-    // outer height = loaded + allowance; within carrier limit
+    // Outer height includes allowance; the improved single pallet must be reviewed.
     assert.equal(p.outerDims.h.cm, Math.round((p.loadedHeight.cm + 3) * 100) / 100);
-    assert.ok(p.outerDims.h.cm <= 182);
-    assert.ok(p.checks.find((c) => c.code === 'LOADED_HEIGHT').status === 'pass');
+    assert.equal(p.outerDims.h.cm, 182.5);
+    assert.equal(p.checks.find((c) => c.code === 'LOADED_HEIGHT').status, 'fail');
     assert.ok(p.checks.find((c) => c.code === 'GROSS_WEIGHT').status === 'pass');
     // both unit systems present and consistent
     assert.ok(Math.abs(p.outerDims.h.in * 2.54 - p.outerDims.h.cm) < 0.05);
@@ -97,6 +99,7 @@ const clone = () => structuredClone(QUOTE_EXAMPLE);
 {
   const r = clone();
   delete r.pallet.tareWeight;
+  delete r.limits.maxLoadedHeight; // isolate the missing-tare warning from receiver height
   const q = await quoteOrder(r);
   assert.equal(q.checks.find((c) => c.code === 'TARE_PROVIDED').status, 'warn');
   assert.equal(q.pallets[0].checks.find((c) => c.code === 'GROSS_WEIGHT').status, 'warn');
@@ -171,7 +174,7 @@ const clone = () => structuredClone(QUOTE_EXAMPLE);
   let res = await onRequestPost(ctx(JSON.stringify(clone())));
   assert.equal(res.status, 200);
   const j = await res.json();
-  assert.equal(j.status, 'complete');
+  assert.equal(j.status, 'needs_review');
   assert.equal(j.tier, 'anonymous');
   assert.equal(j.meter.unit, 'order');
   res = await onRequestPost(ctx(JSON.stringify({ ...clone(), maxPallets: 99 })));
@@ -187,6 +190,17 @@ const clone = () => structuredClone(QUOTE_EXAMPLE);
   assert.equal(g.endpoint, 'POST /api/order-quote');
   assert.equal(g.request.orderId, 'SO-10482');
   assert.ok(await inputHash(parseQuoteRequest(g.request)));
+}
+
+
+// Explicit layered selection is accepted and can be replayed with the same hash.
+{
+  const request = { ...clone(), items: clone().items.filter(it => it.sku !== 'TIN-GIFT-12'), packing: { strategy: 'layered' } };
+  const q = await quoteOrder(request);
+  assert.equal(q.status, 'complete');
+  assert.equal(q.summary.palletCount, 1);
+  assert.equal(q.summary.cartonsPlaced, 30);
+  assert.deepEqual(await quoteOrder(structuredClone(request)), q);
 }
 
 console.log('order-quote.mjs: all assertions passed');

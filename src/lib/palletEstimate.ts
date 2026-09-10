@@ -159,7 +159,7 @@ export function estimatePallet(input: unknown, options: PackingOptions = {}) {
     h: pallet.maxHeight - pallet.baseHeight,
     maxWeight: pallet.maxWeight,
   };
-  const trials = (options.strategy ? [options.strategy] : ["default", "height", "footprint"] as const).map(
+  const trials = (options.strategy ? [options.strategy] : ["default", "height", "footprint", "layered"] as const).map(
     (strategy) => {
       const result = packContainer(container, specs, strategy, options.ordering);
       const cargoHeight = result.boxes.reduce(
@@ -222,7 +222,7 @@ export function estimatePallet(input: unknown, options: PackingOptions = {}) {
     semantics: CHECK_SEMANTICS,
     notes,
     method: {
-      name: options.strategy ? "selected-heuristic" : "best-of-three-heuristics",
+      name: options.strategy ? "selected-heuristic" : "best-of-four-heuristics",
       optimalityProven: false,
       strategy: best.strategy,
     },

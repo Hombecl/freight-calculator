@@ -110,7 +110,7 @@ export function parseQuoteRequest(input: unknown) {
     if (!o.packing || typeof o.packing !== 'object' || Array.isArray(o.packing)) throw new PalletInputError('packing', 'must be an object');
     const p = o.packing as Record<string, unknown>;
     if (p.strategy !== undefined) {
-      if (!['default', 'height', 'footprint'].includes(p.strategy as string)) throw new PalletInputError('packing.strategy', 'unknown strategy');
+      if (!['default', 'height', 'footprint', 'layered'].includes(p.strategy as string)) throw new PalletInputError('packing.strategy', 'unknown strategy');
       packing.strategy = p.strategy as PackingOptions['strategy'];
     }
     if (p.ordering !== undefined) {

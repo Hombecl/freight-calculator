@@ -11,6 +11,9 @@ import {
   onRequestGet,
   onRequestOptions,
 } from "../functions/api/pallet-estimate.ts";
+import { planOrder } from "../src/lib/orderPlanning.ts";
+import { QUOTE_EXAMPLE } from "../src/lib/orderQuote.ts";
+const layeredCase = () => ({ pallet: structuredClone(QUOTE_EXAMPLE.pallet), items: structuredClone(QUOTE_EXAMPLE.items.filter(it => it.sku !== 'TIN-GIFT-12')) });
 const sample = () => structuredClone(PALLET_EXAMPLE);
 let checks = 0;
 function test(name, run) {
@@ -23,6 +26,71 @@ const simple = () => ({
   items: [
     { label: "A", l: 60, w: 40, h: 30, qty: 12, weight: 8, keepUpright: true },
   ],
+});
+// Independent geometry and equal-share ancestor-load reconstruction.
+function verifyPacking(q, r) {
+  const eps = 1e-6, loads = new Map(r.boxes.map(b => [b.id, 0]));
+  const sku = b => q.items[Number(b.id.match(/^sku(\d+)-/)[1])];
+  const area = (a, b) => Math.max(0, Math.min(a.px+a.l,b.px+b.l)-Math.max(a.px,b.px)) * Math.max(0, Math.min(a.pz+a.w,b.pz+b.w)-Math.max(a.pz,b.pz));
+  assert.equal(r.placedCount + r.unplacedCount, r.requestedCount);
+  assert.equal(new Set(r.boxes.map(b => b.id)).size, r.placedCount);
+  assert.ok(r.cargoWeight <= q.pallet.maxWeight + eps);
+  for (const b of [...r.boxes].sort((a,b) => b.py-a.py)) {
+    const spec = sku(b);
+    assert.ok(b.px >= 0 && b.py >= 0 && b.pz >= 0);
+    assert.ok(b.px+b.l <= q.pallet.l+eps && b.pz+b.w <= q.pallet.w+eps && b.py+b.h <= q.pallet.maxHeight-q.pallet.baseHeight+eps);
+    if (spec.keepUpright) assert.equal(b.h, spec.h);
+    assert.ok(loads.get(b.id) <= (spec.maxStack ?? Infinity)+eps, 'propagated maxStack');
+    for (const other of r.boxes) if (other !== b) assert.ok(!(area(b,other)>eps && b.py < other.py+other.h-eps && other.py < b.py+b.h-eps), 'overlap');
+    if (b.py > eps) {
+      const supports = r.boxes.filter(o => Math.abs(o.py+o.h-b.py)<eps && area(b,o)>eps);
+      assert.ok(supports.reduce((n,o) => n+area(b,o),0) >= b.l*b.w*0.6-eps);
+      for (const o of supports) loads.set(o.id, loads.get(o.id)+(spec.weight+loads.get(b.id))/supports.length);
+    }
+  }
+  for (const [i, it] of r.byItem.entries()) {
+    assert.equal(it.placed, r.boxes.filter(b => b.id.startsWith(`sku${i}-`)).length);
+    assert.equal(it.placed + it.remaining, q.items[i].qty);
+  }
+}
+test("Tea and teaware fit on one pallet", () => {
+  const q = layeredCase();
+  const r = planOrder({ ...q, maxPallets: 20 });
+  assert.equal(r.palletCount, 1);
+  assert.equal(r.placedCount, 30);
+  assert.equal(estimatePallet(q).status, 'complete');
+  for (const options of [{}, { strategy: 'layered' }]) {
+    const estimate = estimatePallet(q, options);
+    verifyPacking(q, estimate);
+    assert.deepEqual(estimatePallet(structuredClone(q), options), estimate);
+  }
+});
+test("Layered constraints and rollback conserve remainders", () => {
+  for (const patch of [{}, { maxStack: 0 }, { maxStack: 8 }, { keepUpright: false }]) {
+    for (const maxWeight of [20, 750]) {
+      const q = simple(); q.pallet.maxWeight = maxWeight;
+      Object.assign(q.items[0], patch); q.items[0].qty = 13;
+      const r = estimatePallet(q, { strategy: 'layered' });
+      verifyPacking(q, r);
+      if (patch.maxStack === 8 && maxWeight === 750) assert.equal(r.placedCount, 8);
+      if (maxWeight === 20) assert.equal(r.placedCount, 2);
+    }
+  }
+});
+test("Best-of preserves old winners at lower or equal height", () => {
+  const tall = simple(); tall.items[0] = { ...tall.items[0], l: 20, w: 20, h: 100, qty: 1, keepUpright: false };
+  for (const q of [sample(), simple(), tall, ...Array.from({ length: 18 }, (_, n) => {
+    const r = sample(); r.items[0].qty = 4+n; r.items[1].h = 10+n; return r;
+  })]) {
+    const old = ['default','height','footprint'].map(strategy => estimatePallet(q, { strategy })).sort((a,b) => a.unplacedCount-b.unplacedCount || a.cargoHeight-b.cargoHeight)[0];
+    const layered = estimatePallet(q, { strategy: 'layered' });
+    const best = estimatePallet(q);
+    verifyPacking(q, layered);
+    if (old.unplacedCount <= layered.unplacedCount && (old.unplacedCount < layered.unplacedCount || old.cargoHeight <= layered.cargoHeight)) {
+      assert.deepEqual(best.boxes, old.boxes);
+      assert.equal(best.method.strategy, old.method.strategy);
+    }
+  }
 });
 test("Known three-layer pallet: 90 cm cargo + 15 cm base", () => {
   const r = estimatePallet(simple());

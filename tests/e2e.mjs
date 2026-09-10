@@ -345,13 +345,13 @@ if (IS_LIVE) {
   }, page);
 }
 
-await test('order-quote: example quotes to carrier-ready pallet lines with checks', async () => {
+await test('order-quote: example quotes to pallet lines with receiver checks', async () => {
   await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { level: 1 }).filter({ hasText: /pallet quote/i }).waitFor();
   await page.getByRole('button', { name: /quote this order/i }).click();
   const result = page.getByTestId('quote-result');
   await result.waitFor();
-  await result.getByText(/complete/i).first().waitFor();
+  await result.getByText(/Placed, but a limit failed/i).first().waitFor();
   const rows = await result.locator('table tbody tr').count();
   if (rows < 1) throw new Error('no pallet rows');
   await result.getByText(/LOADED_HEIGHT/).first().waitFor();
@@ -448,7 +448,7 @@ await test('order-options: applying a permitted reduction updates order quantiti
   for (const [label, value] of [[/pallet length/i, '100'], [/pallet width/i, '100'], [/base height/i, '10'], [/packing height cap/i, '60'], [/payload cap/i, '1000'], [/tare weight/i, '10'], [/wrap\/cap height/i, '0'], [/wrap\/cap weight/i, '0'], [/max pallets/i, '20']]) await page.getByLabel(label).fill(value);
   await page.getByRole('button', { name: /quote this order/i }).click();
   const panel = page.getByTestId('order-options');
-  await panel.getByLabel(/^A — Adjustable/).check();
+  await panel.getByLabel(/\bA — Adjustable/).check();
   await panel.getByLabel(/Min quantity/).fill('2');
   await panel.getByLabel(/Max quantity/).fill('8');
   await panel.getByLabel(/Quantity step/).fill('2');
@@ -462,6 +462,18 @@ await test('order-options: applying a permitted reduction updates order quantiti
   const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
   const request = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   if (request.items.find(it => it.sku === 'A').qty !== 2 || request.items.find(it => it.sku === 'LOCK').qty !== 1) throw new Error('adjusted or locked quantity incorrect');
+}, page);
+
+await test('order-quote: layered tea and teaware fit one pallet', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^example$/i }).click();
+  await page.getByRole('button', { name: 'remove', exact: true }).nth(1).click();
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  await page.getByTestId('quote-result').getByText(/1 pallet\(s\)/).first().waitFor();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Full result JSON/i }).click()]);
+  const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
+  const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (result.summary.cartonsPlaced !== 30 || result.summary.cartonsUnplaced !== 0) throw new Error('cargo conservation');
 }, page);
 
 await test('i18n: /zh homepage renders Chinese', async () => {

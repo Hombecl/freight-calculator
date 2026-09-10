@@ -117,7 +117,7 @@ export async function findOrderOptions(input: unknown): Promise<OrderOptions> {
     const candidateHash = await hash({ engine: OPTIONS_ENGINE, quote: quote.inputHash, packing });
     // Same quantities/count from several strategies are one practical alternative.
     if (alternatives.some(a => a.palletCount === count && JSON.stringify(a.quantityChanges) === JSON.stringify(quantityChanges))) return;
-    alternatives.push({ id: `option-${candidateHash.slice(0, 16)}`, palletCount: count, strategy: `${packing.strategy ?? 'best-of-three'}/${packing.ordering ?? 'standard'}`, packing, quantityChanges, quote, candidateHash, economics: economicsFor(economics, quantityChanges, baselineCount - count) });
+    alternatives.push({ id: `option-${candidateHash.slice(0, 16)}`, palletCount: count, strategy: `${packing.strategy ?? 'best-of-four'}/${packing.ordering ?? 'standard'}`, packing, quantityChanges, quote, candidateHash, economics: economicsFor(economics, quantityChanges, baselineCount - count) });
   };
   const current = parsed.items.map(it => it.qty);
   if (baselineQuote.status !== 'complete' || baselineCount > target) {
