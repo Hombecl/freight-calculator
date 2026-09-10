@@ -91,3 +91,8 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 - Best option found within the candidate budget, not a proven minimum. Costs are supplied by the customer; missing required economics returns netSavings:null. Screens do not certify transport stability or receiver acceptance.
 - quoteOrder accepts actuals.summary{actualPalletCount,selectedOptionId,measuredAt} and echoes variance.summary. The optional packing{strategy,ordering} field reproduces a selected option with its changed quantities.
 - Full reference: https://www.dimpack3d.com/api-docs#order-options
+
+## Box catalog optimizer
+- https://www.dimpack3d.com/box-catalog (also /zh/box-catalog): import SKUs and order history, compare a small catalog against current boxes, choose a box for one order with a read-only 3D packing preview. Downloads CSV and request JSON.
+- POST https://www.dimpack3d.com/api/box-catalog: units, skus, orders with counts, optional currentBoxes/candidateBoxes, catalogSize 1–12, billing{dimDivisor,unit,minBillableWeight?,ratePerKgOrLb?}, voidFillCostPerLitre?, searchBudget? (200 default, 1000 max). GET gives example. 96 KB; 300 SKUs, 500 shapes, 60 units and 10 distinct SKUs/shape, 40 candidates. Anonymous 5/min, 50/day. Returns catalog, perOrder, totals, baseline, savings, checks, semantics, engineVersion, inputHash, tier.
+- Deterministic heuristic, not optimum; no cushioning model. Unfit orders counted and charged at largest candidate for comparison, not a shipping quote. Missing rate means costs not evaluated. DIM presets are templates: verify with buyer/carrier.

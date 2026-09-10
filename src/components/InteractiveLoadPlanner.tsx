@@ -30,6 +30,8 @@ export type { PlannerBox };
 
 
 interface Props {
+  readOnly?: boolean;
+  placedCountTestId?: string;
   className?: string;
   container: { l: number; w: number; h: number };
   boxes: PlannerBox[];
@@ -97,6 +99,8 @@ const useThree = (): boolean => {
 };
 
 export default function InteractiveLoadPlanner({
+  readOnly = false,
+  placedCountTestId,
   className = '',
   container,
   boxes,
@@ -358,7 +362,7 @@ export default function InteractiveLoadPlanner({
       lastPointerRef.current = performance.now();
       setNdc(e);
       last = { x: e.clientX, y: e.clientY };
-      const id = pickBox();
+      const id = readOnly ? null : pickBox();
       if (id) {
         const b = boxesRef.current.find((x) => x.id === id)!;
         setSelectedId(id);
@@ -513,7 +517,7 @@ export default function InteractiveLoadPlanner({
       sceneApi.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges]);
+  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -665,6 +669,7 @@ export default function InteractiveLoadPlanner({
   // Only when the pointer has interacted with this editor and no input focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (readOnly) return;
       const tag = (document.activeElement?.tagName ?? '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (!interactedRef.current) return;
@@ -681,7 +686,7 @@ export default function InteractiveLoadPlanner({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [readOnly]);
 
   // ---- React-side actions on the selected box ----
   const rotateSelected = () => {
@@ -789,9 +794,9 @@ export default function InteractiveLoadPlanner({
           Utilization: {util.toFixed(1)}%
         </span>
         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700">
-          Boxes: {boxesRef.current.length}
+          Boxes: <span data-testid={placedCountTestId}>{boxesRef.current.length}</span>
         </span>
-        <button
+        {!readOnly && <> <button
           onClick={rotateSelected}
           disabled={!selected}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
@@ -825,16 +830,17 @@ export default function InteractiveLoadPlanner({
         >
           {IS_ZH ? "重設自動擺位" : "Reset to auto"}
         </button>
+        </>}
         {selected && (
           <span className="text-slate-500">
             Selected: {selected.label} ({selected.l}×{selected.w}×{selected.h} {unitLabel})
           </span>
         )}
       </div>
-      <p className="text-xs text-slate-400">
+      {!readOnly && <p className="text-xs text-slate-400">
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
-      </p>
+      </p>}
     </div>
   );
 }

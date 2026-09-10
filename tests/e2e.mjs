@@ -464,6 +464,16 @@ await test('order-options: applying a permitted reduction updates order quantiti
   if (request.items.find(it => it.sku === 'A').qty !== 2 || request.items.find(it => it.sku === 'LOCK').qty !== 1) throw new Error('adjusted or locked quantity incorrect');
 }, page);
 
+await test('box-catalog: example catalog and single-order placed count', async () => {
+  await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-catalog-table').waitFor();
+  if (await page.getByTestId('box-catalog-table').locator('tbody tr').count() !== 2) throw new Error('Expected two box sizes');
+  await page.getByTestId('box-choose').click();
+  await page.getByTestId('box-placed-count').waitFor();
+  if ((await page.getByTestId('box-placed-count').innerText()).trim() !== '2') throw new Error('Expected exactly two packed units');
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.
