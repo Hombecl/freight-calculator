@@ -91,3 +91,8 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 - Best option found within the candidate budget, not a proven minimum. Costs are supplied by the customer; missing required economics returns netSavings:null. Screens do not certify transport stability or receiver acceptance.
 - quoteOrder accepts actuals.summary{actualPalletCount,selectedOptionId,measuredAt} and echoes variance.summary. The optional packing{strategy,ordering} field reproduces a selected option with its changed quantities.
 - Full reference: https://www.dimpack3d.com/api-docs#order-options
+
+## Receiver profiles and crew build sheets
+- /receiver-profiles (also /zh/receiver-profiles): local customer-approved profiles, JSON import/export, source dates and unverified template fields. Verify with your buyer.
+- /build-sheet (also /zh/build-sheet): order-quote JSON to animated pallet build steps, manual checklist, printable sheets and device-only measured actuals/photos.
+- POST /api/receiver-check: order-quote request + profileId or profile; returns quote, versioned profile, profileChecks and needs_review on failed rules. GET lists templates. 10/min, 100/day anonymous. Screening only, not acceptance or chargeback prediction.

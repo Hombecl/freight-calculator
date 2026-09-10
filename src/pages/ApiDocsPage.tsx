@@ -98,6 +98,12 @@ curl -X POST https://www.dimpack3d.com/api/order-options -H 'Content-Type: appli
         <Link to="/order-quote" className="text-blue-700 font-bold">{T('Try the options panel →', '試用方案面板 →')}</Link>
       </section>
 
+      <section id="receiver-check" className="rounded-xl border p-5 mb-8">
+        <h2 className="text-xl font-bold">POST /api/receiver-check</h2>
+        <p>{T('Send an order-quote request plus profileId or a complete profile object. Profile dimensions and limits are cm/kg, converted to the request units. GET lists templates with sources and dates. Anonymous: 10/min, 100/day. Returns the quote, profile metadata and version, profileChecks, tier, and warning for invalid keys. Any failed profile rule yields needs_review; always inspect cartonsUnplaced for partial orders. Manual rules are not_evaluated. Templates require buyer confirmation; this is not acceptance or chargeback prediction.', '傳送 order-quote 請求加 profileId 或完整 profile。設定尺寸同限制用 cm/kg，會轉成請求單位。GET 列出範本、來源同日期。匿名限額每分鐘 10 次、每日 100 次。回傳報價、設定資料同版本、profileChecks、tier；無效 key 另有 warning。有規則失敗就回 needs_review；必須檢查 cartonsUnplaced。人手規則回 not_evaluated。範本須由買家確認，唔代表接收或扣款預測。')}</p>
+        <pre>{JSON.stringify({profileId:'ltl-standard-us',orderId:'SO-1',pallet:{l:121.92,w:101.6,baseHeight:14.5,maxHeight:200,maxWeight:900,tareWeight:22},items:[{sku:'A',l:40,w:30,h:25,qty:10,weight:5}]},null,2)}</pre>
+        <p>400: invalid fields · 404: unknown profileId · 413: body too large · 415: application/json required · 429: rate limit</p>
+      </section>
       <section id="order-quote" className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-8 scroll-mt-6">
         <h2 className="text-xl font-bold mb-2">{T('Order → pallet quote API', '訂單 → 卡板報價 API')}</h2>
         <p className="text-slate-700 mb-3">{T('POST /api/order-quote is the quoting-workflow wrapper over order-plan: explicit units (cm-kg or in-lb), stable sku ids, gross weight incl. pallet tare and packaging allowance, receiver/carrier limit checks with stated assumptions, inputHash + engineVersion, and a meter id (one distinct order). Interactive version with CSV import and predicted-vs-measured tracking:', 'POST /api/order-quote 係 order-plan 之上嘅報價流程封裝:明確單位(cm-kg 或 in-lb)、穩定 sku id、連板底同包裝嘅毛重、收貨方/承運商限制檢查(附假設)、inputHash + engineVersion、以及計費 id(每張訂單一次)。互動版連 CSV 匯入同預測 vs 實量記錄:')} <Link to="/order-quote" className="font-bold text-blue-700 underline">/order-quote</Link></p>

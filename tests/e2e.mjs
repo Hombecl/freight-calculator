@@ -464,6 +464,39 @@ await test('order-options: applying a permitted reduction updates order quantiti
   if (request.items.find(it => it.sku === 'A').qty !== 2 || request.items.find(it => it.sku === 'LOCK').qty !== 1) throw new Error('adjusted or locked quantity incorrect');
 }, page);
 
+await test('receiver profiles: templates show source badges', async () => {
+  await page.goto(`${BASE}/receiver-profiles`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('profile-source').first().waitFor();
+  if (await page.getByTestId('profile-source').count() < 4) throw new Error('Missing templates');
+  await page.getByText('Amazon FBA (US) pallet', {exact:true}).waitFor();
+}, page);
+
+await test('build sheet: stored quote steps and actuals round trip', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const request = {orderId:'e2e-sheet',pallet:{l:120,w:80,baseHeight:14,maxHeight:180,maxWeight:900,tareWeight:20},items:[{sku:'A',l:40,w:30,h:20,qty:4,weight:5}]};
+  const quote = JSON.parse(execFileSync(process.execPath, ['--import','tsx','--input-type=module','-e', `import {quoteOrder} from './src/lib/orderQuote.ts'; console.log(JSON.stringify(await quoteOrder(${JSON.stringify(request)})))`], {encoding:'utf8'}));
+  await page.evaluate(q => sessionStorage.setItem('dp_build_sheet',JSON.stringify(q)), {...quote,request});
+  await page.goto(`${BASE}/build-sheet`, { waitUntil: 'domcontentloaded' });
+  const pallet = page.getByTestId('sheet-pallet').first();
+  await pallet.waitFor();
+  if (await pallet.getByTestId('sheet-build-step').count() !== quote.pallets[0].cartonCount) throw new Error('Wrong build step count');
+  if (Number(await pallet.getByTestId('sheet-placed-count').textContent()) !== quote.pallets[0].cartonCount) throw new Error('Wrong rendered count');
+  await page.getByTestId('actual-height-0').fill('100');
+  await page.getByTestId('actual-grossWeight-0').fill('45');
+  await page.getByTestId('actual-crewInitials-0').fill('AB');
+  await page.getByTestId('actual-pallet-count').fill('1');
+  await page.getByTestId('save-actuals').click();
+  await page.getByText('Actuals saved locally',{exact:true}).waitFor();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('dp_quote_e2e-sheet')));
+  if (saved.actuals[0].height !== 100 || saved.actuals[0].crewInitials !== 'AB' || saved.actuals.summary.actualPalletCount !== 1 || !saved.actuals[0].timestamp) throw new Error('Actuals missing');
+  if (saved.pallets[0].variance.height.measured !== 100) throw new Error('Variance missing');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.getByTestId('actual-height-0').waitFor();
+  if(await page.getByTestId('actual-height-0').inputValue() !== '100') throw new Error('Saved actuals not restored');
+  await page.getByRole('link',{name:'Return to quote and variance'}).click();
+  await page.getByText(new RegExp(`H \\+${100-quote.pallets[0].outerDims.h.cm}`)).first().waitFor();
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.

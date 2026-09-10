@@ -25,6 +25,7 @@ const ENDPOINT_LABEL: Record<string, [string, string]> = {
   'pallet-estimate': ['Pallet height', '卡板高度'],
   'order-plan': ['Multi-pallet order', '多卡板訂單'],
   'order-options': ['Order options', '訂單方案'],
+  'receiver-check': ['Receiver profile screening', '收貨方設定篩查'],
   'order-quote': ['Order → pallet quote', '訂單→卡板報價'],
 };
 
