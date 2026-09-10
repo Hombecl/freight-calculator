@@ -293,7 +293,7 @@ export async function quoteOrder(input: unknown) {
     if (limits.maxGrossWeight !== undefined) {
       checks.push({
         code: 'GROSS_WEIGHT', pallet: i,
-        status: tare === undefined ? 'warn' : grossWeight <= limits.maxGrossWeight + 1e-6 ? 'pass' : 'fail',
+        status: grossWeight > limits.maxGrossWeight + 1e-6 ? 'fail' : tare === undefined ? 'warn' : 'pass',
         observed: round(grossWeight), limit: round(limits.maxGrossWeight),
         assumption: tare === undefined ? 'Tare missing — gross weight is cargo only and the limit cannot be confirmed.' : `Gross = cargo + tare + packaging allowance (${round(allowance.weight)} kg), compared with ${limits.name ?? 'receiver'} limit.`,
       });
