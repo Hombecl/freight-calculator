@@ -464,6 +464,19 @@ await test('order-options: applying a permitted reduction updates order quantiti
   if (request.items.find(it => it.sku === 'A').qty !== 2 || request.items.find(it => it.sku === 'LOCK').qty !== 1) throw new Error('adjusted or locked quantity incorrect');
 }, page);
 
+await test('case designer: defaults, candidate detail and rendered count agree', async () => {
+  await page.goto(`${BASE}/case-designer`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Case designer', exact: true }).waitFor();
+  await page.getByTestId('design-run').click();
+  const row = page.getByTestId('design-candidate-row').first();
+  await row.waitFor();
+  const count = Number(await row.getByTestId('design-cases-per-pallet').textContent());
+  if (!(count > 0)) throw new Error('expected feasible cases/pallet');
+  await row.click();
+  await page.getByTestId('design-detail').waitFor();
+  if (Number(await page.getByTestId('design-placed-count').textContent()) !== count) throw new Error('3D count differs from candidate');
+}, page);
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.

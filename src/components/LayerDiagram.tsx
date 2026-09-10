@@ -1,3 +1,4 @@
+import { layerArrangement } from '../lib/pallets';
 /**
  * LayerDiagram — top-view SVG of one pallet layer: the exact block
  * arrangement perLayer() counted, so the picture can never disagree with
@@ -56,12 +57,7 @@ export function SideDiagram({ cartonL, cartonW, cartonH, palletL, palletW, layer
 }
 
 export default function LayerDiagram({ cartonL, cartonW, palletL, palletW, label }: Props) {
-  // same two block orientations as perLayer(); draw the winning one
-  const a = Math.floor(palletL / cartonL) * Math.floor(palletW / cartonW);
-  const b = Math.floor(palletL / cartonW) * Math.floor(palletW / cartonL);
-  const [cl, cw] = a >= b ? [cartonL, cartonW] : [cartonW, cartonL];
-  const cols = Math.floor(palletL / cl);
-  const rows = Math.floor(palletW / cw);
+  const { cellL: cl, cellW: cw, nx: cols, ny: rows } = layerArrangement(cartonL, cartonW, palletL, palletW);
   if (cols * rows === 0) return null;
 
   const W = 260;
