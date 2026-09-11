@@ -1,8 +1,119 @@
 {
   "profiles": [
-    {"id":"amazon-fba-us","name":"Amazon FBA (US) pallet","template":true,"source":"https://sellercentral.amazon.com/help/hub/reference/external/G201750310","verifiedAt":"2026-09-11","verificationNote":"curl attempted 2026-09-11: DNS resolution failed; no rule values verified.","pallet":{},"limits":{},"rules":[],"unverified":["pallet.l","pallet.w","pallet.baseHeight","limits.maxLoadedHeight","limits.maxGrossWeight","limits.overhangCm","limits.clampable","rules.NO_OVERHANG","rules.GMA_PALLET","rules.MAX_HEIGHT_72IN","rules.MAX_WEIGHT_1500LB","rules.LABELS_4_SIDES"]},
-    {"id":"ltl-standard-us","name":"LTL standard (US)","template":true,"source":"common carrier practice, verify","verifiedAt":"2026-09-11","verificationNote":"Generic starting template; not a verified carrier policy.","pallet":{"l":121.92,"w":101.6},"limits":{"maxLoadedHeight":182.88,"overhangCm":0},"rules":[{"code":"FOOTPRINT_48_40","text":"48 × 40 in footprint","check":"footprint"},{"code":"HEIGHT_72IN","text":"72 in including pallet","check":"height"},{"code":"NO_OVERHANG","text":"No carton overhang","check":"overhang"}]},
-    {"id":"eur-retail-dc","name":"EUR retail DC","template":true,"source":"generic EUR retail DC template, verify with your buyer","verifiedAt":"2026-09-11","verificationNote":"Customer-confirmed values required; not a verified retailer policy.","pallet":{"l":120,"w":80},"limits":{"maxLoadedHeight":180,"maxGrossWeight":1000},"rules":[{"code":"EUR_FOOTPRINT","text":"120 × 80 cm footprint","check":"footprint"},{"code":"HEIGHT_180CM","text":"180 cm including pallet","check":"height"},{"code":"GROSS_1000KG","text":"1,000 kg including pallet","check":"gross"}]},
-    {"id":"custom","name":"Custom profile","template":true,"source":"customer supplied, verify with your buyer","verifiedAt":"2026-09-11","pallet":{},"limits":{},"rules":[]}
+    {
+      "id": "amazon-fba-us",
+      "name": "Amazon FBA (US) pallet",
+      "template": true,
+      "source": "https://sellercentral.amazon.com/help/hub/reference/external/G201750310",
+      "verifiedAt": "2026-09-11",
+      "verificationNote": "We could not verify the latest Amazon receiving rules. Ask your buyer for the applicable requirements, then duplicate this template and enter the footprint, loaded height, gross weight and label rules.",
+      "pallet": {},
+      "limits": {},
+      "rules": [],
+      "unverified": [
+        "pallet.l",
+        "pallet.w",
+        "pallet.baseHeight",
+        "limits.maxLoadedHeight",
+        "limits.maxGrossWeight",
+        "limits.overhangCm",
+        "limits.clampable",
+        "rules.NO_OVERHANG",
+        "rules.GMA_PALLET",
+        "rules.MAX_HEIGHT_72IN",
+        "rules.MAX_WEIGHT_1500LB",
+        "rules.LABELS_4_SIDES"
+      ],
+      "nameZh": "Amazon FBA（美國）卡板",
+      "verificationNoteZh": "我哋暫時未能核實 Amazon 最新收貨規則。請向買家取得適用要求，再複製範本填寫板面、連板高度、毛重同標籤規則。"
+    },
+    {
+      "id": "ltl-standard-us",
+      "name": "LTL standard (US)",
+      "template": true,
+      "source": "common carrier practice, verify",
+      "verifiedAt": "2026-09-11",
+      "verificationNote": "Generic starting template; not a verified carrier policy.",
+      "pallet": {
+        "l": 121.92,
+        "w": 101.6
+      },
+      "limits": {
+        "maxLoadedHeight": 182.88,
+        "overhangCm": 0
+      },
+      "rules": [
+        {
+          "code": "FOOTPRINT_48_40",
+          "text": "48 × 40 in footprint",
+          "check": "footprint",
+          "textZh": "48 × 40 in 板面"
+        },
+        {
+          "code": "HEIGHT_72IN",
+          "text": "72 in including pallet",
+          "check": "height",
+          "textZh": "連板高度 72 in"
+        },
+        {
+          "code": "NO_OVERHANG",
+          "text": "No carton overhang",
+          "check": "overhang",
+          "textZh": "紙箱唔可以超出板邊"
+        }
+      ],
+      "nameZh": "美國標準零擔貨運",
+      "verificationNoteZh": "通用起步範本，唔係已核實嘅承運商政策。"
+    },
+    {
+      "id": "eur-retail-dc",
+      "name": "EUR retail DC",
+      "template": true,
+      "source": "generic EUR retail DC template, verify with your buyer",
+      "verifiedAt": "2026-09-11",
+      "verificationNote": "Customer-confirmed values required; not a verified retailer policy.",
+      "pallet": {
+        "l": 120,
+        "w": 80
+      },
+      "limits": {
+        "maxLoadedHeight": 180,
+        "maxGrossWeight": 1000
+      },
+      "rules": [
+        {
+          "code": "EUR_FOOTPRINT",
+          "text": "120 × 80 cm footprint",
+          "check": "footprint",
+          "textZh": "120 × 80 cm 板面"
+        },
+        {
+          "code": "HEIGHT_180CM",
+          "text": "180 cm including pallet",
+          "check": "height",
+          "textZh": "連板高度 180 cm"
+        },
+        {
+          "code": "GROSS_1000KG",
+          "text": "1,000 kg including pallet",
+          "check": "gross",
+          "textZh": "連板毛重 1,000 kg"
+        }
+      ],
+      "nameZh": "EUR 零售配送中心",
+      "verificationNoteZh": "需要客戶確認數值，唔係已核實嘅零售商政策。"
+    },
+    {
+      "id": "custom",
+      "name": "Custom profile",
+      "template": true,
+      "source": "customer supplied, verify with your buyer",
+      "verifiedAt": "2026-09-11",
+      "pallet": {},
+      "limits": {},
+      "rules": [],
+      "nameZh": "自訂設定",
+      "verificationNoteZh": ""
+    }
   ]
 }

@@ -23,7 +23,9 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  },[playing,steps.length]);
  useEffect(()=>{if(step>=steps.length)setPlaying(false);},[step,steps.length]);
  useEffect(()=>{const showAll=()=>{setPlaying(false);setStep(result.boxes.length);};window.addEventListener('beforeprint',showAll);return()=>window.removeEventListener('beforeprint',showAll);},[result.boxes.length]);
- const scale=Math.min(410/Math.hypot(p.l,p.w),260/Math.max(result.loadedHeight,Math.hypot(p.l,p.w)))*zoom;
+ const extentL=Math.max(p.l,...result.boxes.map(b=>b.px+b.l))-Math.min(0,...result.boxes.map(b=>b.px));
+ const extentW=Math.max(p.w,...result.boxes.map(b=>b.pz+b.w))-Math.min(0,...result.boxes.map(b=>b.pz));
+ const scale=Math.min(410/Math.hypot(extentL,extentW),260/Math.max(result.loadedHeight,Math.hypot(extentL,extentW)))*zoom;
  const project=(v:number[])=>{
    const x=v[0]-p.l/2,y=v[1]-result.loadedHeight/2,z=v[2]-p.w/2;
    const rx=x*Math.cos(yaw)+z*Math.sin(yaw),rz=-x*Math.sin(yaw)+z*Math.cos(yaw);
@@ -57,7 +59,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
    onPointerUp={e=>{if(!drag.current?.moved && pressedBox.current && pressedBox.current!=="base")setSelected(pressedBox.current);drag.current=null;e.currentTarget.releasePointerCapture(e.pointerId);}}
    onPointerCancel={()=>{drag.current=null;}}>
    <rect width="540" height="350" fill="#f8fafc"/>
-   {faces.map(({b,i,points})=><polygon aria-hidden="true" key={`${b.id}-${i}`} data-box-id={b.id} points={points} fill={`#${b.color.toString(16).padStart(6,'0')}`} stroke={b.id===selected?'#0f172a':'#ffffff'} strokeWidth={b.id===selected?2.5:.8} style={{filter:`brightness(${[.65,1.15,.8,.9,.8,.9][i]})`}}
+   {faces.map(({b,i,points})=><polygon aria-hidden="true" key={`${b.id}-${i}`} data-box-id={b.id} data-box-l={b.l} data-box-w={b.w} data-box-x={b.px} data-box-z={b.pz} points={points} fill={`#${b.color.toString(16).padStart(6,'0')}`} stroke={b.id===selected?'#0f172a':'#ffffff'} strokeWidth={b.id===selected?2.5:.8} style={{filter:`brightness(${[.65,1.15,.8,.9,.8,.9][i]})`}}
 ><title>{`${b.id} · ${b.label}`}</title></polygon>)}
   </svg>
   <div className="px-5 pb-5 space-y-3 print:hidden">

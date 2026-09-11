@@ -1,3 +1,4 @@
+import { removedPalletCount } from '../lib/warehouseInventory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -80,6 +81,7 @@ export default function WarehousePage() {
   const [floorW, setFloorW] = useState(1200);
   const [aisle, setAisle] = useState(300);
   const [dock, setDock] = useState<DockEdge[]>(['E']); // one or more dock edges
+  const [inventoryChanged, setInventoryChanged] = useState(false);
   const [items, setItems] = useState<FloorItemSpec[]>(DEFAULT_ITEMS);
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
   const [baseline, setBaseline] = useState<PlannerBox[] | null>(null);
@@ -125,58 +127,14 @@ export default function WarehousePage() {
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const flash = (msg: string) => { setActionMsg(msg); setTimeout(() => setActionMsg(null), 6000); };
 
-  /**
-   * Auto-arrange = TIDY. If pallets are on the floor, it re-rows exactly those
-   * pallets (nothing is deleted; the count is stated). On an empty floor it
-   * fills from the palette quantities. Structures/zones always stay put.
-   */
+  /** Rebuild cargo from planned quantities, preserving structures and zones. */
   const regen = (dockEdges: DockEdge[] = dock) => {
     const structures = boxes.filter(isStructure);
-    const cargo = boxes.filter((b) => !isStructure(b));
-    let rows;
-    if (cargo.length > 0) {
-      // group the CURRENT cargo into specs so the same pallets get re-rowed —
-      // carrying weight/zoneReq (the realism checks must survive a tidy)
-      const groups = new Map<string, FloorItemSpec & { sample: PlannerBox }>();
-      for (const b of cargo) {
-        const bb = b as PlannerBox & { weight?: number; zoneReq?: 'chilled' | 'frozen' | 'hazmat' };
-        const key = `${b.label}|${b.l}x${b.w}x${b.h}|${bb.weight ?? ''}|${bb.zoneReq ?? ''}`;
-        const g = groups.get(key);
-        if (g) g.qty++;
-        else groups.set(key, {
-          id: `t${groups.size}`, label: b.label, l: b.l, w: b.w, h: b.h, qty: 1, color: b.color, kind: 'cargo',
-          ...(bb.weight ? { weight: bb.weight } : {}),
-          ...(bb.zoneReq ? { zoneReq: bb.zoneReq } : {}),
-          sample: b,
-        });
-      }
-      const specs = [...groups.values()];
-      rows = autoArrangeFloorD(floor, specs, aisle, dockEdges[0] ?? 'E', structures);
-      // leftovers per SPEC (placed row ids are `${spec.id}-N`) — slicing the
-      // original array duplicated some pallets and dropped others
-      let parked = 0;
-      let lost = 0;
-      for (const s of specs) {
-        const placed = rows.filter((r) => r.id.startsWith(`${s.id}-`)).length;
-        for (let i = placed; i < s.qty; i++) {
-          const spot = placeNearDockD(floor, [...structures, ...rows], s, dockEdges[0] ?? 'E');
-          if (spot) {
-            rows.push({
-              ...s.sample, id: `${s.id}-p${i}`, px: spot.px, py: 0, pz: spot.pz,
-            } as PlannerBox);
-            parked++;
-          } else lost++;
-        }
-      }
-      flash(lost > 0
-        ? `Re-arranged ${cargo.length - lost} pallets (${parked} parked near the dock) — ${lost} could not fit ANYWHERE and were removed. Widen the floor or reduce quantities.`
-        : parked > 0
-          ? `Re-arranged ${rows.length} pallets: ${rows.length - parked} in aisled rows + ${parked} parked near the dock (rows were full). Structures and zones stayed put.`
-          : `Re-arranged all ${rows.length} pallets into aisled rows. Structures and zones stayed put.`);
-    } else {
-      rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
-      flash(`Laid out ${rows.length} pallets from the palette with ${(aisle / 100).toFixed(1)} m aisles.`);
-    }
+    const cargo = boxes.filter(b => !isStructure(b));
+    const rows = autoArrangeFloorD(floor, items, aisle, dockEdges[0] ?? 'E', structures);
+    const removed = removedPalletCount(cargo, rows);
+    if (removed && !window.confirm(T(`Rebuild from planned quantities? This will remove ${removed} placed pallet(s). Structures and zones stay put.`, `按計劃數量重新排列？將移除 ${removed} 個已放置卡板，結構同區域會保留。`))) return false;
+    flash(T(`Placed ${rows.length} / ${totalQty} planned pallets; ${totalQty - rows.length} remain unplaced.`, `已放置 ${rows.length} / ${totalQty} 個計劃卡板；${totalQty - rows.length} 個未放置。`));
     const next = [...structures, ...rows];
     const after = checkReachabilityTurn(floor, next, truck, dockEdges);
     if (after.unreachable.length > 0) {
@@ -185,15 +143,16 @@ export default function WarehousePage() {
     setBaseline(next);
     setLiveBoxes(null);
     setSelectedId(null);
+    setInventoryChanged(false);
     track('warehouse_arrange');
+    return true;
   };
 
   const changeDock = (edge: DockEdge) => {
     const next = dock.includes(edge)
       ? (dock.length > 1 ? dock.filter((d) => d !== edge) : dock) // keep at least one
       : [...dock, edge];
-    setDock(next);
-    regen(next);
+    if (regen(next)) setDock(next);
   };
 
   // forklift route + clearance for the selected item
@@ -306,8 +265,10 @@ export default function WarehousePage() {
     track('warehouse_tutorial_done');
   };
 
-  const updateItem = (id: string, patch: Partial<FloorItemSpec>) =>
+  const updateItem = (id: string, patch: Partial<FloorItemSpec>) => {
+    setInventoryChanged(true);
     setItems((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  };
   const addOfKind = (spec: Omit<FloorItemSpec, 'id'>) =>
     setItems((prev) => [...prev, { ...spec, id: `w${prev.length}-${Date.now()}` }]);
   const removeItem = (id: string) => setItems((prev) => prev.filter((s) => s.id !== id));
@@ -517,8 +478,8 @@ export default function WarehousePage() {
                   ))}
                   {(s.kind ?? 'cargo') === 'cargo' ? (
                     <div>
-                      <label className="block text-[10px] uppercase text-slate-400">qty</label>
-                      <input type="number" min={1} value={s.qty} onChange={(e) => updateItem(s.id, { qty: Math.max(1, +e.target.value || 0) })}
+                      <label className="block text-[10px] uppercase text-slate-400">{T('Planned qty', '計劃數量')}</label>
+                      <input data-testid={`warehouse-qty-${s.id}`} aria-label={`${s.label} planned quantity`} type="number" min={0} step={1} value={s.qty} onChange={(e) => updateItem(s.id, { qty: Math.max(0, Math.floor(+e.target.value || 0)) })}
                         className="w-full text-sm px-1 py-0.5 rounded border border-slate-200" />
                       <label className="flex items-center gap-1 mt-1 text-[10px] text-slate-500">
                         <input type="checkbox" checked={(s.stack ?? 1) >= 2}
@@ -545,7 +506,7 @@ export default function WarehousePage() {
           </div>
 
           <button onClick={() => regen()} className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">
-            Auto-arrange: tidy pallets into aisled rows
+            {T('Auto-arrange: rebuild from planned quantities', '自動排列：按計劃數量重建')}
           </button>
           {actionMsg && <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg p-2">{actionMsg}</p>}
 
@@ -577,7 +538,8 @@ export default function WarehousePage() {
           )}
 
           <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
-            <div className="flex justify-between"><span>Cargo placed</span><span className="font-semibold">{capacity.floorCargo} / {totalQty}</span></div>
+            <div className="flex justify-between"><span>{T("Cargo placed / planned", "已放置 / 計劃貨物")}</span><span data-testid="warehouse-cargo-count" className="font-semibold">{capacity.floorCargo} / {totalQty}</span></div>
+            {inventoryChanged && <p role="status" className="text-xs text-amber-800">{T("Planned inventory changed. Auto-arrange to rebuild the placed layout.", "計劃貨物已改動。請按自動排列重建已放置佈局。")}</p>}
             <div className="flex justify-between">
               <span>Pallet positions</span>
               <span className="font-semibold">{capacity.floorCargo + capacity.rackPositions}

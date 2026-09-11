@@ -78,7 +78,7 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
 
           <label className="flex items-center gap-2 mt-3 text-xs text-slate-600">
             <input type="checkbox" checked={wantPro} onChange={(e) => setWantPro(e.target.checked)} />
-            Notify me about <b>Pro</b> (unlimited saved plans, branding-free PDF, API)
+            Email me product updates, including <b>Pro</b> news (optional)
           </label>
 
           <button
@@ -119,7 +119,7 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
             )}
           </div>
         </div>
-        <p className="text-[10px] text-slate-400 mt-3">We email the plan link and occasional product updates. No spam.</p>
+        <p className="text-[10px] text-slate-400 mt-3">Your email unlocks the download. Product updates are sent only if you opt in above.</p>
       </div>
     </div>
   );

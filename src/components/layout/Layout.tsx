@@ -27,7 +27,7 @@ export default function Layout() {
         <link rel="alternate" hrefLang="x-default" href={urls.en} />
       </Helmet>
       <Header />
-      <main className={`flex-1 ${isHomePage ? '' : 'p-3 md:p-4'}`}>
+      <main data-tool-page={location.pathname} className={`min-w-0 flex-1 ${isHomePage ? '' : 'p-3 md:p-4'}`}>
         <Outlet />
       </main>
       <Footer />

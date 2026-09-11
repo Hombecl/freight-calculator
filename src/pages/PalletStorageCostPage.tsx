@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -28,9 +29,9 @@ export default function PalletStorageCostPage() {
 
   const carryIn = readCarry(params);
   const [pallets, setPallets] = useState(() => Math.max(1, seedNum(params.get('p'), carryIn.plt, 50)));
-  const [rate, setRate] = useState(() => Math.max(0, Number(params.get('r')) || 20));
-  const [handling, setHandling] = useState(() => Math.max(0, Number(params.get('hd')) || 6));
-  const [months, setMonths] = useState(() => Math.max(1, Number(params.get('m')) || 3));
+  const [rate, setRate] = useState(() => Math.max(0, queryNumber(params.get('r'), 20)));
+  const [handling, setHandling] = useState(() => Math.max(0, queryNumber(params.get('hd'), 6)));
+  const [months, setMonths] = useState(() => Math.max(1, queryNumber(params.get('m'), 3)));
 
   useEffect(() => {
     setParams(withCarry({ p: String(pallets), r: String(rate), hd: String(handling), m: String(months) }, carryIn), { replace: true });

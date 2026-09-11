@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -39,13 +40,13 @@ export default function PalletCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [unit, setUnit] = useState<'cm' | 'in'>(() => (params.get('u') === 'in' ? 'in' : 'cm'));
-  const [cl, setCl] = useState(() => Math.max(1, Number(params.get('l')) || (params.get('u') === 'in' ? 16 : 40)));
-  const [cw, setCw] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'in' ? 12 : 30)));
-  const [ch, setCh] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'in' ? 12 : 30)));
-  const [kgEach, setKgEach] = useState(() => Math.max(0, Number(params.get('wt')) || 10));
+  const [cl, setCl] = useState(() => Math.max(1, queryNumber(params.get('l'), (params.get('u') === 'in' ? 16 : 40))));
+  const [cw, setCw] = useState(() => Math.max(1, queryNumber(params.get('w'), (params.get('u') === 'in' ? 12 : 30))));
+  const [ch, setCh] = useState(() => Math.max(1, queryNumber(params.get('h'), (params.get('u') === 'in' ? 12 : 30))));
+  const [kgEach, setKgEach] = useState(() => Math.max(0, queryNumber(params.get('wt'), 10)));
   const carryIn = readCarry(params);
   const [palletKey, setPalletKey] = useState<string>(() => seedStr(params.get('p'), carryIn.pt, 'eur'));
-  const [qty, setQty] = useState(() => Math.max(0, Number(params.get('q')) || 0));
+  const [qty, setQty] = useState(() => Math.max(0, queryNumber(params.get('q'), 0)));
 
   useEffect(() => {
     setParams(withCarry({ u: unit, l: String(cl), w: String(cw), h: String(ch), wt: String(kgEach), p: palletKey, q: String(qty) }, carryIn), { replace: true });

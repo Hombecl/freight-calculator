@@ -18,6 +18,7 @@ export interface PlanMeta {
   date: string; // caller supplies (Date.now not available in some runtimes)
 }
 
+// CSV and printable/PDF rows share the geometry-based support dependency order.
 import { loadingSequence } from './realism';
 
 const esc = (v: string | number) => {
@@ -128,7 +129,7 @@ export function buildPrintableHTML(opts: PrintablePlanOpts): string {
     <div><b>CoG balance:</b> ${balance} (${stats.cogOffsetPct.x >= 0 ? '+' : ''}${stats.cogOffsetPct.x.toFixed(0)}%, ${stats.cogOffsetPct.z >= 0 ? '+' : ''}${stats.cogOffsetPct.z.toFixed(0)}%)</div>
   </div>
   ${zoneStrip}
-  <p style="font-size:12px;margin:4px 0"><b>Loading sequence:</b> load #1 first — start at the back of the container, floor level first. Tape this sheet at the door.</p>
+  <p style="font-size:12px;margin:4px 0"><b>Loading sequence:</b> load #1 first — place every support before the carton above it; among ready cartons, work back-to-door, then bottom-up. Tape this sheet at the door.</p>
   <table>
     <thead><tr><th>Load #</th><th>Carton</th><th>Group</th><th>Unload</th><th>Dims (${meta.unit})</th><th>Wt</th><th>Pos x,y,z</th></tr></thead>
     <tbody>${rows}</tbody>

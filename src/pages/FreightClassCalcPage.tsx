@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -48,11 +49,11 @@ export default function FreightClassCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [unit, setUnit] = useState<'us' | 'metric'>(() => (params.get('u') === 'm' ? 'metric' : 'us'));
-  const [l, setL] = useState(() => Math.max(1, Number(params.get('l')) || (params.get('u') === 'm' ? 120 : 48)));
-  const [w, setW] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'm' ? 100 : 40)));
-  const [h, setH] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'm' ? 120 : 48)));
-  const [wt, setWt] = useState(() => Math.max(1, Number(params.get('wt')) || (params.get('u') === 'm' ? 230 : 500)));
-  const [qty, setQty] = useState(() => Math.max(1, Number(params.get('q')) || 1));
+  const [l, setL] = useState(() => Math.max(1, queryNumber(params.get('l'), (params.get('u') === 'm' ? 120 : 48))));
+  const [w, setW] = useState(() => Math.max(1, queryNumber(params.get('w'), (params.get('u') === 'm' ? 100 : 40))));
+  const [h, setH] = useState(() => Math.max(1, queryNumber(params.get('h'), (params.get('u') === 'm' ? 120 : 48))));
+  const [wt, setWt] = useState(() => Math.max(1, queryNumber(params.get('wt'), (params.get('u') === 'm' ? 230 : 500))));
+  const [qty, setQty] = useState(() => Math.max(1, queryNumber(params.get('q'), 1)));
 
   useEffect(() => {
     setParams({ u: unit === 'metric' ? 'm' : 'us', l: String(l), w: String(w), h: String(h), wt: String(wt), q: String(qty) }, { replace: true });

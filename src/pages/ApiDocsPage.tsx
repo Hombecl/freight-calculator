@@ -56,7 +56,7 @@ export default function ApiDocsPage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="min-w-0 max-w-3xl mx-auto px-4 py-10 [overflow-wrap:anywhere]">
       <Helmet>
         <title>{T('3D Bin Packing API — free REST endpoint for container packing', '3D 裝箱 API — 免費 REST 裝櫃運算接口')} | DimPack3D</title>
         <meta name="description" content={T(

@@ -1,3 +1,4 @@
+import { checkAssumption, checkName } from '../lib/auditPageLocale';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
@@ -41,7 +42,7 @@ export default function ConsolidationPage() {
     finally { setBusy(false); }
   };
   const json = (name: string, value: unknown) => downloadText(name, JSON.stringify(value, null, 2), 'application/json');
-  const badges = (checks: Check[]) => <div className="flex flex-wrap gap-2 my-2">{checks.map(c => <span key={c.code} title={c.assumption} className={`relative text-xs font-semibold rounded-full px-2 py-1 ${c.status === 'fail' ? 'bg-red-100 text-red-800' : c.status === 'warn' ? 'bg-amber-100 text-amber-800' : c.status === 'pass' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{c.code}: {T(c.status, ({ pass: '通過', fail: '未通過', warn: '留意', not_evaluated: '未評估' })[c.status])}<span className="sr-only"> {c.assumption}</span></span>)}</div>;
+  const badges = (checks: Check[]) => <div className="flex flex-wrap gap-2 my-2">{checks.map(c => <span key={c.code} title={checkAssumption(c, lang)} className={`relative text-xs font-semibold rounded-full px-2 py-1 ${c.status === 'fail' ? 'bg-red-100 text-red-800' : c.status === 'warn' ? 'bg-amber-100 text-amber-800' : c.status === 'pass' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{checkName(c.code, lang)}: {T(c.status, ({ pass: '通過', fail: '未通過', warn: '留意', not_evaluated: '未評估' })[c.status])}<span className="sr-only"> {checkAssumption(c, lang)}</span></span>)}</div>;
   return <main className="[&_input[type=file]]:max-w-full [&_fieldset]:min-w-0 break-words max-w-6xl mx-auto px-4 py-8 space-y-5">
     <Helmet><title>{T('PO container consolidation estimate | DimPack3D', '多訂單併櫃估算 | DimPack3D')}</title><meta name="description" content={T('Compare container mixes for multiple purchase orders with 3D loads, shipment windows and your FCL/LCL quotes.', '比較多張訂單嘅併櫃方案、3D 擺位、出貨時間窗同你提供嘅整櫃／散貨報價。')} /></Helmet>
     <h1 className="text-3xl font-black text-slate-900">{T('Multi-PO container consolidation', '多訂單併櫃規劃')}</h1>
@@ -95,11 +96,11 @@ export default function ConsolidationPage() {
     </section>}
     <aside className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{T('Heuristic estimate, not a booking or a proven optimum. Rates are yours and must use one currency. Origin/destination charges and cut-offs are not modelled unless included in your quotes. LCL is a volume/cost estimate, not a verified load. Missing ready dates are excluded when a window is set. Check badges are screening; hover for assumptions.', '呢個係啟發式估算，唔係訂艙或已證明最優方案。報價由你提供，必須同一貨幣。起點／目的地費用同截關時間未有建模，除非你已計入報價。散貨只係容積／成本估算，未驗證擺位。有時間窗時，冇備妥日期嘅 PO 會被排除。檢查只作篩查，滑鼠移上徽章睇假設。')}{result?.notes.some(n => n.startsWith('No mix')) && <p>{T(result.notes.find(n => n.startsWith('No mix'))!, '55–85% 容積範圍內冇組合；已明確改用最接近容積嘅允許組合作後備篩查。')}</p>}</aside>
     <nav aria-label={T('Related tools', '相關工具')} className="flex flex-wrap gap-3 border-t border-slate-200 pt-5 print:hidden">
-      <Link className={btnCls} to={lang === 'zh' ? '/zh/order-quote' : '/order-quote'}>{T('Order → pallet quote', '訂單 → 卡板報價')} →</Link>
-      <Link className={btnCls} to={lang === 'zh' ? '/zh/case-designer' : '/case-designer'}>{T('Case designer', '裝箱設計')} →</Link>
-      <Link className={btnCls} to={lang === 'zh' ? '/zh/box-catalog' : '/box-catalog'}>{T('Box catalog', '紙箱目錄')} →</Link>
-      <Link className={btnCls} to={lang === 'zh' ? '/zh/receiver-profiles' : '/receiver-profiles'}>{T('Receiver profiles', '收貨方設定')} →</Link>
-      <Link className={btnCls} to={lang === 'zh' ? '/zh/build-sheet' : '/build-sheet'}>{T('Crew build sheet', '倉務砌板單')} →</Link>
+      <Link className={btnCls} to="/order-quote">{T('Order → pallet quote', '訂單 → 卡板報價')} →</Link>
+      <Link className={btnCls} to="/case-designer">{T('Case designer', '裝箱設計')} →</Link>
+      <Link className={btnCls} to="/box-catalog">{T('Box catalog', '紙箱目錄')} →</Link>
+      <Link className={btnCls} to="/receiver-profiles">{T('Receiver profiles', '收貨方設定')} →</Link>
+      <Link className={btnCls} to="/build-sheet">{T('Crew build sheet', '倉務砌板單')} →</Link>
     </nav>
   </main>;
 }

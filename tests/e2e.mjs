@@ -11,6 +11,7 @@
  */
 
 import { chromium } from 'playwright';
+import { fixAuditBTests } from './fix-audit-b-e2e.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:4174';
 const IS_LIVE = BASE.includes('dimpack3d.com');
@@ -578,6 +579,76 @@ await test('verify-batch: box single-order DOM count matches Node library', asyn
   } finally { unregister(); }
 }, page);
 
+await test('audit A: container payload and door constraints also cap the 3D scenario', async () => {
+  await page.goto(`${BASE}/container`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('container-count').waitFor();
+  const inputs = page.locator('input[type="number"]');
+  for (const [i, value] of ['60','40','40','1000'].entries()) await inputs.nth(i).fill(value);
+  await page.waitForFunction(() => document.querySelector('[data-testid="container-count"]')?.textContent === '28');
+  if (!(await page.getByTestId('container-constraint').textContent()).includes('Payload')) throw new Error('Payload warning missing');
+  await page.getByRole('button', { name: /Open 3D Sim/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="loading-rendered-count"]')?.textContent === '28');
+  await page.getByRole('button', { name:'Close', exact:true }).click();
+  for (const i of [0,1,2]) await inputs.nth(i).fill('230');
+  await page.waitForFunction(() => document.querySelector('[data-testid="container-count"]')?.textContent === '0');
+  if (!(await page.getByTestId('container-constraint').textContent()).includes('Door')) throw new Error('Door warning missing');
+  await page.getByRole('button', { name: /Open 3D Sim/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="loading-rendered-count"]')?.textContent === '0');
+  await page.getByRole('button', { name:'Close', exact:true }).click();
+}, page);
+
+await test('audit A: warehouse rebuild respects quantities and removal confirmation', async () => {
+  await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });
+  const tutorial = page.getByRole('button', { name: /got it|start planning|let.s go/i });
+  if (await tutorial.count()) await tutorial.first().click();
+  const counter = page.getByTestId('warehouse-cargo-count');
+  await counter.waitFor();
+  const before = (await counter.textContent()).split('/')[0].trim();
+  await page.getByTestId('warehouse-qty-eur').fill('1');
+  await page.getByTestId('warehouse-qty-gma').fill('0');
+  page.once('dialog', d => d.dismiss());
+  await page.getByRole('button', { name: /Auto-arrange: rebuild/ }).click();
+  if ((await counter.textContent()).split('/')[0].trim() !== before) throw new Error('Cancel changed placed cargo');
+  page.once('dialog', d => d.accept());
+  await page.getByRole('button', { name: /Auto-arrange: rebuild/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="warehouse-cargo-count"]')?.textContent.trim() === '1 / 1');
+  await page.getByTestId('warehouse-qty-eur').fill('6');
+  await page.getByRole('button', { name: /Auto-arrange: rebuild/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="warehouse-cargo-count"]')?.textContent.trim() === '6 / 6');
+  await page.getByTestId('warehouse-qty-eur').fill('0');
+  page.once('dialog', d => d.accept());
+  await page.getByRole('button', { name: /Auto-arrange: rebuild/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="warehouse-cargo-count"]')?.textContent.trim() === '0 / 0');
+}, page);
+
+await test('audit A: zero storage bookmark, door fit, fee and rate disclosures', async () => {
+  await page.goto(`${BASE}/pallet-storage-cost-calculator?p=20&r=0&hd=0&m=2`, { waitUntil: 'domcontentloaded' });
+  const inputs = page.locator('input[type="number"]');
+  if (await inputs.nth(1).inputValue() !== '0' || await inputs.nth(2).inputValue() !== '0') throw new Error('Zero rates replaced');
+  await page.reload();
+  if (await inputs.nth(1).inputValue() !== '0') throw new Error('Zero rate lost on reload');
+  await page.goto(`${BASE}/cbm-calculator?l=230&w=230&h=230&q=1`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/40' HQ ·/).waitFor();
+  await page.goto(`${BASE}/cbm-calculator?l=235&w=235&h=235&q=1`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/by volume only — does not pass the door/).waitFor();
+  await page.goto(`${BASE}/fba`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('fba-fee-note').waitFor();
+  if (!(await page.getByTestId('fba-fee-note').textContent()).includes('as of 2025')) throw new Error('Fee date missing');
+  for (const route of ['/packing','/embed']) {
+    await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
+    await page.getByText('Illustrative default, not a quote.', { exact: true }).waitFor();
+    await page.getByTestId('air-rate').fill('0');
+    await page.getByTestId('sea-rate').fill('0');
+    if (await page.getByTestId('air-rate').inputValue() !== '0') throw new Error('Rate not editable');
+    if (!(await page.getByTestId('air-unit-cost').textContent()).includes('0.00') || !(await page.getByTestId('sea-unit-cost').textContent()).includes('0.00')) throw new Error('Rate change did not update cost');
+  }
+  await page.goto(`${BASE}/compare/cube-iq-alternative`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('link', { name:'sourceforge.net', exact:true }).waitFor();
+  await page.getByText(/Reported by sourceforge.net/).waitFor();
+}, page);
+
+await fixAuditBTests({test,page,BASE});
+
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
   // ZH side of the repositioned headline.
@@ -802,14 +873,18 @@ await test('warehouse REGRESSION: undo steps back through 3 place-one actions', 
   if (n3 !== n0) throw new Error(`after 3 undos expected ${n0} boxes, got ${n3}`);
 }, page);
 
-await test('warehouse REGRESSION: auto-arrange keeps every pallet (never deletes)', async () => {
+await test('warehouse REGRESSION: cancelling rebuild preserves manually placed pallets', async () => {
   await page.getByRole('button', { name: /place one near the dock/i }).first().click();
   await page.waitForTimeout(250);
   const before = await dpCount();
-  await page.getByRole('button', { name: /auto-arrange/i }).click();
-  await page.getByText(/re-arranged/i).waitFor();
+  const dialog = page.waitForEvent('dialog');
+  const click = page.getByRole('button', { name: /auto-arrange/i }).click();
+  const confirmation = await dialog;
+  if (!confirmation.message().includes('remove')) throw new Error('Removal not disclosed');
+  await confirmation.dismiss();
+  await click;
   const after = await dpCount();
-  if (after < before) throw new Error(`arrange dropped boxes: ${before} -> ${after}`);
+  if (after !== before) throw new Error(`Cancelled arrange changed boxes: ${before} -> ${after}`);
 }, page);
 
 // ---------- new production features ----------

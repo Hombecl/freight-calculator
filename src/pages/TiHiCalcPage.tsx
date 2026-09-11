@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -23,11 +24,11 @@ export default function TiHiCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [unit, setUnit] = useState<'cm' | 'in'>(() => (params.get('u') === 'in' ? 'in' : 'cm'));
-  const [cl, setCl] = useState(() => Math.max(1, Number(params.get('l')) || (params.get('u') === 'in' ? 16 : 40)));
-  const [cw, setCw] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'in' ? 12 : 30)));
-  const [ch, setCh] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'in' ? 12 : 30)));
+  const [cl, setCl] = useState(() => Math.max(1, queryNumber(params.get('l'), (params.get('u') === 'in' ? 16 : 40))));
+  const [cw, setCw] = useState(() => Math.max(1, queryNumber(params.get('w'), (params.get('u') === 'in' ? 12 : 30))));
+  const [ch, setCh] = useState(() => Math.max(1, queryNumber(params.get('h'), (params.get('u') === 'in' ? 12 : 30))));
   const [palletKey, setPalletKey] = useState<string>(() => params.get('p') ?? 'gma');
-  const [maxH, setMaxH] = useState(() => Math.max(0, Number(params.get('mh')) || 0)); // 0 = pallet default
+  const [maxH, setMaxH] = useState(() => Math.max(0, queryNumber(params.get('mh'), 0))); // 0 = pallet default
 
   useEffect(() => {
     setParams({ u: unit, l: String(cl), w: String(cw), h: String(ch), p: palletKey, mh: String(maxH) }, { replace: true });

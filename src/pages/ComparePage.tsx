@@ -19,6 +19,7 @@ interface Competitor {
   url: string;
   summaryEn: string; summaryZh: string;
   theyHaveEn: string[]; theyHaveZh: string[];
+  pricingSource: { url: string; checkedAt: string };
   pricingEn: string; pricingZh: string;
 }
 
@@ -89,7 +90,8 @@ export default function ComparePage() {
             ))}
           </ul>
           <p className="text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100">
-            <b>{T('Pricing', '價錢')}:</b> {T(c.pricingEn, c.pricingZh)}
+            <b>{T('Pricing', '價錢')}:</b> {['containermath.com', 'sourceforge.net'].includes(new URL(c.pricingSource.url).hostname) && T(`Reported by ${new URL(c.pricingSource.url).hostname}: `, `據 ${new URL(c.pricingSource.url).hostname} 報道：`)}{T(c.pricingEn, c.pricingZh)}
+            <span className="block mt-1">{T('Source: ', '來源：')}<a className="underline" href={c.pricingSource.url} target="_blank" rel="noopener noreferrer">{new URL(c.pricingSource.url).hostname}</a>{T(', checked ', '，核對日期 ')}{c.pricingSource.checkedAt}</span>
           </p>
         </div>
       </div>

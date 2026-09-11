@@ -208,12 +208,38 @@ export function cogHeight(
 
 /**
  * The crew-facing order: which box goes in FIRST. Back of the container
- * first (low x), bottom before top, then across. The printable version of
+ * first (low x), bottom before top, then across, only among boxes whose supports are loaded. The printable version of
  * the plan — the sheet that actually gets taped to the door frame.
  */
 export function loadingSequence(boxes: PlannerBox[]): PlannerBox[] {
-  return [...boxes].sort((a, b) =>
-    (a.px - b.px) || (a.py - b.py) || (a.pz - b.pz));
+  // Kahn topological ordering: every positive-area base contact is a dependency.
+  const pending = boxes.map(() => 0);
+  const above: number[][] = boxes.map(() => []);
+  for (let i = 0; i < boxes.length; i++) {
+    const base = boxes[i];
+    for (let j = 0; j < boxes.length; j++) {
+      const top = boxes[j];
+      if (i !== j && base.py < top.py && Math.abs(base.py + base.h - top.py) <= 1e-6 &&
+          Math.min(base.px + base.l, top.px + top.l) > Math.max(base.px, top.px) &&
+          Math.min(base.pz + base.w, top.pz + top.w) > Math.max(base.pz, top.pz)) {
+        above[i].push(j);
+        pending[j]++;
+      }
+    }
+  }
+  const compare = (i: number, j: number) => {
+    const a = boxes[i], b = boxes[j];
+    return (a.px - b.px) || (a.py - b.py) || (a.pz - b.pz) || (i - j);
+  };
+  const ready = pending.flatMap((n, i) => n === 0 ? [i] : []);
+  const ordered: PlannerBox[] = [];
+  while (ready.length) {
+    ready.sort(compare);
+    const i = ready.shift()!;
+    ordered.push(boxes[i]);
+    for (const j of above[i]) if (--pending[j] === 0) ready.push(j);
+  }
+  return ordered;
 }
 
 // -------------------------------------------------- 8. load voids / shift

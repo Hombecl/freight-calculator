@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -26,8 +27,8 @@ export default function AisleWidthCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [truckKey, setTruckKey] = useState<string>(() => params.get('t') ?? 'cb4');
-  const [loadLen, setLoadLen] = useState(() => Math.max(50, Number(params.get('ll')) || 120));
-  const [clearance, setClearance] = useState(() => Math.max(10, Number(params.get('c')) || 30));
+  const [loadLen, setLoadLen] = useState(() => Math.max(50, queryNumber(params.get('ll'), 120)));
+  const [clearance, setClearance] = useState(() => Math.max(10, queryNumber(params.get('c'), 30)));
 
   useEffect(() => {
     setParams({ t: truckKey, ll: String(loadLen), c: String(clearance) }, { replace: true });
