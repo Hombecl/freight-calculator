@@ -55,7 +55,9 @@ export async function fixAuditBTests({test,page,BASE}) {
  },page);
  await test('fix B: pricing lists every endpoint and zh explanations render',async()=>{
   await page.goto(`${BASE}/api-pricing`);await page.locator('main h1').waitFor();
-  const { ENDPOINT_BASE_LIMITS } = await import('../src/lib/apiTiers.ts');
+  const { execFileSync } = await import('node:child_process');
+  // Node 20 on CI cannot import .ts directly; run through tsx like the build-sheet test does
+  const ENDPOINT_BASE_LIMITS = JSON.parse(execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', "import { ENDPOINT_BASE_LIMITS } from './src/lib/apiTiers.ts'; console.log(JSON.stringify(ENDPOINT_BASE_LIMITS));"], { encoding: 'utf8' }).trim());
   const main=await page.locator('main').first().innerText();assert.ok(main.includes(`${Object.keys(ENDPOINT_BASE_LIMITS).length} endpoints`));
   for(const ep of Object.keys(ENDPOINT_BASE_LIMITS))assert.ok(main.includes(`/api/${ep}`));
   await page.goto(`${BASE}/zh/receiver-profiles`);await page.locator('main h1').waitFor();assert.ok((await page.locator('main').first().innerText()).includes('未能核實 Amazon 最新收貨規則'));
