@@ -345,13 +345,13 @@ if (IS_LIVE) {
   }, page);
 }
 
-await test('order-quote: example quotes to carrier-ready pallet lines with checks', async () => {
+await test('order-quote: example quotes to pallet lines with receiver checks', async () => {
   await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { level: 1 }).filter({ hasText: /pallet quote/i }).waitFor();
   await page.getByRole('button', { name: /quote this order/i }).click();
   const result = page.getByTestId('quote-result');
   await result.waitFor();
-  await result.getByText(/complete/i).first().waitFor();
+  await result.getByText(/Placed, but a limit failed/i).first().waitFor();
   const rows = await result.locator('table tbody tr').count();
   if (rows < 1) throw new Error('no pallet rows');
   await result.getByText(/LOADED_HEIGHT/).first().waitFor();
@@ -371,6 +371,212 @@ if (IS_LIVE) {
     await page.getByText(/Server result matches/i).waitFor({ timeout: 20000 });
   }, page);
 }
+
+await test('order-options: example renders a result or no-option message and accurate build counts', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^example$/i }).click();
+  await page.getByLabel(/max pallets/i).fill('20');
+  await page.getByLabel(/packing height cap/i).fill('100');
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  const panel = page.getByTestId('order-options');
+  await panel.waitFor();
+  await panel.getByRole('button', { name: /search options/i }).click();
+  await panel.locator('[data-testid="option-card"], [data-testid="option-none"]').first().waitFor();
+  const cards = panel.getByTestId('option-card');
+  if (await cards.count()) {
+    const card = cards.first();
+    await card.getByRole('button', { name: /view build/i }).click();
+    const pallets = card.getByTestId('option-pallet');
+    let total = 0;
+    for (let i = 0; i < await pallets.count(); i++) {
+      const pallet = pallets.nth(i);
+      const expected = Number(await pallet.getAttribute('data-carton-count'));
+      const rendered = Number(await pallet.getByTestId('option-placed-count').textContent());
+      if (rendered !== expected) throw new Error(`expected ${expected} cartons, rendered ${rendered}`);
+      total += rendered;
+    }
+    if (total !== Number(await card.getByTestId('option-carton-count').textContent())) throw new Error('card carton count differs from build');
+  } else await panel.getByTestId('option-none').waitFor();
+}, page);
+
+await test('order-options: repack build, animation, confirm apply and downloads reproduce selected option', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^example$/i }).click();
+  await page.locator('textarea').fill('sku,length,width,height,weight,qty\nS0,70,40,50,2,6\nS1,70,60,20,7,5\nS2,70,40,30,3,5');
+  await page.getByRole('button', { name: /use pasted rows/i }).click();
+  for (const [label, value] of [[/pallet length/i, '100'], [/pallet width/i, '100'], [/base height/i, '10'], [/packing height cap/i, '100'], [/payload cap/i, '1000'], [/tare weight/i, '10'], [/wrap\/cap height/i, '0'], [/wrap\/cap weight/i, '0'], [/max pallets/i, '20']]) await page.getByLabel(label).fill(value);
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  await page.getByTestId('order-options').getByRole('button', { name: /search options/i }).click();
+  const card = page.getByTestId('option-card').first();
+  await card.waitFor();
+  await card.getByText(/4 pallet/).waitFor();
+  await card.getByRole('button', { name: /view build/i }).click();
+  const pallets = card.getByTestId('option-pallet');
+  for (let i = 0; i < await pallets.count(); i++) {
+    const p = pallets.nth(i), expected = Number(await p.getAttribute('data-carton-count'));
+    if (Number(await p.getByTestId('option-placed-count').textContent()) !== expected) throw new Error('build count mismatch');
+    const ids = await p.locator('svg [data-box-id]').evaluateAll(nodes => [...new Set(nodes.map(n => n.getAttribute('data-box-id')).filter(id => id !== 'base'))]);
+    if (ids.length !== expected) throw new Error('SVG cargo count mismatch');
+  }
+  const first = pallets.first(), slider = first.locator('input[type="range"]');
+  await slider.fill('1');
+  if (Number(await first.getByTestId('option-placed-count').textContent()) !== 1) throw new Error('animation step count mismatch');
+  await slider.fill(await slider.getAttribute('max'));
+  page.once('dialog', dialog => dialog.dismiss());
+  await card.getByRole('button', { name: /use this option/i }).click();
+  await page.getByTestId('quote-result').getByText(/5 pallet\(s\)/).first().waitFor();
+  page.once('dialog', dialog => dialog.accept());
+  await card.getByRole('button', { name: /use this option/i }).click();
+  await page.getByTestId('quote-result').getByText(/4 pallet\(s\)/).first().waitFor();
+  const contents = async (button) => {
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: button }).click()]);
+    const stream = await download.createReadStream(); const chunks = []; for await (const c of stream) chunks.push(c);
+    return Buffer.concat(chunks).toString('utf8');
+  };
+  const request = JSON.parse(await contents(/API request JSON/i));
+  const quote = JSON.parse(await contents(/Full result JSON/i));
+  if (!request.packing || quote.summary.palletCount !== 4 || !quote.variance.summary.selectedOptionId) throw new Error('selection not preserved in downloads');
+  const csv = await contents(/Carrier-input CSV/i);
+  if (csv.trim().split('\r\n').length !== 5) throw new Error('CSV does not reflect four pallets');
+}, page);
+
+await test('order-options: applying a permitted reduction updates order quantities and result', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^example$/i }).click();
+  await page.locator('textarea').fill('sku,length,width,height,weight,qty\nA,50,50,50,2,6\nLOCK,50,50,50,2,1');
+  await page.getByRole('button', { name: /use pasted rows/i }).click();
+  for (const [label, value] of [[/pallet length/i, '100'], [/pallet width/i, '100'], [/base height/i, '10'], [/packing height cap/i, '60'], [/payload cap/i, '1000'], [/tare weight/i, '10'], [/wrap\/cap height/i, '0'], [/wrap\/cap weight/i, '0'], [/max pallets/i, '20']]) await page.getByLabel(label).fill(value);
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  const panel = page.getByTestId('order-options');
+  await panel.getByLabel(/\bA — Adjustable/).check();
+  await panel.getByLabel(/Min quantity/).fill('2');
+  await panel.getByLabel(/Max quantity/).fill('8');
+  await panel.getByLabel(/Quantity step/).fill('2');
+  await panel.getByRole('button', { name: /search options/i }).click();
+  const card = panel.getByTestId('option-card').first();
+  await card.getByText(/1 pallet/).waitFor();
+  page.once('dialog', dialog => dialog.accept());
+  await card.getByRole('button', { name: /use this option/i }).click();
+  await page.getByTestId('quote-result').getByText(/1 pallet\(s\)/).first().waitFor();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /API request JSON/i }).click()]);
+  const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
+  const request = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (request.items.find(it => it.sku === 'A').qty !== 2 || request.items.find(it => it.sku === 'LOCK').qty !== 1) throw new Error('adjusted or locked quantity incorrect');
+}, page);
+
+await test('order-quote: layered tea and teaware fit one pallet', async () => {
+  await page.goto(`${BASE}/order-quote`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^example$/i }).click();
+  await page.getByRole('button', { name: 'remove', exact: true }).nth(1).click();
+  await page.getByRole('button', { name: /quote this order/i }).click();
+  await page.getByTestId('quote-result').getByText(/1 pallet\(s\)/).first().waitFor();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Full result JSON/i }).click()]);
+  const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
+  const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (result.summary.cartonsPlaced !== 30 || result.summary.cartonsUnplaced !== 0) throw new Error('cargo conservation');
+}, page);
+
+await test('case designer: defaults, candidate detail and rendered count agree', async () => {
+  await page.goto(`${BASE}/case-designer`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Case designer', exact: true }).waitFor();
+  await page.getByTestId('design-run').click();
+  const row = page.getByTestId('design-candidate-row').first();
+  await row.waitFor();
+  const count = Number(await row.getByTestId('design-cases-per-pallet').textContent());
+  if (!(count > 0)) throw new Error('expected feasible cases/pallet');
+  await row.click();
+  await page.getByTestId('design-detail').waitFor();
+  if (Number(await page.getByTestId('design-placed-count').textContent()) !== count) throw new Error('3D count differs from candidate');
+}, page);
+
+await test('consolidation: example POs plan containers and read-only 3D count matches', async () => {
+  await page.goto(`${BASE}/consolidation`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('consolidation-run').click();
+  const card = page.getByTestId('container-card').first();
+  await card.waitFor();
+  const expected = Number(await card.getByTestId('card-placed-count').textContent());
+  if (!(expected > 0)) throw new Error('no cartons placed');
+  await card.getByTestId('open-container').click();
+  const count = page.getByTestId('container-placed-count');
+  await count.waitFor();
+  if (Number(await count.textContent()) !== expected) throw new Error('3D count differs from plan');
+  if (await page.getByTestId('container-view').getByRole('button', { name: /delete|rotate 90/i }).count()) throw new Error('editable container view');
+}, page);
+
+await test('box-catalog: example catalog and single-order placed count', async () => {
+  await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-catalog-table').waitFor();
+  if (await page.getByTestId('box-catalog-table').locator('tbody tr').count() !== 2) throw new Error('Expected two box sizes');
+  await page.getByTestId('box-choose').click();
+  await page.getByTestId('box-placed-count').waitFor();
+  if ((await page.getByTestId('box-placed-count').innerText()).trim() !== '2') throw new Error('Expected exactly two packed units');
+}, page);
+
+await test('box-catalog: coverage warning and Advanced analysis toggle', async () => {
+  await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+  await page.getByText('Advanced', { exact: true }).click();
+  const toggle = page.getByTestId('box-coverage-first');
+  if (!await toggle.isChecked()) throw new Error('Coverage must default on');
+  await toggle.uncheck();
+  await page.locator('label', { hasText: 'Candidate boxes (JSON, optional)' }).locator('textarea').fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-unfit-share').waitFor();
+  if (!await page.getByTestId('box-unfit-share').textContent().then(t => t.includes('100.0% of orders would need a box outside this catalog'))) throw new Error('Missing unfit share');
+  if (!await page.getByText('Partial comparison', { exact: false }).count()) throw new Error('Missing partial savings basis');
+  await page.locator('label', { hasText: 'Current boxes (JSON, optional)' }).locator('textarea').fill('');
+  await toggle.check();
+  await page.getByTestId('box-optimize').click();
+  await page.getByTestId('box-unfit-share').waitFor();
+  if (await page.getByText('Savings per 1,000 comparable orders', { exact: false }).count()) throw new Error('Savings shown without baseline');
+}, page);
+
+await test('receiver profiles: templates show source badges', async () => {
+  await page.goto(`${BASE}/receiver-profiles`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('profile-source').first().waitFor();
+  if (await page.getByTestId('profile-source').count() < 4) throw new Error('Missing templates');
+  await page.getByText('Amazon FBA (US) pallet', {exact:true}).waitFor();
+}, page);
+
+await test('build sheet: stored quote steps and actuals round trip', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const request = {orderId:'e2e-sheet',pallet:{l:120,w:80,baseHeight:14,maxHeight:180,maxWeight:900,tareWeight:20},items:[{sku:'A',l:40,w:30,h:20,qty:4,weight:5}]};
+  const quote = JSON.parse(execFileSync(process.execPath, ['--import','tsx','--input-type=module','-e', `import {quoteOrder} from './src/lib/orderQuote.ts'; console.log(JSON.stringify(await quoteOrder(${JSON.stringify(request)})))`], {encoding:'utf8'}));
+  await page.evaluate(q => sessionStorage.setItem('dp_build_sheet',JSON.stringify(q)), {...quote,request});
+  await page.goto(`${BASE}/build-sheet`, { waitUntil: 'domcontentloaded' });
+  const pallet = page.getByTestId('sheet-pallet').first();
+  await pallet.waitFor();
+  if (await pallet.getByTestId('sheet-build-step').count() !== quote.pallets[0].cartonCount) throw new Error('Wrong build step count');
+  if (Number(await pallet.getByTestId('sheet-placed-count').textContent()) !== quote.pallets[0].cartonCount) throw new Error('Wrong rendered count');
+  await page.getByTestId('actual-height-0').fill('100');
+  await page.getByTestId('actual-grossWeight-0').fill('45');
+  await page.getByTestId('actual-crewInitials-0').fill('AB');
+  await page.getByTestId('actual-pallet-count').fill('1');
+  await page.getByTestId('save-actuals').click();
+  await page.getByText('Actuals saved locally',{exact:true}).waitFor();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('dp_quote_e2e-sheet')));
+  if (saved.actuals[0].height !== 100 || saved.actuals[0].crewInitials !== 'AB' || saved.actuals.summary.actualPalletCount !== 1 || !saved.actuals[0].timestamp) throw new Error('Actuals missing');
+  if (saved.pallets[0].variance.height.measured !== 100) throw new Error('Variance missing');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.getByTestId('actual-height-0').waitFor();
+  if(await page.getByTestId('actual-height-0').inputValue() !== '100') throw new Error('Saved actuals not restored');
+  await page.getByRole('link',{name:'Return to quote and variance'}).click();
+  await page.getByText(new RegExp(`H \\+${100-quote.pallets[0].outerDims.h.cm}`)).first().waitFor();
+}, page);
+
+await test('verify-batch: box single-order DOM count matches Node library', async () => {
+  const { register } = await import('tsx/esm/api');
+  const unregister = register();
+  try {
+    const { chooseBox, BOX_EXAMPLE } = await import('../src/lib/boxCatalog.ts');
+    const result = await chooseBox({ ...BOX_EXAMPLE, lines: [{ sku: 'A', qty: 2 }] }, BOX_EXAMPLE.candidateBoxes);
+    await page.goto(`${BASE}/box-catalog`, { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('box-optimize').click();
+    await page.getByTestId('box-choose').click();
+    await page.getByTestId('box-placed-count').waitFor();
+    if (Number(await page.getByTestId('box-placed-count').textContent()) !== result.plan.boxes.length) throw new Error('Rendered count differs from Node plan');
+  } finally { unregister(); }
+}, page);
 
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });

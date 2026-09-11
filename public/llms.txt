@@ -83,3 +83,31 @@ English (default, /) and Traditional Chinese (/zh/...). Same tools and pages in 
 ## Mixed-carton pallet height
 - [Pallet height calculator](https://www.dimpack3d.com/pallet-height-calculator): loaded height including pallet base, actual placements, payload limits and explicit complete/partial results. Best of three heuristics; not a proven minimum.
 - POST https://www.dimpack3d.com/api/pallet-estimate accepts the same request as the interactive calculator. GET returns an example and limits. cm/kg; 20 carton types, 200 total cartons, 32 KB body.
+
+## Order options: avoid another pallet
+- Interactive panel: https://www.dimpack3d.com/order-quote after a quote with at least two pallets.
+- POST https://www.dimpack3d.com/api/order-options: order-quote fields plus targetPalletCount (default baseline−1, min 1), adjustments[{sku,minQty,maxQty,qtyStep?}] (default all locked; bounds include current; steps anchored at current), economics{palletFreight,handlingPerPallet,contributionPerUnit,deferralCostPerUnit,currency}, searchBudget (default 60, max 200). GET returns an example. Body max 48 KB; anonymous 5/min, 50/day; optional X-API-Key or Authorization.
+- Searches unchanged quantities with three packing strategies and four orderings before permitted single-SKU/pair changes. Returns ≤3 complete alternatives, full quotes, quantityChanges, candidateHash, economics, baseline, target, searched counts, outcome found|none_within_search|already_at_target, checks, semantics, engineVersion and inputHash. Never relaxes supplied limits. Added units may use spare capacity at the baseline pallet count. Target is a goal, not a filter on incremental improvements.
+- Best option found within the candidate budget, not a proven minimum. Costs are supplied by the customer; missing required economics returns netSavings:null. Screens do not certify transport stability or receiver acceptance.
+- quoteOrder accepts actuals.summary{actualPalletCount,selectedOptionId,measuredAt} and echoes variance.summary. The optional packing{strategy,ordering} field reproduces a selected option with its changed quantities.
+- Full reference: https://www.dimpack3d.com/api-docs#order-options
+
+## Case designer
+- /case-designer and /zh/case-designer: product-to-case arrangements, TI-HI, pallet and container fill, units/container, supplied cost/unit, current-case comparison and downloads.
+- POST /api/case-design (GET for schema/example): cm-kg or in-lb; 24 sampled quantities, 400 designs, 2,000 floor-load cases, up to 10 results. Anonymous 10/min, 100/day; 32 KB.
+- Deterministic best options found, not optimum. Explicit checks and assumptions, engineVersion and SHA-256 inputHash. Board mass estimated at 0.6 kg/m²; column stacks only; structural ECT/BCT excluded.
+- Documentation: /api-docs#case-design
+
+## Multi-PO container consolidation
+- /consolidation (also /zh/consolidation): same origin region / one destination, PO ready-date window, priority, supplier caps, whole-PO preference and unloading zones. Up to three heuristic container plans with read-only 3D, CSV/JSON/curl exports and LCL remainder estimates using user quotes. Not a booking or optimum.
+- POST /api/consolidate; GET returns request example and documentation. 30 POs, 60 types, 3000 cartons, 64 KB; anonymous 5/min, 50/day. 40 packing runs by default, max 120. Both units, SHA-256 hashes, explicit screening checks. See /api-docs#consolidate.
+
+## Box catalog optimizer
+- https://www.dimpack3d.com/box-catalog (also /zh/box-catalog): import SKUs and order history, compare a small catalog against current boxes, choose a box for one order with a read-only 3D packing preview. Downloads CSV and request JSON.
+- POST https://www.dimpack3d.com/api/box-catalog: units, skus, orders with counts, optional currentBoxes/candidateBoxes, catalogSize 1–12, billing{dimDivisor,unit,minBillableWeight?,ratePerKgOrLb?}, voidFillCostPerLitre?, searchBudget? (200 default, 1000 max). GET gives example. 96 KB; 300 SKUs, 500 shapes, 60 units and 10 distinct SKUs/shape, 40 candidates. Anonymous 5/min, 50/day. Returns catalog, perOrder, totals, baseline, savings, checks, semantics, engineVersion, inputHash, tier.
+- Deterministic heuristic, not optimum; no cushioning model. Unfit orders counted and charged at largest candidate for comparison, not a shipping quote. Missing rate means costs not evaluated. DIM presets are templates: verify with buyer/carrier.
+
+## Receiver profiles and crew build sheets
+- /receiver-profiles (also /zh/receiver-profiles): local customer-approved profiles, JSON import/export, source dates and unverified template fields. Verify with your buyer.
+- /build-sheet (also /zh/build-sheet): order-quote JSON to animated pallet build steps, manual checklist, printable sheets and device-only measured actuals/photos.
+- POST /api/receiver-check: order-quote request + profileId or profile; returns quote, versioned profile, profileChecks and needs_review on failed rules. GET lists templates. 10/min, 100/day anonymous. Screening only, not acceptance or chargeback prediction.

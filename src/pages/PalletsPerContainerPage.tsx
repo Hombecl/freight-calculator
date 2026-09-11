@@ -1,3 +1,4 @@
+import { floorFit } from '../lib/pallets';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -28,17 +29,6 @@ const PALLET_TYPES = [
   { key: 'gma', label: 'US GMA — 48 × 40 in (121.92 × 101.6 cm)', l: 121.92, w: 101.6 },
   { key: 'ind', label: 'Industrial — 120 × 100 cm', l: 120, w: 100 },
 ] as const;
-
-const EPS = 1e-6; // float-noise tolerance on exact imperial dims
-
-// best of: both single block orientations + the two-lane mixed pattern
-// (lane of crosswise pallets + lane of lengthwise pallets side by side)
-function floorFit(pl: number, pw: number, CL: number, CW: number) {
-  const a = Math.floor(CW / pw + EPS) * Math.floor(CL / pl + EPS);
-  const b = Math.floor(CW / pl + EPS) * Math.floor(CL / pw + EPS);
-  const mixed = pl + pw <= CW ? Math.floor(CL / pw + EPS) + Math.floor(CL / pl + EPS) : 0;
-  return Math.max(a, b, mixed);
-}
 
 /** Top-view of the 40' floor — the two-lane mixed pattern drawn to scale,
  *  so "25 EUR pallets" stops being a magic number. */

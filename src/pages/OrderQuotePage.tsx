@@ -1,3 +1,8 @@
+import { applyProfile, attachProfile, loadProfiles, parseProfile } from '../lib/receiverProfiles';
+import { deviceProfiles, quoteStorageKey, SHEET_STORAGE } from '../lib/receiverStorage';
+import PalletEstimateView from '../components/PalletEstimateView';
+import { findOrderOptions, type OrderOptions, type OrderOptionsRequest } from '../lib/orderOptions';
+import { parseQuoteRequest } from '../lib/orderQuote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -44,11 +49,11 @@ const toUnits = (req: OrderQuoteRequest, from: QuoteUnits, to: QuoteUnits): Orde
     packagingAllowance: { height: l(req.packagingAllowance?.height), weight: w(req.packagingAllowance?.weight) },
     limits: { ...req.limits, maxLoadedHeight: l(req.limits?.maxLoadedHeight), maxGrossWeight: w(req.limits?.maxGrossWeight) },
     items: req.items.map((it) => ({ ...it, l: l(it.l)!, w: l(it.w)!, h: l(it.h)!, weight: w(it.weight)!, maxStack: w(it.maxStack) })),
-    actuals: req.actuals && Object.fromEntries(Object.entries(req.actuals).map(([k, a]) => [k, { ...a, height: l(a.height), grossWeight: w(a.grossWeight) }])),
+    actuals: req.actuals && Object.fromEntries(Object.entries(req.actuals).map(([k, a]) => [k, k === 'summary' ? a : { ...a, height: l(('height' in a ? a.height : undefined)), grossWeight: w(('grossWeight' in a ? a.grossWeight : undefined)) }])) as OrderQuoteRequest['actuals'],
   };
 };
 
-const storageKey = (orderId?: string) => `dp_quote_${(orderId || 'draft').replace(/[^\w-]/g, '_')}`;
+const storageKey = quoteStorageKey;
 
 function download(text: string, filename: string, type: string) {
   const a = document.createElement('a');
@@ -61,10 +66,15 @@ function download(text: string, filename: string, type: string) {
 export default function OrderQuotePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
-  const [req, setReq] = useState<OrderQuoteRequest>(() => structuredClone(QUOTE_EXAMPLE));
+  const [profiles, setProfiles] = useState(() => { try { return deviceProfiles(localStorage.getItem('dp_receiver_profiles')); } catch { return loadProfiles(); } });
+  const [profileId, setProfileId] = useState('');
+  const selectedProfile = profiles.find(p => p.id === profileId);
+  const [profileChecks, setProfileChecks] = useState<Awaited<ReturnType<typeof attachProfile>>['profileChecks']>([]);
+  const [req, setReq] = useState<OrderQuoteRequest>(() => { try { const carried = JSON.parse(sessionStorage.getItem(SHEET_STORAGE) || '{}'); if (carried.request) { parseQuoteRequest(carried.request); return carried.request; } } catch { /* use example when no valid carried request */ } return structuredClone(QUOTE_EXAMPLE); });
   const units: QuoteUnits = req.units ?? 'cm-kg';
   const lu = units === 'in-lb' ? 'in' : 'cm';
   const wu = units === 'in-lb' ? 'lb' : 'kg';
+  const [quotedRequest, setQuotedRequest] = useState<OrderQuoteRequest | null>(null);
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,8 +90,10 @@ export default function OrderQuotePage() {
     try {
       const raw = localStorage.getItem(storageKey(req.orderId));
       if (raw) {
-        const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals'] };
-        if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: saved.actuals }));
+        const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals']; actualsUnits?: QuoteUnits; request?: OrderQuoteRequest };
+        if ('profileSnapshot' in saved && saved.profileSnapshot) { const p = parseProfile(saved.profileSnapshot); setProfiles(old => [...old.filter(v => v.id !== p.id), p]); setProfileId(p.id); }
+        if (saved.request) { setReq(saved.request); if ('pallets' in saved) { setQuote(saved as unknown as OrderQuote); setQuotedRequest(saved.request); if ('profileChecks' in saved && Array.isArray(saved.profileChecks)) setProfileChecks(saved.profileChecks); } return; }
+        if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: toUnits({...r, actuals:saved.actuals},saved.actualsUnits??r.units??'cm-kg',r.units??'cm-kg').actuals }));
       }
     } catch { /* */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,10 +106,13 @@ export default function OrderQuotePage() {
   const run = async () => {
     setBusy(true); setError(null); setServerState('');
     try {
-      const q = await quoteOrder(req);
+      const base = await quoteOrder(req);
+      const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+      setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
       setQuote(q);
+      setQuotedRequest(structuredClone(req));
       track('order_quote_run', q.status);
-      try { localStorage.setItem(storageKey(req.orderId), JSON.stringify({ actuals: req.actuals ?? {}, at: new Date().toISOString() })); } catch { /* */ }
+      try { const old = JSON.parse(localStorage.getItem(storageKey(req.orderId)) || '{}'); localStorage.setItem(storageKey(req.orderId), JSON.stringify({ ...old, ...q, profileSnapshot: selectedProfile, request: req, actuals: req.actuals ?? {}, actualsUnits: req.units ?? 'cm-kg', at: new Date().toISOString() })); } catch { /* */ }
     } catch (e) {
       setQuote(null);
       setError(String((e as Error).message || e));
@@ -151,6 +166,9 @@ export default function OrderQuotePage() {
           '貼上訂單箱單,即得板數、外尺寸同毛重(連板底同包裝),並對照你嘅承運商或收貨方限制 — 報 LTL 運費之前先知道。確定性、同 API 同一引擎、承運商輸入 CSV、預測 vs 實量記錄。',
         )} />
       </Helmet>
+      <label className="block my-4">{T('Receiver profile', '收貨方設定')}<select data-testid="quote-profile" className={inputCls} value={profileId} onChange={e => { const p = profiles.find(p => p.id === e.target.value); setProfileId(e.target.value); setQuote(null); setProfileChecks([]); if (p) setReq(r => applyProfile(r,p)); }}><option value="">{T('No profile', '未選設定')}</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+      {selectedProfile?.template && <p className="bg-amber-100 p-2">{T('Verify with your buyer', '請同買家核實')} {selectedProfile.unverified?.join(', ')}</p>}
+      <Link to={lang === 'zh' ? '/zh/receiver-profiles' : '/receiver-profiles'}>{T('Manage receiver profiles', '管理收貨方設定')}</Link>
 
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Order → pallet quote', '訂單 → 卡板報價')}</h1>
       <p className="text-slate-600 mb-1 max-w-3xl">{T(
@@ -248,6 +266,20 @@ export default function OrderQuotePage() {
             <p className="text-[11px] text-slate-500 mt-2 font-mono">inputHash {quote.inputHash.slice(0, 16)}… · {quote.engineVersion} · meter {quote.meter.unit}:{quote.meter.id}</p>
           </div>
 
+          {quote.summary.palletCount >= 2 && quotedRequest && JSON.stringify(req) === JSON.stringify(quotedRequest) && <OrderOptionsPanel key={quote.inputHash} request={quotedRequest} baseline={quote} onUse={async (option) => {
+            if (!window.confirm(T('Apply these quantity changes and use this pallet build?', '套用呢啲數量變更同砌板方案？'))) return;
+            const normalized = parseQuoteRequest(quotedRequest);
+            const next: OrderQuoteRequest = { ...quotedRequest, packing: option.packing, items: quotedRequest.items.flatMap((it, i) => {
+              const change = option.quantityChanges.find(c => c.sku === normalized.items[i].sku);
+              const qty = change?.to ?? it.qty;
+              return qty ? [{ ...it, qty }] : [];
+            }), actuals: { summary: { selectedOptionId: option.id } } };
+            const base = await quoteOrder(next);
+            const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+            setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
+            setReq(next); setQuotedRequest(structuredClone(next)); setQuote(q); setServerState('');
+            try { localStorage.setItem(storageKey(next.orderId), JSON.stringify({ ...q, profileSnapshot: selectedProfile, request: next, actuals: next.actuals, actualsUnits: next.units ?? 'cm-kg' })); } catch { /* device storage optional */ }
+          }} />}
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm border-collapse">
               <thead><tr className="text-left text-slate-500 border-b border-slate-200">
@@ -255,7 +287,7 @@ export default function OrderQuotePage() {
               </tr></thead>
               <tbody>
                 {quote.pallets.map((p) => {
-                  const a = req.actuals?.[String(p.index)] ?? {};
+                  const a = req.actuals?.[`${p.index}`] ?? {};
                   return (
                     <tr key={p.index} className="border-b border-slate-100 align-top">
                       <td className="py-2 pr-3 font-bold">#{p.index + 1}</td>
@@ -279,6 +311,7 @@ export default function OrderQuotePage() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
+            <Link className={btnCls} to={lang === 'zh' ? '/zh/build-sheet' : '/build-sheet'} onClick={e => {try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
             <button className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv'); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
             <button className={btnCls} onClick={() => { download(JSON.stringify({ ...req, actuals: undefined }, null, 2), 'order-quote-request.json', 'application/json'); track('order_quote_request_json'); }}><Download size={14} />{T('API request JSON', 'API 請求 JSON')}</button>
             <button className={btnCls} onClick={() => { download(JSON.stringify(quote, null, 2), `${req.orderId || 'order'}-quote.json`, 'application/json'); }}><Download size={14} />{T('Full result JSON', '完整結果 JSON')}</button>
@@ -291,8 +324,8 @@ export default function OrderQuotePage() {
           <details className="rounded-xl border border-slate-200 p-4 mb-4">
             <summary className="cursor-pointer font-bold text-slate-900 text-sm">{T('What was checked and what was assumed', '檢查咗啲乜、假設咗啲乜')}</summary>
             <ul className="mt-3 space-y-2 text-xs text-slate-700">
-              {[...quote.checks, ...quote.pallets.flatMap((p) => p.checks)].map((c, i) => (
-                <li key={i} className="flex gap-2"><span className={`shrink-0 font-bold px-1.5 py-0.5 rounded ${badge(c.status)}`}>{c.status}</span><span><b>{c.code}{c.pallet !== undefined ? ` · pallet #${c.pallet + 1}` : ''}</b>{c.observed !== undefined && <> — {T('observed', '觀察')} {String(c.observed)}{c.limit !== undefined && <> / {T('limit', '限制')} {String(c.limit)}</>}</>}<br /><span className="text-slate-500">{c.assumption}</span></span></li>
+              {[...quote.checks, ...quote.pallets.flatMap((p) => p.checks), ...profileChecks].map((c, i) => (
+                <li key={i} className="flex gap-2"><span className={`shrink-0 font-bold px-1.5 py-0.5 rounded ${badge(c.status)}`}>{c.status}</span><span><b>{c.code}{'pallet' in c && c.pallet !== undefined ? ` · pallet #${c.pallet + 1}` : ''}</b>{c.observed !== undefined && <> — {T('observed', '觀察')} {String(c.observed)}{c.limit !== undefined && <> / {T('limit', '限制')} {String(c.limit)}</>}</>}<br /><span className="text-slate-500">{c.assumption}</span></span></li>
               ))}
             </ul>
             <p className="text-[11px] text-slate-500 mt-3">{quote.notes.join(' ')}</p>
@@ -318,4 +351,67 @@ export default function OrderQuotePage() {
       </section>
     </div>
   );
+}
+
+function OrderOptionsPanel({ request, baseline, onUse }: { request: OrderQuoteRequest; baseline: OrderQuote; onUse: (option: OrderOptions['alternatives'][number]) => Promise<void> }) {
+  const { lang } = useApp();
+  const T = (en: string, zh: string) => lang === 'zh' ? zh : en;
+  const [target, setTarget] = useState(Math.max(1, baseline.summary.palletCount - 1));
+  const [adjustments, setAdjustments] = useState<NonNullable<OrderOptionsRequest['adjustments']>>([]);
+  const [economics, setEconomics] = useState<NonNullable<OrderOptionsRequest['economics']>>({});
+  const [result, setResult] = useState<OrderOptions | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const parsed = useMemo(() => parseQuoteRequest(request), [request]);
+  const numeric = (s: string) => s === '' ? undefined : Number(s);
+  const search = async () => {
+    setBusy(true); setError(''); setResult(null); setOpen(null);
+    try {
+      const r = await findOrderOptions({ ...request, targetPalletCount: target, adjustments, economics });
+      setResult(r); track('order_options_run', r.outcome);
+    } catch (e) { setError(String((e as Error).message)); }
+    finally { setBusy(false); }
+  };
+  const invalidate = () => { setResult(null); setOpen(null); };
+  return <section data-testid="order-options" className="rounded-2xl border border-blue-200 bg-blue-50/30 p-5 mb-6 space-y-4">
+    <h2 className="text-xl font-bold">{T('Avoid another pallet', '慳返下一板')}</h2>
+    <p className="text-sm text-slate-600">{T('Try another build first. Quantities stay locked unless you permit a change below. Added units may fit without another pallet. Costs are supplied by you.', '先試其他砌法。除非你喺下面准許更改，否則數量鎖定。加貨可能唔使加板。費用由你提供。')}</p>
+    <fieldset disabled={busy} className="space-y-3">
+      <label className="block text-sm">{T('Target pallets', '目標板數')}<input data-testid="option-target" className={inputCls} type="number" min={1} max={20} value={target} onChange={e => { setTarget(+e.target.value); invalidate(); }} /></label>
+      {parsed.items.map(it => {
+        const a = adjustments.find(a => a.sku === it.sku);
+        return <div key={it.sku} className="rounded-lg border p-3 space-y-2">
+          <label className="font-semibold text-sm"><input type="checkbox" checked={!!a} onChange={e => { setAdjustments(old => e.target.checked ? [...old, { sku: it.sku, minQty: it.qty, maxQty: it.qty, qtyStep: 1 }] : old.filter(a => a.sku !== it.sku)); invalidate(); }} /> {it.sku} — {T('Adjustable', '可改數量')} ({it.qty})</label>
+          {a && <div className="grid grid-cols-3 gap-2">{(['minQty', 'maxQty', 'qtyStep'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Min quantity', '最少數量'), T('Max quantity', '最多數量'), T('Quantity step', '數量步幅')][i]}<input className={inputCls} type="number" min={key === 'qtyStep' ? 1 : 0} max={200} value={a[key]} onChange={e => { setAdjustments(old => old.map(v => v.sku === it.sku ? { ...v, [key]: +e.target.value } : v)); invalidate(); }} /></label>)}</div>}
+          <div className="grid grid-cols-2 gap-2">{(['contributionPerUnit', 'deferralCostPerUnit'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Contribution/unit (optional)', '每件貢獻利潤（選填）'), T('Deferral cost/unit (optional)', '每件延後出貨費（選填）')][i]}<input className={inputCls} type="number" min={0} step="any" value={economics[key]?.[it.sku] ?? ''} onChange={e => {
+            const values = { ...economics[key] }; const value = numeric(e.target.value);
+            if (value === undefined) delete values[it.sku]; else values[it.sku] = value;
+            setEconomics(old => ({ ...old, [key]: values })); invalidate();
+          }} /></label>)}</div>
+        </div>;
+      })}
+      <div className="grid sm:grid-cols-3 gap-2">
+        {(['palletFreight', 'handlingPerPallet'] as const).map((key, i) => <label key={key} className="text-xs">{[T('Freight/pallet (optional)', '每板運費（選填）'), T('Handling/pallet (optional)', '每板處理費（選填）')][i]}<input className={inputCls} type="number" min={0} step="any" value={economics[key] ?? ''} onChange={e => { setEconomics(old => ({ ...old, [key]: numeric(e.target.value) })); invalidate(); }} /></label>)}
+        <label className="text-xs">{T('Currency (optional)', '貨幣（選填）')}<input className={inputCls} placeholder="USD" maxLength={3} value={economics.currency ?? ''} onChange={e => { setEconomics(old => ({ ...old, currency: e.target.value.toUpperCase() || undefined })); invalidate(); }} /></label>
+      </div>
+      <button className={primaryCls} onClick={() => void search()}>{busy ? T('Searching…', '搜尋中…') : T('Search options', '搜尋方案')}</button>
+    </fieldset>
+    {error && <p role="alert" className="text-red-700">{error}</p>}
+    {result && <div className="space-y-3" aria-live="polite">
+      <p className="font-semibold">{result.alternatives.length ? T(`Best option found within ${result.searched.candidates} candidates`, `喺 ${result.searched.candidates} 個候選入面搵到嘅最佳方案`) : T(`Searched ${result.searched.candidates} candidates`, `已搜尋 ${result.searched.candidates} 個候選`)}</p>
+      {!result.alternatives.length && <p data-testid="option-none">{result.outcome === 'already_at_target' ? T('Already at target.', '已達目標。') : T('No option found within this search.', '今次搜尋搵唔到合適方案。')}</p>}
+      <div className="flex flex-wrap gap-2">{result.checks.map(c => <span key={c.code} title={c.assumption} className="rounded bg-white border px-2 py-1 text-xs">{c.code}: {c.status}</span>)}</div>
+      {result.alternatives.map(a => <article key={a.id} data-testid="option-card" className="rounded-xl border bg-white p-4 space-y-3">
+        <h3 className="font-bold">{a.palletCount} {T('pallet(s)', '板')} · <span data-testid="option-carton-count">{a.quote.summary.cartonsPlaced}</span> {T('cartons', '箱')}</h3>
+        <p className="text-xs text-slate-600">{a.strategy} · {a.palletCount <= result.target ? T('Target met', '達到目標') : T('Above target', '未達目標')}</p>
+        {a.quantityChanges.length ? <table className="w-full text-sm"><thead><tr>{['SKU', T('From', '原數量'), T('To', '新數量'), T('Change', '變更')].map(h => <th className="text-left" key={h}>{h}</th>)}</tr></thead><tbody>{a.quantityChanges.map(c => <tr key={c.sku}><td>{c.sku}</td><td>{c.from}</td><td>{c.to}</td><td>{c.delta > 0 ? '+' : ''}{c.delta}</td></tr>)}</tbody></table> : <p>{T('Repack only — quantities unchanged.', '只改砌法，數量不變。')}</p>}
+        <p>{a.economics.netSavings === null ? T('Add costs to compute', '加入費用先可以計算') : `${T('Net savings', '淨節省')}: ${a.economics.netSavings.toFixed(2)} ${economics.currency ?? ''}`}</p>
+        <div className="flex flex-wrap gap-1">{[...a.quote.checks, ...a.quote.pallets.flatMap(p => p.checks)].map((c, i) => <span key={i} title={c.assumption} className={`rounded px-2 py-1 text-xs ${c.status === 'pass' ? 'bg-emerald-100' : c.status === 'warn' ? 'bg-amber-100' : 'bg-slate-100'}`}>{c.code}: {c.status}</span>)}</div>
+        <div className="flex gap-2"><button className={btnCls} aria-expanded={open === a.id} onClick={() => setOpen(open === a.id ? null : a.id)}>{T('View build', '睇砌板步驟')}</button><button className={primaryCls} disabled={busy} onClick={async () => { setBusy(true); try { await onUse(a); } catch (e) { setError(String((e as Error).message)); } finally { setBusy(false); } }}>{T('Use this option', '用呢個方案')}</button></div>
+        {open === a.id && a.quote.pallets.map(p => <div key={p.index} data-testid="option-pallet" data-carton-count={p.cartonCount}><h4 className="font-semibold">#{p.index + 1} · {p.cartonCount} {T('cartons', '箱')}</h4><PalletEstimateView countTestId="option-placed-count" zh={lang === 'zh'} result={{ boxes: p.boxes, pallet: parsed.pallet, loadedHeight: p.loadedHeight.cm }} /></div>)}
+      </article>)}
+      <p className="text-xs text-slate-600">{T('Screening against your supplied limits; this does not certify stability or receiver acceptance. An exhausted budget does not prove no better option exists.', '只按你提供嘅限制做篩查，唔代表穩定性或收貨方接受嘅認證。用盡搜尋額度唔代表冇更好方案。')}</p>
+    </div>}
+  </section>;
 }

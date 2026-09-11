@@ -78,3 +78,14 @@ export function palletBoxes(
   }
   return boxes;
 }
+
+
+
+// best of: both single block orientations + the two-lane mixed pattern
+// (lane of crosswise pallets + lane of lengthwise pallets side by side)
+export function floorFit(pl: number, pw: number, CL: number, CW: number) {
+  const a = Math.floor(CW / pw + EPS) * Math.floor(CL / pl + EPS);
+  const b = Math.floor(CW / pl + EPS) * Math.floor(CL / pw + EPS);
+  const mixed = pl + pw <= CW ? Math.floor(CL / pw + EPS) + Math.floor(CL / pl + EPS) : 0;
+  return Math.max(a, b, mixed);
+}

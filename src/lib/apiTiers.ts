@@ -37,9 +37,14 @@ export const planFor = (tier: ApiTier): ApiPlan =>
 
 /** Anonymous per-IP limits per endpoint — must match the RATE_RULES in each function. */
 export const ENDPOINT_BASE_LIMITS: Record<string, { perMin: number; perDay: number }> = {
+  consolidate: { perMin: 5, perDay: 50 },
   pack: { perMin: 60, perDay: 1000 },
   'pallet-estimate': { perMin: 20, perDay: 200 },
   'order-plan': { perMin: 10, perDay: 100 },
+  'case-design': { perMin: 10, perDay: 100 },
+  'order-options': { perMin: 5, perDay: 50 },
+  'box-catalog': { perMin: 5, perDay: 50 },
+  'receiver-check': { perMin: 10, perDay: 100 },
   'order-quote': { perMin: 10, perDay: 100 },
 };
 

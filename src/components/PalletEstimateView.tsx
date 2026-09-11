@@ -5,8 +5,8 @@ import { VIEW_COPY } from '../lib/orderViewLocale';
 import type { OrderLanguage } from '../lib/orderLocale';
 
 /** Orthographic 3D projection of solver coordinates. SVG works without WebGL and prints reliably. */
-export default function PalletEstimateView({ result, zh = false, lang, copy, length = n => `${n} cm`, weight = n => `${n} kg` }: {
- result:PalletEstimate; zh?:boolean; lang?:OrderLanguage;
+export default function PalletEstimateView({ result, zh = false, lang, copy, length = n => `${n} cm`, weight = n => `${n} kg`, countTestId = "placed-count" }: {
+ result:Pick<PalletEstimate, "boxes" | "pallet" | "loadedHeight">; countTestId?:string; zh?:boolean; lang?:OrderLanguage;
  copy?:{diagram:string;turn:string;reveal:string;diagramNote:string;base:string};
  length?:(n:number)=>string; weight?:(n:number)=>string;
 }) {
@@ -22,6 +22,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
    return ()=>clearInterval(timer);
  },[playing,steps.length]);
  useEffect(()=>{if(step>=steps.length)setPlaying(false);},[step,steps.length]);
+ useEffect(()=>{const showAll=()=>{setPlaying(false);setStep(result.boxes.length);};window.addEventListener('beforeprint',showAll);return()=>window.removeEventListener('beforeprint',showAll);},[result.boxes.length]);
  const scale=Math.min(410/Math.hypot(p.l,p.w),260/Math.max(result.loadedHeight,Math.hypot(p.l,p.w)))*zoom;
  const project=(v:number[])=>{
    const x=v[0]-p.l/2,y=v[1]-result.loadedHeight/2,z=v[2]-p.w/2;
@@ -38,6 +39,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  const button='rounded-lg border px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-40';
  const go=(n:number)=>{setPlaying(false);setStep(n);setSelected(steps[n-1]?.id??null);};
  return <div>
+  <output data-testid={countTestId} className="sr-only">{boxes.length - 1}</output>
   <div className="px-5 pt-4 print:hidden">
    <p className="text-sm font-semibold text-slate-600">{copy?.diagram??t.orbit}</p>
    <div className="flex flex-wrap gap-2 mt-3">
@@ -56,7 +58,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
    onPointerCancel={()=>{drag.current=null;}}>
    <rect width="540" height="350" fill="#f8fafc"/>
    {faces.map(({b,i,points})=><polygon aria-hidden="true" key={`${b.id}-${i}`} data-box-id={b.id} points={points} fill={`#${b.color.toString(16).padStart(6,'0')}`} stroke={b.id===selected?'#0f172a':'#ffffff'} strokeWidth={b.id===selected?2.5:.8} style={{filter:`brightness(${[.65,1.15,.8,.9,.8,.9][i]})`}}
-><title>{b.id} · {b.label}</title></polygon>)}
+><title>{`${b.id} · ${b.label}`}</title></polygon>)}
   </svg>
   <div className="px-5 pb-5 space-y-3 print:hidden">
    <div className="flex flex-wrap gap-2">
