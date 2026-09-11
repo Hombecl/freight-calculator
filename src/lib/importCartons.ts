@@ -17,9 +17,10 @@ export interface ImportResult {
   warnings: string[];
 }
 
-type Field = 'label' | 'l' | 'w' | 'h' | 'weight' | 'qty' | 'group' | 'unloadOrder' | 'fragile' | 'keepUpright';
+type Field = 'label' | 'l' | 'w' | 'h' | 'weight' | 'qty' | 'group' | 'unloadOrder' | 'fragile' | 'keepUpright' | 'maxStack';
 
 const ALIASES: Record<Field, string[]> = {
+  maxStack: ['maxstack', 'max stack', 'max on top', 'stack', 'top load', '頂部承重'],
   label: ['name', 'label', 'carton', 'sku', 'item', 'product', 'description', 'desc', '名稱', '名称', '品名', '產品', '产品', '箱型'],
   l: ['l', 'length', 'len', 'long', '長', '长', '長度', '长度'],
   w: ['w', 'width', 'wide', 'breadth', '闊', '阔', '寬', '宽', '闊度', '寬度'],
@@ -133,6 +134,12 @@ export function rowsToSpecs(rows: (string | number | boolean | null | undefined)
     if (group) spec.group = group;
     const uo = num(get('unloadOrder'));
     if (uo >= 1) spec.unloadOrder = Math.round(uo);
+    const top = String(get('maxStack') ?? '').trim();
+    if (top) {
+      const value = Number(top);
+      if (!Number.isFinite(value) || value < 0) { warnings.push(`Row ${idx + 1}: invalid maxStack — skipped`); return; }
+      spec.maxStack = value;
+    }
     if (truthy(get('fragile'))) spec.maxStack = 0;
     if (truthy(get('keepUpright'))) spec.keepUpright = true;
     specs.push(spec);

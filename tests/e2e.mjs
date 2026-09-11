@@ -11,6 +11,7 @@
  */
 
 import { chromium } from 'playwright';
+import { fixAuditBTests } from './fix-audit-b-e2e.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:4174';
 const IS_LIVE = BASE.includes('dimpack3d.com');
@@ -577,6 +578,8 @@ await test('verify-batch: box single-order DOM count matches Node library', asyn
     if (Number(await page.getByTestId('box-placed-count').textContent()) !== result.plan.boxes.length) throw new Error('Rendered count differs from Node plan');
   } finally { unregister(); }
 }, page);
+
+await fixAuditBTests({test,page,BASE});
 
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });

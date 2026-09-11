@@ -512,6 +512,7 @@ export default function PlannerPage() {
             </button>
           </div>
 
+          <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
           <button
             onClick={sharePlan}
             disabled={shareState === 'busy'}

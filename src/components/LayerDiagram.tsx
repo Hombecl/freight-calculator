@@ -11,6 +11,7 @@ interface Props {
   palletL: number; // cm
   palletW: number; // cm
   label?: string;
+  overhang?: number; // cm per side; deck remains its real size
 }
 
 /** Side elevation: the stack seen from the long side — layers × carton height
@@ -56,13 +57,13 @@ export function SideDiagram({ cartonL, cartonW, cartonH, palletL, palletW, layer
   );
 }
 
-export default function LayerDiagram({ cartonL, cartonW, palletL, palletW, label }: Props) {
-  const { cellL: cl, cellW: cw, nx: cols, ny: rows } = layerArrangement(cartonL, cartonW, palletL, palletW);
+export default function LayerDiagram({ cartonL, cartonW, palletL, palletW, label, overhang = 0 }: Props) {
+  const { cellL: cl, cellW: cw, nx: cols, ny: rows } = layerArrangement(cartonL, cartonW, palletL + 2 * overhang, palletW + 2 * overhang);
   if (cols * rows === 0) return null;
 
   const W = 260;
-  const s = W / palletL;
-  const H = palletW * s;
+  const s = W / (palletL + 2 * overhang);
+  const H = (palletW + 2 * overhang) * s;
   const pad = 6;
 
   const boxes = [];
@@ -91,16 +92,16 @@ export default function LayerDiagram({ cartonL, cartonW, palletL, palletW, label
       aria-label={label ?? `Layer pattern: ${cols} × ${rows} cartons`}
     >
       {/* pallet deck with board lines */}
-      <rect x={pad} y={pad} width={W} height={H} rx={3} className="fill-amber-100 stroke-amber-500" strokeWidth={1.5} />
+      <rect x={pad + overhang * s} y={pad + overhang * s} width={palletL * s} height={palletW * s} rx={3} className="fill-amber-100 stroke-amber-500" strokeWidth={1.5} />
       {[0.2, 0.4, 0.6, 0.8].map((f) => (
-        <line key={f} x1={pad} y1={pad + H * f} x2={pad + W} y2={pad + H * f} className="stroke-amber-300" strokeWidth={0.5} />
+        <line key={f} x1={pad + overhang * s} y1={pad + (overhang + palletW * f) * s} x2={pad + (overhang + palletL) * s} y2={pad + (overhang + palletW * f) * s} className="stroke-amber-300" strokeWidth={0.5} />
       ))}
       {boxes}
       {/* leftover strips, hatched feel via low opacity */}
-      {palletL - cols * cl > 1 && (
+      {overhang === 0 && palletL - cols * cl > 1 && (
         <rect x={pad + cols * cl * s} y={pad} width={(palletL - cols * cl) * s} height={H} className="fill-amber-500/10" />
       )}
-      {palletW - rows * cw > 1 && (
+      {overhang === 0 && palletW - rows * cw > 1 && (
         <rect x={pad} y={pad + rows * cw * s} width={cols * cl * s} height={(palletW - rows * cw) * s} className="fill-amber-500/10" />
       )}
     </svg>
