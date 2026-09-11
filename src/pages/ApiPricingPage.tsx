@@ -38,6 +38,8 @@ export default function ApiPricingPage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
+  const endpoints = Object.keys(ENDPOINT_BASE_LIMITS);
+  const endpointList = endpoints.map(ep => `/api/${ep}`).join(', ');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [useCase, setUseCase] = useState('');
@@ -107,8 +109,8 @@ export default function ApiPricingPage() {
       <h1 className="text-3xl font-black text-slate-900 mb-3">{T('API pricing', 'API 價目')}</h1>
       <p className="text-slate-600 mb-8 max-w-3xl">
         {T(
-          'Four endpoints — container packing, pallet height, multi-pallet order planning, order → pallet quote — behind one key. Every plan calls the same engine; plans differ only in how many calls you can make and how much help you get. Limits below are the ones the server enforces.',
-          '四個 endpoint — 貨櫃裝箱、卡板高度、多卡板訂單規劃、訂單→卡板報價 — 一條 key 通用。所有方案用同一個引擎;分別只在調用次數同支援程度。下面嘅限額就係伺服器實際執行嘅限額。',
+          `${endpoints.length} endpoints — ${endpoints.map(ep => ENDPOINT_LABEL[ep]?.[0] ?? ep).join(', ')} — behind one key. Every plan uses the same engine. Limits below are enforced by the server.`,
+          `${endpoints.length} 個 endpoint — ${endpoints.map(ep => ENDPOINT_LABEL[ep]?.[1] ?? ep).join('、')} — 一條 key 通用。所有方案用同一引擎；以下係伺服器執行嘅限額。`,
         )}
       </p>
 
@@ -177,7 +179,7 @@ export default function ApiPricingPage() {
       <section className="grid md:grid-cols-3 gap-4 mb-10 text-sm">
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('What counts as a call?', '點樣計一次調用?')}</div>
-          <p className="text-slate-600">{T('One POST to /api/pack, /api/pallet-estimate, /api/order-plan or /api/order-quote. GET (docs) and OPTIONS are never counted. A 400 for bad input still counts; a 429 does not.', '一次 POST 到 /api/pack、/api/pallet-estimate 或 /api/order-plan。GET(文檔)同 OPTIONS 唔計。輸入錯誤嘅 400 照計;429 唔計。')}</p>
+          <p className="text-slate-600">{T(`One POST to ${endpointList}. GET (docs) and OPTIONS are never counted. A 400 for bad input still counts; a 429 does not.`, `一次 POST 到 ${endpointList}。GET（文檔）同 OPTIONS 唔計。輸入錯誤嘅 400 照計；429 唔計。`)}</p>
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('Where does my data go?', '我嘅數據去咗邊?')}</div>

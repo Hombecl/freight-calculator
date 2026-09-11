@@ -61,7 +61,7 @@ await test('container mixed floor, two tiers, door, payload and overhang',()=>{
  const c=evaluateCase(r,{l:60,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x');assert.equal(c.container.palletsPerContainer,22);
  const limited=evaluateCase({...r,container:{...r.container,maxWeight:30}},{l:60,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x');assert.equal(limited.container.palletsPerContainer,0);
  const tall=evaluateCase({...r,pallet:{...r.pallet,maxHeight:240}},{l:60,w:40,h:220},6,{a:1,b:2,c:3,orientation:'lwh'},'x');assert.equal(tall.container.palletsPerContainer,0);
- const over={...r,pallet:{...r.pallet,overhang:2.5}};const base=evaluateCase(r,{l:62,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x'),expanded=evaluateCase(over,{l:62,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x');assert.ok(expanded.pallet.ti>base.pallet.ti);geometry(casePalletView(expanded,over).boxes,{...over.pallet,l:125,w:85});
+ const over={...r,pallet:{...r.pallet,overhang:2.5}};const base=evaluateCase(r,{l:62,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x'),expanded=evaluateCase(over,{l:62,w:40,h:40},6,{a:1,b:2,c:3,orientation:'lwh'},'x');assert.ok(expanded.pallet.ti>base.pallet.ti);geometry(casePalletView(expanded,over).boxes.map(b=>({...b,px:b.px+2.5,pz:b.pz+2.5})),{...over.pallet,l:125,w:85});
 });
 await test('floor-load uses packContainer, conservation and geometry',async()=>{
  const r={product:{l:20,w:15,h:10,weight:1},unitsPerCase:1,caseConstraints:{boardThickness:0,headspace:0,allowedOrientations:'upright'},container:{l:60,w:40,h:30,maxWeight:100},candidates:2};

@@ -78,6 +78,11 @@ export default function OrderQuotePage() {
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [staleLatch, setStaleLatch] = useState(false);
+  const inputsChanged = !!quote && JSON.stringify(req) !== JSON.stringify(quotedRequest);
+  const stale = !!quote && (staleLatch || inputsChanged);
+  useEffect(() => { if (inputsChanged) setStaleLatch(true); }, [inputsChanged]);
+  const [importImperial, setImportImperial] = useState(false);
   const [paste, setPaste] = useState('');
   const [importNote, setImportNote] = useState<string[]>([]);
   const [serverState, setServerState] = useState<'' | 'match' | 'mismatch' | 'error'>('');
@@ -92,7 +97,7 @@ export default function OrderQuotePage() {
       if (raw) {
         const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals']; actualsUnits?: QuoteUnits; request?: OrderQuoteRequest };
         if ('profileSnapshot' in saved && saved.profileSnapshot) { const p = parseProfile(saved.profileSnapshot); setProfiles(old => [...old.filter(v => v.id !== p.id), p]); setProfileId(p.id); }
-        if (saved.request) { setReq(saved.request); if ('pallets' in saved) { setQuote(saved as unknown as OrderQuote); setQuotedRequest(saved.request); if ('profileChecks' in saved && Array.isArray(saved.profileChecks)) setProfileChecks(saved.profileChecks); } return; }
+        if (saved.request) { setReq(saved.request); if ('pallets' in saved) { setQuote(saved as unknown as OrderQuote); setQuotedRequest(structuredClone(saved.request)); setStaleLatch(false); if ('profileChecks' in saved && Array.isArray(saved.profileChecks)) setProfileChecks(saved.profileChecks); } return; }
         if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: toUnits({...r, actuals:saved.actuals},saved.actualsUnits??r.units??'cm-kg',r.units??'cm-kg').actuals }));
       }
     } catch { /* */ }
@@ -105,14 +110,16 @@ export default function OrderQuotePage() {
 
   const run = async () => {
     setBusy(true); setError(null); setServerState('');
+    const snapshot = structuredClone(req);
     try {
-      const base = await quoteOrder(req);
+      const base = await quoteOrder(snapshot);
       const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
       setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
       setQuote(q);
-      setQuotedRequest(structuredClone(req));
+      setStaleLatch(false);
+      setQuotedRequest(snapshot);
       track('order_quote_run', q.status);
-      try { const old = JSON.parse(localStorage.getItem(storageKey(req.orderId)) || '{}'); localStorage.setItem(storageKey(req.orderId), JSON.stringify({ ...old, ...q, profileSnapshot: selectedProfile, request: req, actuals: req.actuals ?? {}, actualsUnits: req.units ?? 'cm-kg', at: new Date().toISOString() })); } catch { /* */ }
+      try { const old = JSON.parse(localStorage.getItem(storageKey(req.orderId)) || '{}'); localStorage.setItem(storageKey(req.orderId), JSON.stringify({ ...old, ...q, profileSnapshot: selectedProfile, request: snapshot, actuals: snapshot.actuals ?? {}, actualsUnits: req.units ?? 'cm-kg', at: new Date().toISOString() })); } catch { /* */ }
     } catch (e) {
       setQuote(null);
       setError(String((e as Error).message || e));
@@ -123,8 +130,8 @@ export default function OrderQuotePage() {
     try {
       const res = file ? await parseFile(file) : parseText(text ?? '');
       if (!res.specs.length) { setImportNote(res.warnings); return; }
-      const factorL = units === 'in-lb' ? 1 / CM_PER_IN : 1; // importer assumes cm/kg
-      const factorW = units === 'in-lb' ? 1 / KG_PER_LB : 1;
+      const factorL = (importImperial ? CM_PER_IN : 1) / (units === 'in-lb' ? CM_PER_IN : 1);
+      const factorW = (importImperial ? KG_PER_LB : 1) / (units === 'in-lb' ? KG_PER_LB : 1);
       const items: Item[] = res.specs.slice(0, QUOTE_LIMITS.types).map((s) => ({
         sku: s.label, label: s.label, l: r2(s.l * factorL), w: r2(s.w * factorL), h: r2(s.h * factorL), qty: s.qty, weight: r2(s.weight * factorW),
         keepUpright: s.keepUpright ?? true, ...(s.maxStack === undefined ? {} : { maxStack: r2(s.maxStack * factorW) }),
@@ -132,16 +139,16 @@ export default function OrderQuotePage() {
       const seen = new Set<string>();
       for (const it of items) { let k = it.sku!; let n = 2; while (seen.has(k)) k = `${it.sku}-${n++}`; seen.add(k); it.sku = k; }
       setReq((r) => ({ ...r, items }));
-      setImportNote([...res.warnings, ...(res.specs.length > QUOTE_LIMITS.types ? [T(`Only the first ${QUOTE_LIMITS.types} carton types were kept.`, `只保留首 ${QUOTE_LIMITS.types} 種箱型。`)] : [])]);
+      setImportNote([...res.warnings.map(note => importImperial ? note.replace(/cm\/kg/g, 'in/lb').replace(/\(cm\)/g, '(in)') : note), ...(res.specs.length > QUOTE_LIMITS.types ? [T(`Only the first ${QUOTE_LIMITS.types} carton types were kept.`, `只保留首 ${QUOTE_LIMITS.types} 種箱型。`)] : [])]);
       track('order_quote_import', file ? 'file' : 'paste');
     } catch (e) { setImportNote([String((e as Error).message || e)]); }
   };
 
   const serverCheck = async () => {
-    if (!quote) return;
+    if (!quote || stale || !quotedRequest) return;
     setServerState('');
     try {
-      const res = await fetch('/api/order-quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...req, actuals: undefined }) });
+      const res = await fetch('/api/order-quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(quotedRequest) });
       if (!res.ok) throw new Error();
       const j = (await res.json()) as OrderQuote;
       const same = j.inputHash === quote.inputHash && JSON.stringify(j.pallets.map((p) => p.outerDims)) === JSON.stringify(quote.pallets.map((p) => p.outerDims));
@@ -150,7 +157,13 @@ export default function OrderQuotePage() {
     } catch { setServerState('error'); }
   };
 
-  const curl = useMemo(() => `curl -X POST https://www.dimpack3d.com/api/order-quote \\\n  -H "Content-Type: application/json" \\\n  -H "X-API-Key: dp_live_…"   # optional, 5x limits\n  --data-binary @order-quote-request.json`, []);
+  const curl = useMemo(() => [
+    '# Optional API key header gives 5x limits',
+    'curl -X POST https://www.dimpack3d.com/api/order-quote',
+    '  -H "Content-Type: application/json"',
+    '  -H "X-API-Key: dp_live_…"',
+    '  --data-binary @order-quote-request.json',
+  ].map((line, i) => i > 0 && i < 4 ? line + ' \\' : line).join('\n'), []);
 
   const totalCartons = req.items.reduce((s, it) => s + (it.qty || 0), 0);
   const badge = (s: string) => ({
@@ -158,7 +171,7 @@ export default function OrderQuotePage() {
   }[s] ?? 'bg-slate-100 text-slate-600');
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div className="min-w-0 max-w-6xl mx-auto px-4 py-10">
       <Helmet>
         <title>{T('Order to Pallet Quote — pallet count, dimensions and weight before freight quoting', '訂單轉卡板報價 — 報運費前先知板數、尺寸同重量')} | DimPack3D</title>
         <meta name="description" content={T(
@@ -168,7 +181,7 @@ export default function OrderQuotePage() {
       </Helmet>
       <label className="block my-4">{T('Receiver profile', '收貨方設定')}<select data-testid="quote-profile" className={inputCls} value={profileId} onChange={e => { const p = profiles.find(p => p.id === e.target.value); setProfileId(e.target.value); setQuote(null); setProfileChecks([]); if (p) setReq(r => applyProfile(r,p)); }}><option value="">{T('No profile', '未選設定')}</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
       {selectedProfile?.template && <p className="bg-amber-100 p-2">{T('Verify with your buyer', '請同買家核實')} {selectedProfile.unverified?.join(', ')}</p>}
-      <Link to={lang === 'zh' ? '/zh/receiver-profiles' : '/receiver-profiles'}>{T('Manage receiver profiles', '管理收貨方設定')}</Link>
+      <Link to="/receiver-profiles">{T('Manage receiver profiles', '管理收貨方設定')}</Link>
 
       <h1 className="text-3xl font-black text-slate-900 mb-2">{T('Order → pallet quote', '訂單 → 卡板報價')}</h1>
       <p className="text-slate-600 mb-1 max-w-3xl">{T(
@@ -182,7 +195,7 @@ export default function OrderQuotePage() {
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-8">
         {/* ---- cartons ---- */}
-        <section className="rounded-2xl border border-slate-200 p-5">
+        <section className="min-w-0 rounded-2xl border border-slate-200 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="font-black text-slate-900">{T('1. Cartons in the order', '1. 訂單入面嘅箱')} <span className="text-xs font-semibold text-slate-500">({req.items.length} {T('types', '種')} · {totalCartons} {T('cartons', '箱')})</span></h2>
             <div className="flex gap-2">
@@ -191,27 +204,29 @@ export default function OrderQuotePage() {
               <button className={btnCls} onClick={() => { setReq(structuredClone(QUOTE_EXAMPLE)); setQuote(null); setImportNote([]); }}>{T('Example', '例子')}</button>
             </div>
           </div>
-          <textarea value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={T('Paste from Excel: sku/name, length, width, height, weight, qty (header row optional; cm/kg)', '由 Excel 貼上:sku/名稱、長、闊、高、重量、數量(可有標題行;cm/kg)')} className={`${inputCls} h-20 font-mono text-xs mb-2`} />
+          <p className="text-xs">{T('Import units:', '匯入單位：')} {importImperial ? 'in / lb' : 'cm / kg'}</p>
+          <label className="block text-sm"><input type="checkbox" checked={importImperial} onChange={e => setImportImperial(e.target.checked)} />{T('Rows are in in/lb', '每行資料用 in/lb')}</label>
+          <textarea value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={T('Paste from Excel: sku/name, length, width, height, weight, qty (header row optional; units selected above)', '由 Excel 貼上:sku/名稱、長、闊、高、重量、數量(可有標題行;單位見上面)')} className={`${inputCls} h-20 font-mono text-xs mb-2`} />
           <div className="flex items-center gap-3 mb-3">
             <button className={btnCls} disabled={!paste.trim()} onClick={() => void importRows(paste)}><Upload size={14} />{T('Use pasted rows', '用貼上嘅行')}</button>
             {importNote.length > 0 && <span className="text-xs text-amber-700">{importNote.join(' · ')}</span>}
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+            <table className="quote-cartons w-full text-xs border-collapse max-sm:[&_thead]:hidden max-sm:[&_tbody]:block max-sm:[&_tr]:grid max-sm:[&_tr]:grid-cols-2 max-sm:[&_td]:block max-sm:[&_input]:w-full">
               <thead><tr className="text-left text-slate-500 border-b border-slate-200">
                 {['SKU', T('Label', '名稱'), `L ${lu}`, `W ${lu}`, `H ${lu}`, `${T('Weight', '重量')} ${wu}`, T('Qty', '數量'), T('Upright', '直立'), `${T('Max on top', '頂部承重')} ${wu}`, ''].map((h, i) => <th key={i} className="py-1.5 pr-2 font-semibold">{h}</th>)}
               </tr></thead>
               <tbody>
                 {req.items.map((it, i) => (
                   <tr key={i} className="border-b border-slate-100">
-                    <td className="py-1 pr-2"><input className={`${inputCls} py-1 w-32`} value={it.sku ?? ''} onChange={(e) => setItem(i, { sku: e.target.value })} /></td>
-                    <td className="py-1 pr-2"><input className={`${inputCls} py-1 w-36`} value={it.label ?? ''} onChange={(e) => setItem(i, { label: e.target.value })} /></td>
+                    <td data-label="SKU" className="py-1 pr-2"><input aria-label={`${it.sku || i + 1} SKU`} className={`${inputCls} py-1 w-32`} value={it.sku ?? ''} onChange={(e) => setItem(i, { sku: e.target.value })} /></td>
+                    <td data-label={T("Label", "名稱")} className="py-1 pr-2"><input aria-label={`${it.sku || i + 1} label`} className={`${inputCls} py-1 w-36`} value={it.label ?? ''} onChange={(e) => setItem(i, { label: e.target.value })} /></td>
                     {(['l', 'w', 'h', 'weight'] as const).map((k) => (
-                      <td key={k} className="py-1 pr-2"><input type="number" step="any" className={`${inputCls} py-1 w-20`} value={it[k] ?? ''} onChange={(e) => setItem(i, { [k]: numOr(e.target.value) } as Partial<Item>)} /></td>
+                      <td key={k} data-label={`${{l:T("Length", "長"),w:T("Width", "闊"),h:T("Height", "高"),weight:T("Weight", "重量")}[k]} ${k === "weight" ? wu : lu}`} className="py-1 pr-2"><input aria-label={`${it.sku || i + 1} ${{l: "length", w: "width", h: "height", weight: "weight"}[k]} ${k === "weight" ? wu : lu}`} type="number" step="any" className={`${inputCls} py-1 w-20`} value={it[k] ?? ''} onChange={(e) => setItem(i, { [k]: numOr(e.target.value) } as Partial<Item>)} /></td>
                     ))}
-                    <td className="py-1 pr-2"><input type="number" className={`${inputCls} py-1 w-16`} value={it.qty ?? ''} onChange={(e) => setItem(i, { qty: numOr(e.target.value) as number })} /></td>
-                    <td className="py-1 pr-2 text-center"><input type="checkbox" checked={it.keepUpright ?? true} onChange={(e) => setItem(i, { keepUpright: e.target.checked })} /></td>
-                    <td className="py-1 pr-2"><input type="number" step="any" className={`${inputCls} py-1 w-20`} placeholder="∞" value={it.maxStack ?? ''} onChange={(e) => setItem(i, { maxStack: numOr(e.target.value) })} /></td>
+                    <td data-label={T("Quantity", "數量")} className="py-1 pr-2"><input aria-label={`${it.sku || i + 1} quantity`} type="number" className={`${inputCls} py-1 w-16`} value={it.qty ?? ''} onChange={(e) => setItem(i, { qty: numOr(e.target.value) as number })} /></td>
+                    <td data-label={T("Upright", "直立")} className="py-1 pr-2 text-center"><input aria-label={`${it.sku || i + 1} upright`} type="checkbox" checked={it.keepUpright ?? true} onChange={(e) => setItem(i, { keepUpright: e.target.checked })} /></td>
+                    <td data-label={`${T("Max on top", "頂部承重")} ${wu}`} className="py-1 pr-2"><input type="number" step="any" className={`${inputCls} py-1 w-20`} aria-label={`${it.sku || i + 1} max on top ${wu}`} placeholder="∞" value={it.maxStack ?? ''} onChange={(e) => setItem(i, { maxStack: numOr(e.target.value) })} /></td>
                     <td className="py-1"><button className="text-slate-400 hover:text-red-600" onClick={() => setReq((r) => ({ ...r, items: r.items.filter((_, j) => j !== i) }))} aria-label="remove">×</button></td>
                   </tr>
                 ))}
@@ -222,7 +237,7 @@ export default function OrderQuotePage() {
         </section>
 
         {/* ---- pallet + limits ---- */}
-        <section className="rounded-2xl border border-slate-200 p-5">
+        <section className="min-w-0 rounded-2xl border border-slate-200 p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-black text-slate-900">{T('2. Pallet, packaging, receiver', '2. 卡板、包裝、收貨方')}</h2>
             <div className="flex rounded-lg border border-slate-300 overflow-hidden text-xs font-bold">
@@ -251,6 +266,7 @@ export default function OrderQuotePage() {
       </div>
 
       {/* ---- result ---- */}
+      {stale && <p role="status" data-testid="quote-stale" className="rounded-lg bg-amber-100 p-3">{T('Inputs changed — re-run to update', '輸入已更改 — 請重新計算')}</p>}
       {quote && (
         <section data-testid="quote-result" className="mb-10">
           <div className={`rounded-2xl border-2 p-5 mb-4 ${quote.status === 'complete' ? 'border-emerald-300 bg-emerald-50/50' : quote.status === 'partial' ? 'border-red-300 bg-red-50/50' : 'border-amber-300 bg-amber-50/50'}`}>
@@ -266,7 +282,7 @@ export default function OrderQuotePage() {
             <p className="text-[11px] text-slate-500 mt-2 font-mono">inputHash {quote.inputHash.slice(0, 16)}… · {quote.engineVersion} · meter {quote.meter.unit}:{quote.meter.id}</p>
           </div>
 
-          {quote.summary.palletCount >= 2 && quotedRequest && JSON.stringify(req) === JSON.stringify(quotedRequest) && <OrderOptionsPanel key={quote.inputHash} request={quotedRequest} baseline={quote} onUse={async (option) => {
+          {quote.summary.palletCount >= 2 && quotedRequest && !stale && <OrderOptionsPanel key={quote.inputHash} request={quotedRequest} baseline={quote} onUse={async (option) => {
             if (!window.confirm(T('Apply these quantity changes and use this pallet build?', '套用呢啲數量變更同砌板方案？'))) return;
             const normalized = parseQuoteRequest(quotedRequest);
             const next: OrderQuoteRequest = { ...quotedRequest, packing: option.packing, items: quotedRequest.items.flatMap((it, i) => {
@@ -311,11 +327,11 @@ export default function OrderQuotePage() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            <Link className={btnCls} to={lang === 'zh' ? '/zh/build-sheet' : '/build-sheet'} onClick={e => {try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
-            <button className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv'); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
-            <button className={btnCls} onClick={() => { download(JSON.stringify({ ...req, actuals: undefined }, null, 2), 'order-quote-request.json', 'application/json'); track('order_quote_request_json'); }}><Download size={14} />{T('API request JSON', 'API 請求 JSON')}</button>
-            <button className={btnCls} onClick={() => { download(JSON.stringify(quote, null, 2), `${req.orderId || 'order'}-quote.json`, 'application/json'); }}><Download size={14} />{T('Full result JSON', '完整結果 JSON')}</button>
-            <button className={btnCls} onClick={() => void serverCheck()}><ShieldAlert size={14} />{T('Verify against /api/order-quote', '同 /api/order-quote 對數')}</button>
+            <Link aria-disabled={stale} tabIndex={stale ? -1 : undefined} className={btnCls} to="/build-sheet" onClick={e => {if (stale) { e.preventDefault(); return; } try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
+            <button disabled={stale || busy} className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv'); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
+            <button disabled={stale || busy} className={btnCls} onClick={() => { download(JSON.stringify(quotedRequest, null, 2), 'order-quote-request.json', 'application/json'); track('order_quote_request_json'); }}><Download size={14} />{T('API request JSON', 'API 請求 JSON')}</button>
+            <button disabled={stale || busy} className={btnCls} onClick={() => { download(JSON.stringify(quote, null, 2), `${req.orderId || 'order'}-quote.json`, 'application/json'); }}><Download size={14} />{T('Full result JSON', '完整結果 JSON')}</button>
+            <button disabled={stale || busy} className={btnCls} onClick={() => void serverCheck()}><ShieldAlert size={14} />{T('Verify against /api/order-quote', '同 /api/order-quote 對數')}</button>
             {serverState === 'match' && <span className="text-sm text-emerald-700 inline-flex items-center gap-1"><Check size={14} />{T('Server result matches (same inputHash and dimensions).', '伺服器結果一致(同一 inputHash 同尺寸)。')}</span>}
             {serverState === 'mismatch' && <span className="text-sm text-red-700">{T('Server result differs — report this with the inputHash.', '伺服器結果不同 — 請連同 inputHash 回報。')}</span>}
             {serverState === 'error' && <span className="text-sm text-amber-700">{T('Server unavailable (works only on dimpack3d.com).', '伺服器不可用(只喺 dimpack3d.com 有效)。')}</span>}
@@ -340,7 +356,7 @@ export default function OrderQuotePage() {
       )}
 
       {/* ---- pilot ---- */}
-      <section className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-6">
+      <section className="min-w-0 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-6">
         <h2 className="font-black text-slate-900 mb-1.5">{T('Run a 30-order pilot with us', '同我哋做 30 張訂單試點')}</h2>
         <p className="text-sm text-slate-600 mb-3 max-w-3xl">{T(
           'Fixed-fee, 30 days: we quote 30 of your real orders, you build them, we compare predicted vs measured height, weight and pallet count against your freight invoices, with tolerances agreed up front. You keep the integration; we keep the evidence. If it does not hold up, you do not pay for month two.',

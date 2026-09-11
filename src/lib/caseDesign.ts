@@ -1,5 +1,5 @@
 import { canonicalJson } from './hashing';
-import { PalletInputError, estimatePallet } from './palletEstimate';
+import { PalletInputError } from './palletEstimate';
 import { perLayer, layerArrangement, palletBoxes, floorFit, PALLET_TARE_KG } from './pallets';
 import { packContainer } from './binPacking';
 import { CHECK_SEMANTICS, CONTAINER_PRESETS, type Check } from './packChecks';
@@ -154,7 +154,6 @@ export function casePalletView(candidate: CaseCandidate, request: ParsedCaseRequ
   if (!p || !result || !result.casesPerPallet) return undefined;
   const d = { l: candidate.caseOuter.l.cm, w: candidate.caseOuter.w.cm, h: candidate.caseOuter.h.cm, weight: candidate.caseWeight.kg };
   const deck = { ...p, l: p.l + 2*p.overhang, w: p.w + 2*p.overhang };
-  // One-case seed remains valid even for very large generated outer dimensions.
-  const seed = d.l <= 400 && d.w <= 400 && d.h <= 400 && deck.l <= 300 && deck.w <= 300 && d.weight <= 10000 && d.weight >= .01 && Math.min(d.l,d.w,d.h) >= .1 ? estimatePallet({ pallet: deck, items: [{ ...d, qty: 1, label: 'Case', keepUpright: true }] }) : undefined;
-  return { pallet: seed?.pallet ?? deck, loadedHeight: result.loadedHeight.cm, boxes: palletBoxes(result.casesPerPallet, d, deck) };
+  return { pallet: p, cargoEnvelope: deck, loadedHeight: result.loadedHeight.cm,
+    boxes: palletBoxes(result.casesPerPallet, d, deck).map(b => ({ ...b, px: b.px - p.overhang, pz: b.pz - p.overhang })) };
 }

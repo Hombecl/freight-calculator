@@ -11,6 +11,7 @@
  */
 
 import { chromium } from 'playwright';
+import { fixAuditBTests } from './fix-audit-b-e2e.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:4174';
 const IS_LIVE = BASE.includes('dimpack3d.com');
@@ -645,6 +646,8 @@ await test('audit A: zero storage bookmark, door fit, fee and rate disclosures',
   await page.getByRole('link', { name:'sourceforge.net', exact:true }).waitFor();
   await page.getByText(/Reported by sourceforge.net/).waitFor();
 }, page);
+
+await fixAuditBTests({test,page,BASE});
 
 await test('i18n: /zh homepage renders Chinese', async () => {
   await page.goto(`${BASE}/zh`, { waitUntil: 'domcontentloaded' });
