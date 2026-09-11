@@ -77,7 +77,7 @@ export async function evaluateProfile(quote: OrderQuote, input: ReceiverProfile)
 }
 export async function attachProfile(quote: OrderQuote, p: ReceiverProfile) {
   const e = await evaluateProfile(quote,p);
-  return { ...quote, profile: { id:p.id,name:p.name,version:e.profileVersion,template:p.template,source:p.source,verifiedAt:p.verifiedAt,approvedBy:e.approvedBy,approvedAt:e.approvedAt,unverified:p.unverified,verificationNote:p.verificationNote }, profileChecks:e.checks, status: e.checks.some(c => c.status === 'fail') ? 'needs_review' as const : quote.status, reviewReasons: [...quote.reviewReasons,...e.checks.filter(c => c.status === 'fail').map(c => c.code)] };
+  return { ...quote, profile: { id:p.id,name:p.name,version:e.profileVersion,template:p.template,source:p.source,verifiedAt:p.verifiedAt,approvedBy:e.approvedBy,approvedAt:e.approvedAt,unverified:p.unverified,verificationNote:p.verificationNote }, profileChecks:e.checks, status: quote.status === 'partial' ? 'partial' as const : e.checks.some(c => c.status === 'fail') ? 'needs_review' as const : quote.status, reviewReasons: [...quote.reviewReasons,...e.checks.filter(c => c.status === 'fail').map(c => c.code)] };
 }
 export class UnknownProfileError extends Error {}
 export async function checkReceiver(input: unknown) {

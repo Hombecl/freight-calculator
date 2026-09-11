@@ -1,3 +1,5 @@
+import { fitsDoor, CONTAINER_PRESETS } from '../lib/packChecks';
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -45,11 +47,11 @@ export default function CbmCalcPage() {
   const clampDim = (v: number) => Math.min(100000, Math.max(1, v));
   const clampQty = (v: number) => Math.min(10000000, Math.max(1, v));
   const [unit, setUnit] = useState<'cm' | 'in'>(() => (params.get('u') === 'in' ? 'in' : 'cm'));
-  const [l, setL] = useState(() => clampDim(Number(params.get('l')) || (params.get('u') === 'in' ? 24 : 60)));
-  const [w, setW] = useState(() => clampDim(Number(params.get('w')) || (params.get('u') === 'in' ? 16 : 40)));
-  const [h, setH] = useState(() => clampDim(Number(params.get('h')) || (params.get('u') === 'in' ? 20 : 50)));
-  const [qty, setQty] = useState(() => clampQty(Number(params.get('q')) || 100));
-  const [kgEach, setKgEach] = useState(() => Math.min(1000000, Math.max(0, Number(params.get('wt')) || 0)));
+  const [l, setL] = useState(() => clampDim(queryNumber(params.get('l'), (params.get('u') === 'in' ? 24 : 60))));
+  const [w, setW] = useState(() => clampDim(queryNumber(params.get('w'), (params.get('u') === 'in' ? 16 : 40))));
+  const [h, setH] = useState(() => clampDim(queryNumber(params.get('h'), (params.get('u') === 'in' ? 20 : 50))));
+  const [qty, setQty] = useState(() => clampQty(queryNumber(params.get('q'), 100)));
+  const [kgEach, setKgEach] = useState(() => Math.min(1000000, Math.max(0, queryNumber(params.get('wt'), 0))));
 
   useEffect(() => {
     setParams({ u: unit, l: String(l), w: String(w), h: String(h), q: String(qty), wt: String(kgEach) }, { replace: true });
@@ -76,13 +78,14 @@ export default function CbmCalcPage() {
     const volKg = totalCbm * KG_PER_CBM_AIR;
     const chargeableKg = Math.max(totalActualKg, volKg);
     const cmDims = [l * f, w * f, h * f];
-    const fits = CONTAINERS.find((c) => totalCbm <= c.usable && cartonFitsDims(cmDims, c.dims));
+    const fits = CONTAINERS.find((c) => totalCbm <= c.usable && cartonFitsDims(cmDims, c.dims) && fitsDoor({l: cmDims[0], w: cmDims[1], h: cmDims[2]}, CONTAINER_PRESETS[c.key].door));
+    const doorBlocked = CONTAINERS.find(c => totalCbm <= c.usable && cartonFitsDims(cmDims, c.dims) && !fitsDoor({l: cmDims[0], w: cmDims[1], h: cmDims[2]}, CONTAINER_PRESETS[c.key].door));
     const tooBig = !CONTAINERS.some((c) => cartonFitsDims(cmDims, c.dims));
     return {
       singleCbm, totalCbm,
       totalActualKg, volKg, chargeableKg,
       chargeableByVol: volKg >= totalActualKg,
-      fits, tooBig,
+      fits, tooBig, doorBlocked,
       fillPct: fits ? (totalCbm / fits.usable) * 100 : null,
     };
   }, [l, w, h, qty, kgEach, unit]);
@@ -182,7 +185,7 @@ export default function CbmCalcPage() {
               <div className="flex justify-between"><span>{T('Single carton', '單箱')}</span><span className="font-semibold">{r.singleCbm.toFixed(4)} CBM</span></div>
               <div className="flex justify-between">
                 <span>{T('Smallest container that fits', '最細可裝貨櫃')}</span>
-                <span className="font-semibold">{r.fits ? `${r.fits.label} · ${r.fillPct!.toFixed(0)}%` : r.tooBig ? T('carton exceeds container dims', '單箱大過貨櫃內尺寸') : T('> 40HQ (multiple / FCL)', '> 40HQ(多櫃)')}</span>
+                <span className="font-semibold">{r.fits ? `${r.fits.label} · ${r.fillPct!.toFixed(0)}%` : r.doorBlocked ? `${r.doorBlocked.label} · ${T('by volume only — does not pass the door', '只按體積 — 通唔過櫃門')}` : r.tooBig ? T('carton exceeds container dims', '單箱大過貨櫃內尺寸') : T('> 40HQ (multiple / FCL)', '> 40HQ(多櫃)')}</span>
               </div>
               {kgEach > 0 && (
                 <>

@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { DIM_PRESETS as CARRIERS } from '../lib/dimPresets';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -30,10 +31,10 @@ export default function DimWeightCalcPage() {
   const [params, setParams] = useSearchParams();
 
   const [unit, setUnit] = useState<'metric' | 'imperial'>(() => (params.get('u') === 'imperial' ? 'imperial' : 'metric'));
-  const [l, setL] = useState(() => Math.max(1, Number(params.get('l')) || (params.get('u') === 'imperial' ? 24 : 60)));
-  const [w, setW] = useState(() => Math.max(1, Number(params.get('w')) || (params.get('u') === 'imperial' ? 16 : 40)));
-  const [h, setH] = useState(() => Math.max(1, Number(params.get('h')) || (params.get('u') === 'imperial' ? 20 : 50)));
-  const [wt, setWt] = useState(() => Math.max(0, Number(params.get('wt')) || (params.get('u') === 'imperial' ? 18 : 8)));
+  const [l, setL] = useState(() => Math.max(1, queryNumber(params.get('l'), (params.get('u') === 'imperial' ? 24 : 60))));
+  const [w, setW] = useState(() => Math.max(1, queryNumber(params.get('w'), (params.get('u') === 'imperial' ? 16 : 40))));
+  const [h, setH] = useState(() => Math.max(1, queryNumber(params.get('h'), (params.get('u') === 'imperial' ? 20 : 50))));
+  const [wt, setWt] = useState(() => Math.max(0, queryNumber(params.get('wt'), (params.get('u') === 'imperial' ? 18 : 8))));
   const [carrierKey, setCarrierKey] = useState<string>(() => params.get('c') ?? 'amazon');
 
   useEffect(() => {

@@ -20,6 +20,9 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
     return new Response('bad json', { status: 400 });
   }
 
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return Response.json({ error: 'body must be a JSON object' }, { status: 400 });
+
   const email = String(data.email ?? '').trim().slice(0, 200);
   if (!EMAIL_RE.test(email)) return new Response('bad email', { status: 400 });
 

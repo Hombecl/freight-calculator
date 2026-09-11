@@ -26,7 +26,7 @@ export const onRequestGet: PagesFunction = async () =>
     profiles: loadProfiles().map(({id,name,source,verifiedAt,limits}) => ({id,name,source,verifiedAt,limits})),
     limits: { ...QUOTE_LIMITS, note: `${QUOTE_LIMITS.types} carton types, ${QUOTE_LIMITS.cartons} cartons, ${QUOTE_LIMITS.pallets} pallets, ${QUOTE_LIMITS.bodyBytes} B body per order.` },
     response: 'profile{id,name,version,template,source,verifiedAt,approvedBy?,approvedAt?,unverified?}, profileChecks[]{code,status,observed?,limit?,assumption}, tier, warning?; status complete|partial|needs_review, reviewReasons[], summary{palletCount,totalGrossWeight,maxOuterHeight,…}, pallets[]{outerDims,grossWeight,checks[]{code,status,observed,limit,assumption},variance?}, inputHash, engineVersion, meter{unit:"order",id}',
-    semantics: 'partial = not every carton placed within maxPallets — never quote it as a whole shipment. needs_review = placed, but a supplied limit failed. Checks are screening against numbers you supplied, not certification.',
+    semantics: 'partial = not every carton placed within maxPallets — never quote it as a whole shipment. partial takes precedence even when receiver rules fail; profileChecks and reviewReasons retain those failures. needs_review = all cartons placed, but a supplied limit failed. Checks are screening against numbers you supplied, not certification.',
     auth: 'Optional X-API-Key (https://www.dimpack3d.com/api-pricing). Anonymous: 10/min, 100/day per IP.',
     interactive: 'https://www.dimpack3d.com/receiver-profiles',
     docs: DOCS,

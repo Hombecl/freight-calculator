@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -35,11 +36,11 @@ export default function WarehouseSpaceCalcPage() {
   const [mode, setMode] = useState<'space' | 'capacity'>(() => (params.get('m') === 'cap' ? 'capacity' : 'space'));
   const carryIn = readCarry(params);
   const [pallets, setPallets] = useState(() => Math.max(1, seedNum(params.get('p'), carryIn.plt, 500)));
-  const [area, setArea] = useState(() => Math.max(1, Number(params.get('ar')) || 1000));
+  const [area, setArea] = useState(() => Math.max(1, queryNumber(params.get('ar'), 1000)));
   const [areaUnit, setAreaUnit] = useState<'m2' | 'sqft'>(() => (params.get('au') === 'sqft' ? 'sqft' : 'm2'));
   const [storage, setStorage] = useState<string>(() => params.get('s') ?? 'selective');
   const [aisleKey, setAisleKey] = useState<string>(() => params.get('a') ?? 'reach');
-  const [levels, setLevels] = useState(() => Math.min(8, Math.max(1, Number(params.get('l')) || 4)));
+  const [levels, setLevels] = useState(() => Math.min(8, Math.max(1, queryNumber(params.get('l'), 4))));
 
   // bookmarkable: inputs live in the URL
   useEffect(() => {

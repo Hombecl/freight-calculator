@@ -17,7 +17,11 @@
         "團隊/企業授權(企業級 $2,400+ 起)"
       ],
       "pricingEn": "Paid per-seat licenses (day tickets, monthly, yearly; prices shown in their store). Free trial is 10 days.",
-      "pricingZh": "按席位收費(日票/月費/年費,價錢喺佢哋商店顯示),試用期 10 日。"
+      "pricingZh": "按席位收費(日票/月費/年費,價錢喺佢哋商店顯示),試用期 10 日。",
+      "pricingSource": {
+        "url": "https://containermath.com/blog/best-container-loading-software",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "cargo-planner-alternative",
@@ -36,7 +40,11 @@
         "企業客戶群(航空公司、全球貨代)"
       ],
       "pricingEn": "Subscription plans (quote-based tiers); free trial available.",
-      "pricingZh": "訂閱制(按方案報價),有免費試用。"
+      "pricingZh": "訂閱制(按方案報價),有免費試用。",
+      "pricingSource": {
+        "url": "https://containermath.com/blog/best-container-loading-software",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "cube-iq-alternative",
@@ -55,7 +63,11 @@
         "數十年企業部署經驗"
       ],
       "pricingEn": "Enterprise licensing; third-party listings report from ~$5,000/yr per user (verify with vendor).",
-      "pricingZh": "企業授權;第三方目錄顯示約每用戶每年 $5,000 起(以官方報價為準)。"
+      "pricingZh": "企業授權;第三方目錄顯示約每用戶每年 $5,000 起(以官方報價為準)。",
+      "pricingSource": {
+        "url": "https://sourceforge.net/software/load-planning/",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "goodloading-alternative",
@@ -74,7 +86,11 @@
         "分享項目同 PDF 內置裝載動畫"
       ],
       "pricingEn": "Free registration with an always-free demo version; a paid professional version adds advanced customisation (prices on their site).",
-      "pricingZh": "免費註冊,demo 版一直免費;付費專業版提供進階自訂功能(價錢見官網)。"
+      "pricingZh": "免費註冊,demo 版一直免費;付費專業版提供進階自訂功能(價錢見官網)。",
+      "pricingSource": {
+        "url": "https://containermath.com/blog/best-container-loading-software",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "3dbinpacking-alternative",
@@ -93,7 +109,11 @@
         "成熟商用 API,有正式文檔"
       ],
       "pricingEn": "Subscription plans (all tools included in each plan); 14-day trial, no credit card required. Current prices on their site.",
-      "pricingZh": "訂閱制(每個方案都包晒所有工具);14 日試用、唔使信用卡。價錢以官網為準。"
+      "pricingZh": "訂閱制(每個方案都包晒所有工具);14 日試用、唔使信用卡。價錢以官網為準。",
+      "pricingSource": {
+        "url": "https://containermath.com/blog/best-container-loading-software",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "cargowiz-alternative",
@@ -112,7 +132,11 @@
         "30 日全功能試用;首年免費支援"
       ],
       "pricingEn": "Paid Windows licence after a 30-day fully-featured trial; the vendor does not publish a price on the product page (verify with vendor).",
-      "pricingZh": "30 日全功能試用後需購買 Windows 授權;官網產品頁未有公開價錢(以官方報價為準)。"
+      "pricingZh": "30 日全功能試用後需購買 Windows 授權;官網產品頁未有公開價錢(以官方報價為準)。",
+      "pricingSource": {
+        "url": "https://containermath.com/blog/best-container-loading-software",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "cubemaster-alternative",
@@ -131,7 +155,11 @@
         "砌板圖案同包裝設計係核心功能"
       ],
       "pricingEn": "CubeMaster Online subscriptions are listed from about US$49/month (Standard), with Premium and Collaboration tiers above; desktop perpetual licences are listed from roughly US$995 to US$2,495 per seat. Verify current prices on their pricing page.",
-      "pricingZh": "CubeMaster Online 訂閱由約 US$49/月(Standard)起,另有 Premium 同 Collaboration 級別;桌面永久授權每席約 US$995 至 US$2,495。請以佢哋官方價目頁為準。"
+      "pricingZh": "CubeMaster Online 訂閱由約 US$49/月(Standard)起,另有 Premium 同 Collaboration 級別;桌面永久授權每席約 US$995 至 US$2,495。請以佢哋官方價目頁為準。",
+      "pricingSource": {
+        "url": "https://www.cubemaster.net/subscription/pricing.asp",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "searates-load-calculator-alternative",
@@ -150,7 +178,11 @@
         "由 DP World 支持,提供物流整合 API"
       ],
       "pricingEn": "Per SeaRates' own pricing page: unregistered users get 1 free calculation per day; registered users get 20 per month (max 3 per day). Higher volumes need a paid SeaRates subscription (quote-based; 15% discount on annual plans).",
-      "pricingZh": "按 SeaRates 官方價目頁:未登入每日 1 次免費計算;已註冊每月 20 次(每日最多 3 次)。更高用量需要付費訂閱(報價制,年繳有 15% 折扣)。"
+      "pricingZh": "按 SeaRates 官方價目頁:未登入每日 1 次免費計算;已註冊每月 20 次(每日最多 3 次)。更高用量需要付費訂閱(報價制,年繳有 15% 折扣)。",
+      "pricingSource": {
+        "url": "https://www.searates.com/pricing/load-calculator",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "tops-pro-alternative",
@@ -169,7 +201,11 @@
         "消費品包裝部門幾十年嘅採用歷史"
       ],
       "pricingEn": "The vendor does not publish prices; third-party software directories list TOPS Pro as quote-based licensing with a free trial on request. Contact TOPS Engineering for a quote.",
-      "pricingZh": "廠商唔公開價錢;第三方軟件目錄列為報價制授權,可申請試用。請直接向 TOPS Engineering 索取報價。"
+      "pricingZh": "廠商唔公開價錢;第三方軟件目錄列為報價制授權,可申請試用。請直接向 TOPS Engineering 索取報價。",
+      "pricingSource": {
+        "url": "https://sourceforge.net/software/load-planning/",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "stackbuilder-alternative",
@@ -188,7 +224,11 @@
         "桌面離線流程,冇計算次數限制"
       ],
       "pricingEn": "treeDiM publishes StackBuilder as a free Windows download; the wider PLMPack/Picador CAD suite is commercial and quote-based per third-party listings. Verify current terms with treeDiM.",
-      "pricingZh": "treeDiM 以免費 Windows 下載形式發佈 StackBuilder;整套 PLMPack/Picador CAD 套件為商業報價制(據第三方目錄)。請向 treeDiM 核實最新條款。"
+      "pricingZh": "treeDiM 以免費 Windows 下載形式發佈 StackBuilder;整套 PLMPack/Picador CAD 套件為商業報價制(據第三方目錄)。請向 treeDiM 核實最新條款。",
+      "pricingSource": {
+        "url": "https://sourceforge.net/software/load-planning/",
+        "checkedAt": "2026-09-10"
+      }
     },
     {
       "slug": "packapp-alternative",
@@ -207,7 +247,11 @@
         "REST API 自動連接 ERP/TMS"
       ],
       "pricingEn": "The vendor does not publish prices publicly; third-party listings describe subscription licensing on request. Contact PackApp for a quote.",
-      "pricingZh": "廠商未公開價錢;第三方目錄描述為按需訂閱授權。請向 PackApp 索取報價。"
+      "pricingZh": "廠商未公開價錢;第三方目錄描述為按需訂閱授權。請向 PackApp 索取報價。",
+      "pricingSource": {
+        "url": "https://sourceforge.net/software/load-planning/",
+        "checkedAt": "2026-09-10"
+      }
     }
   ]
 }

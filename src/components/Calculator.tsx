@@ -1,3 +1,5 @@
+import { constrainContainerScenarios, containerCountLimit } from '../lib/legacyContainer';
+import { FBA_RATE_AS_OF, FBA_SIZE_TIERS, type FBASizeTier, type FBASizeTierInfo } from '../data/fbaRates';
 // type-only: three.js is loaded from a CDN at runtime (window.THREE), but the
 // THREE.* namespace types must resolve for tsc. Erased at compile — no bundle cost.
 import type * as THREE from 'three';
@@ -117,6 +119,7 @@ interface ThreeVisualizerProps {
   units: Units;
   t: (key: string) => string;
   isContainerMode?: boolean;
+  containerPreset?: ContainerKey;
 }
 
 interface SettingsModalProps {
@@ -149,6 +152,7 @@ interface SimulationModalProps {
   t: (key: string) => string;
   cartonThickness: number;
   isContainerMode?: boolean;
+  containerPreset?: ContainerKey;
 }
 
 interface FbaSimulationModalProps {
@@ -254,100 +258,7 @@ declare global {
   }
 }
 
-// ===== Amazon FBA Size Tier Types (US Market) =====
-type FBASizeTier =
-  | 'small_standard'
-  | 'large_standard'
-  | 'large_bulky'
-  | 'extra_large_0_50'
-  | 'extra_large_50_70'
-  | 'extra_large_70_150'
-  | 'extra_large_150_plus';
 
-interface FBASizeTierInfo {
-  tier: FBASizeTier;
-  name: string;
-  nameZh: string;
-  color: string;
-  maxDims: { longest: number; median: number; shortest: number }; // in inches
-  maxWeight: number; // in lbs
-  baseFee: number; // USD - base fulfillment fee
-  perLbFee?: number; // USD - additional per lb fee
-}
-
-// Amazon FBA Size Tier Specifications (US - 2025)
-// Source: https://sellercentral.amazon.com/help/hub/reference/GG5KW835AHDJCH8W
-const FBA_SIZE_TIERS: Record<FBASizeTier, FBASizeTierInfo> = {
-  small_standard: {
-    tier: 'small_standard',
-    name: 'Small Standard',
-    nameZh: '小型標準',
-    color: '#22c55e', // green
-    maxDims: { longest: 15, median: 12, shortest: 0.75 },
-    maxWeight: 1,
-    baseFee: 3.22,
-  },
-  large_standard: {
-    tier: 'large_standard',
-    name: 'Large Standard',
-    nameZh: '大型標準',
-    color: '#3b82f6', // blue
-    maxDims: { longest: 18, median: 14, shortest: 8 },
-    maxWeight: 20,
-    baseFee: 4.75,
-    perLbFee: 0.08,
-  },
-  large_bulky: {
-    tier: 'large_bulky',
-    name: 'Large Bulky',
-    nameZh: '大型笨重',
-    color: '#f59e0b', // amber
-    maxDims: { longest: 59, median: 33, shortest: 33 },
-    maxWeight: 50,
-    baseFee: 9.73,
-    perLbFee: 0.42,
-  },
-  extra_large_0_50: {
-    tier: 'extra_large_0_50',
-    name: 'Extra Large (0-50 lb)',
-    nameZh: '超大型 (0-50磅)',
-    color: '#ef4444', // red
-    maxDims: { longest: 999, median: 999, shortest: 999 }, // no practical limit
-    maxWeight: 50,
-    baseFee: 26.33,
-    perLbFee: 0.38,
-  },
-  extra_large_50_70: {
-    tier: 'extra_large_50_70',
-    name: 'Extra Large (50-70 lb)',
-    nameZh: '超大型 (50-70磅)',
-    color: '#dc2626', // red-600
-    maxDims: { longest: 999, median: 999, shortest: 999 },
-    maxWeight: 70,
-    baseFee: 40.12,
-    perLbFee: 0.75,
-  },
-  extra_large_70_150: {
-    tier: 'extra_large_70_150',
-    name: 'Extra Large (70-150 lb)',
-    nameZh: '超大型 (70-150磅)',
-    color: '#b91c1c', // red-700
-    maxDims: { longest: 999, median: 999, shortest: 999 },
-    maxWeight: 150,
-    baseFee: 54.81,
-    perLbFee: 0.75,
-  },
-  extra_large_150_plus: {
-    tier: 'extra_large_150_plus',
-    name: 'Extra Large (150+ lb)',
-    nameZh: '超大型 (150磅以上)',
-    color: '#7f1d1d', // red-900
-    maxDims: { longest: 999, median: 999, shortest: 999 },
-    maxWeight: 9999,
-    baseFee: 194.95,
-    perLbFee: 0.19,
-  },
-};
 
 // Amazon DIM weight divisor (US)
 const FBA_DIM_DIVISOR = 139;
@@ -2530,7 +2441,7 @@ const ProductLibraryModal: React.FC<ProductLibraryModalProps> = ({
   );
 };
 
-const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item, outer, units, onApply, customCartons, rates, dimFactor, exchangeRate, t, cartonThickness, isContainerMode = false }) => {
+const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item, outer, units, onApply, customCartons, rates, dimFactor, exchangeRate, t, cartonThickness, isContainerMode = false, containerPreset = '20gp' }) => {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [simOuter, setSimOuter] = useState<DimensionsWithWeight>(outer);
   const [simItem, setSimItem] = useState<DimensionsWithWeight>(item);
@@ -2559,8 +2470,9 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
   }, [simOuter, cartonThickness, units, isContainerMode]);
 
   const scenarios = useMemo(() => {
-    return calculatePackingScenarios(simItem, packingSpace);
-  }, [simItem, packingSpace]);
+    const geometry = calculatePackingScenarios(simItem, packingSpace);
+    return isContainerMode ? constrainContainerScenarios(geometry, simItem, containerPreset) : geometry;
+  }, [simItem, packingSpace, isContainerMode, containerPreset]);
 
   const current = scenarios[selectedIdx] || null;
 
@@ -2626,6 +2538,7 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
 
           <div className="flex-1 flex flex-col md:flex-row md:overflow-hidden bg-slate-50">
             <div className="relative bg-gradient-to-br from-slate-200 to-slate-300 shadow-inner h-[250px] md:h-auto md:flex-1 md:min-h-[400px]">
+             <span data-testid="loading-rendered-count" className="sr-only">{current?.items.length ?? 0}</span>
              <ThreeVisualizer outer={simOuter} inner={packingSpace} scenario={current} units={units} t={t} isContainerMode={isContainerMode} />
              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur p-2 rounded-lg shadow-sm border border-white/50 text-[10px] space-y-1">
                 <div className="font-bold text-gray-600 mb-1">{t('orientationLabel')}</div>
@@ -2740,7 +2653,7 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Util.</span>
                           </div>
                           <div className="flex flex-col items-end min-w-[30px]">
-                             <span className={`text-lg font-bold ${selectedIdx === idx ? 'text-gray-800' : 'text-gray-500'}`}>{sc.count}</span>
+                             <span data-testid="loading-scenario-count" className={`text-lg font-bold ${selectedIdx === idx ? 'text-gray-800' : 'text-gray-500'}`}>{sc.count}</span>
                              <span className="text-[9px] text-gray-400 font-bold uppercase">{t('pcs')}</span>
                           </div>
                       </div>
@@ -3825,10 +3738,15 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
 
   // --- Calculations: Loading Mode ---
   const containerMetric = useMemo(() => CONTAINER_SPECS[selectedContainerKey], [selectedContainerKey]);
-  const loadingScenarios = useMemo(() => calculatePackingScenarios(
-      { l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h) },
-      containerMetric
+  const loadingItem = { l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h), weight: toMetricW(shipmentCarton.weight) };
+  const loadingLimit = containerCountLimit(loadingItem, selectedContainerKey);
+  const loadingGeometry = useMemo(() => calculatePackingScenarios(
+      { l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h) }, containerMetric
   ), [shipmentCarton, containerMetric, units]);
+  const loadingScenarios = useMemo(() => constrainContainerScenarios(loadingGeometry, {
+    l: toMetricL(shipmentCarton.l), w: toMetricL(shipmentCarton.w), h: toMetricL(shipmentCarton.h), weight: toMetricW(shipmentCarton.weight),
+  }, selectedContainerKey), [loadingGeometry, shipmentCarton, units, selectedContainerKey]);
+  const loadingConstraint = !loadingLimit.doorFits ? 'door' : loadingLimit.maxCount < (loadingGeometry[0]?.count ?? 0) ? 'payload' : 'geometry';
 
   const bestLoading = loadingScenarios[0] || null;
   const loadingStats = useMemo((): LoadingStats | null => {
@@ -3890,7 +3808,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
          outer={mode === 'packing' ? simCartonInit : simContainer}
          units={units} rates={rates} dimFactor={dimFactor} exchangeRate={exchangeRate} t={t}
          onApply={handleApplyCarton} customCartons={customCartons} cartonThickness={cartonThickness}
-         isContainerMode={mode === 'loading'}
+         isContainerMode={mode === 'loading'} containerPreset={selectedContainerKey}
       />
 
       {fbaCalc && (
@@ -4116,12 +4034,19 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                 <div className="flex items-center gap-2"><div className="bg-green-600 p-1 rounded text-white"><DollarSign size={16}/></div><h3 className="font-bold text-slate-800">{t('title')} (Estimated Cost)</h3></div>
                 <div className="text-[10px] text-gray-400 font-medium">Display Currency: {units.currency}</div>
               </div>
+              <p className="px-4 pt-3 text-xs text-amber-800">{lang === 'zh' ? '示例預設費率，唔係報價。' : 'Illustrative default, not a quote.'}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3">
+                {(['air', 'sea'] as const).map(kind => <label key={kind} className="text-xs text-slate-600">
+                  {kind === 'air' ? t('airFreight') : t('seaFreight')} · {kind === 'air' ? rates.airCurrency : rates.seaCurrency}/{kind === 'air' ? 'kg' : rates.seaUnit}
+                  <input data-testid={`${kind}-rate`} type="number" min={0} step="0.01" value={rates[kind]} className="block w-full border rounded p-2" onChange={e => { const value = Number(e.target.value); if (Number.isFinite(value) && value >= 0) setRates(prev => ({...prev, [kind]: value})); }} />
+                </label>)}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                 <div className="p-5 flex flex-col items-center justify-center hover:bg-blue-50/30 transition-colors relative group">
                   <div className="flex items-center gap-2 mb-2 text-blue-600 z-10"><Plane size={20} /><span className="font-bold text-lg">{t('airFreight')}</span></div>
                   <div className="text-center z-10">
                     <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('costPerUnit')}</div>
-                    <div className="text-4xl font-black text-slate-800 tracking-tight">{packingCosts ? displayMoney(packingCosts.air.unit) : '-'}</div>
+                    <div data-testid="air-unit-cost" className="text-4xl font-black text-slate-800 tracking-tight">{packingCosts ? displayMoney(packingCosts.air.unit) : '-'}</div>
                     <div className="text-xs text-gray-400 font-medium mt-1">{t('totalPerCarton')}: {packingCosts ? displayMoney(packingCosts.air.total) : '-'}</div>
                   </div>
                 </div>
@@ -4129,7 +4054,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                   <div className="flex items-center gap-2 mb-2 text-teal-600 z-10"><Anchor size={20} /><span className="font-bold text-lg">{t('seaFreight')}</span></div>
                   <div className="text-center z-10">
                     <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('costPerUnit')}</div>
-                    <div className="text-4xl font-black text-slate-800 tracking-tight">{packingCosts ? displayMoney(packingCosts.sea.unit) : '-'}</div>
+                    <div data-testid="sea-unit-cost" className="text-4xl font-black text-slate-800 tracking-tight">{packingCosts ? displayMoney(packingCosts.sea.unit) : '-'}</div>
                     <div className="text-xs text-gray-400 font-medium mt-1">{t('totalPerCarton')}: {packingCosts ? displayMoney(packingCosts.sea.total) : '-'}</div>
                   </div>
                 </div>
@@ -4198,11 +4123,14 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
               </CompactCard>
             </div>
 
+            <p data-testid="container-constraint" role="status" className="text-sm text-amber-800">{lang === 'zh'
+              ? loadingConstraint === 'door' ? '櫃門限制：紙箱通唔過櫃門，裝載數量為 0。' : loadingConstraint === 'payload' ? '載重限制：已按貨櫃最大載重減少紙箱數量。' : '空間限制：數量係幾何裝載估算。'
+              : loadingConstraint === 'door' ? 'Door constraint: carton cannot pass the door; count is 0.' : loadingConstraint === 'payload' ? 'Payload constraint: carton count capped by preset maximum payload.' : 'Geometry constraint: count is a geometric packing estimate.'}</p>
             <CompactCard title={t('packingAnalysis')} icon={Scale} action={<button onClick={() => setIsSimOpen(true)} disabled={!loadingStats} className="flex items-center gap-2 text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-indigo-200"><Cuboid size={14} /><span>{t('open3D')}</span></button>}>
                <div className="flex items-center justify-around py-4">
                   <div className="text-center">
                      <div className="text-xs text-gray-400 uppercase font-bold mb-1">{t('totalCartons')}</div>
-                     <div className="text-4xl font-black text-slate-800">{loadingStats ? loadingStats.count : '-'}</div>
+                     <div data-testid="container-count" className="text-4xl font-black text-slate-800">{loadingStats ? loadingStats.count : '-'}</div>
                   </div>
                   <div className="w-px h-12 bg-gray-200"></div>
                   <div className="text-center">
@@ -4262,6 +4190,9 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                     <div className="text-right">
                       <div className="text-[10px] text-gray-400 uppercase font-bold">{t('fbaEstFee')}</div>
                       <div className="text-3xl font-black text-slate-800">${fbaCalc.estimatedFee.toFixed(2)}</div>
+                      <p data-testid="fba-fee-note" className="text-xs text-amber-800 max-w-xs">{lang === 'zh'
+                        ? `示例估算 — 美國 FBA 尺寸等級基本費率，截至 ${FBA_RATE_AS_OF}；不包括附加費、類別及低價計劃；請到 Seller Central 核實，並向買家確認。`
+                        : `Illustrative estimate — US FBA size-tier base rates as of ${FBA_RATE_AS_OF}, excludes surcharges, category and low-price programs; verify in Seller Central. Verify with your buyer.`}</p>
                     </div>
                   </div>
 

@@ -62,8 +62,8 @@ export const onRequestGet: PagesFunction = async () =>
   });
 
 export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
-  const err = (msg: string, status = 400) =>
-    new Response(JSON.stringify({ error: msg, docs: USAGE.docs }), {
+  const err = (msg: string, status = 400, field?: string) =>
+    new Response(JSON.stringify({ error: msg, ...(field ? { field } : {}), docs: USAGE.docs }), {
       status, headers: { 'Content-Type': 'application/json', ...CORS },
     });
 
@@ -99,15 +99,23 @@ export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
   let totalQty = 0;
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
-    if (!(it.l > 0) || !(it.w > 0) || !(it.h > 0)) return err(`items[${i}] needs positive l, w, h`);
-    const qty = Math.max(1, Math.round(it.qty ?? 1));
+    for (const key of ['l', 'w', 'h', 'qty', 'weight'] as const) {
+      const value = it?.[key];
+      if (key === 'weight' && value === undefined) continue;
+      if (typeof value !== 'number' || !Number.isFinite(value) ||
+          (key === 'weight' ? value < 0 : value <= 0) ||
+          (key === 'qty' && !Number.isInteger(value))) {
+        return err(`items[${i}].${key} must be a finite ${key === 'qty' ? 'integer ≥ 1' : key === 'weight' ? 'number ≥ 0' : 'number > 0'}`, 400, `items[${i}].${key}`);
+      }
+    }
+    const qty = it.qty;
     totalQty += qty;
     if (totalQty > MAX_QTY) return err(`total quantity exceeds ${MAX_QTY}`);
     specs.push({
       id: String(it.id ?? `i${i}`),
       label: String(it.label ?? `Item ${i + 1}`).slice(0, 60),
-      l: +it.l, w: +it.w, h: +it.h,
-      weight: Math.max(0, +it.weight || 0),
+      l: it.l, w: it.w, h: it.h,
+      weight: it.weight ?? 0,
       qty,
       color: 0xfbbf24,
       allowRotate: it.allowRotate !== false,

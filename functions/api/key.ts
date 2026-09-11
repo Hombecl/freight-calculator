@@ -63,6 +63,9 @@ export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
   } catch {
     return json({ error: 'body must be JSON' }, 400);
   }
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return json({ error: 'body must be a JSON object' }, 400);
+
   const email = String(data.email ?? '').trim().slice(0, 200);
   if (!EMAIL_RE.test(email)) return json({ error: 'valid email required' }, 400);
   const company = String(data.company ?? '').trim().slice(0, 120);

@@ -1,3 +1,4 @@
+import { queryNumber } from '../lib/queryNumber';
 import { floorFit } from '../lib/pallets';
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -63,7 +64,7 @@ export default function PalletsPerContainerPage() {
   const carryIn = readCarry(params);
   const [palletKey, setPalletKey] = useState<string>(() => seedStr(params.get('p'), carryIn.pt, 'eur'));
   const [loadedH, setLoadedH] = useState(() => Math.max(10, seedNum(params.get('h'), carryIn.lh, 150)));
-  const [wtEach, setWtEach] = useState(() => Math.max(0, Number(params.get('wt')) || 500));
+  const [wtEach, setWtEach] = useState(() => Math.max(0, queryNumber(params.get('wt'), 500)));
 
   useEffect(() => {
     setParams(withCarry({ p: palletKey, h: String(loadedH), wt: String(wtEach) }, carryIn), { replace: true });
