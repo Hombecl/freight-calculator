@@ -1,19 +1,13 @@
-import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import Header from './Header';
 import Footer from './Footer';
-import { track } from '../../lib/track';
 import { IS_ZH, localeUrls } from '../../lib/locale';
 
 export default function Layout() {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
   const urls = localeUrls(location.pathname);
-
-  useEffect(() => {
-    track('pageview');
-  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

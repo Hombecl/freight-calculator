@@ -9,6 +9,9 @@
  * touching the UI: replace read/canExport with a server check.
  */
 
+import { track } from './track';
+import { validLeadPurpose, type LeadPurpose } from './leadPurpose';
+
 export type Plan = 'free' | 'pro';
 
 export interface Entitlement {
@@ -43,7 +46,7 @@ export function canExport(e: Entitlement = readEntitlement()): boolean {
 }
 
 export function captureLead(
-  email: string, opts: { proWaitlist?: boolean; source?: string } = {},
+  email: string, opts: { proWaitlist?: boolean; source?: string; purpose?: LeadPurpose } = {},
 ): Entitlement {
   const e: Entitlement = {
     ...readEntitlement(),
@@ -53,12 +56,18 @@ export function captureLead(
   };
   write(e);
   if (LEAD_ENDPOINT) {
+    const source = opts.source ?? 'planner-export';
+    const trackedSource = ['planner-export', 'pro-waitlist', 'warehouse-beta'].includes(source) ? source : 'other';
     // fire-and-forget; never blocks the UI
     fetch(LEAD_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export' }),
-    }).catch(() => { /* ignore */ });
+      body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export', purpose: validLeadPurpose(opts.purpose) }),
+    }).then(async (response) => {
+      // Unlocking a local export is not proof that we received a lead.
+      if (!response.ok || (await response.json()).ok !== true) throw new Error('Lead not acknowledged');
+      track('generate_lead', trackedSource);
+    }).catch(() => { track('lead_submit_failed', trackedSource); });
   }
   return e;
 }

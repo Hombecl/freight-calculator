@@ -13,6 +13,9 @@ import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
 import PaywallModal from '../components/PaywallModal';
 import { track } from '../lib/track';
+import { performExport, trackExport, type ExportFormat } from '../lib/exportTracking';
+import { checkoutEnabled } from '../lib/billing';
+import type { LeadPurpose } from '../lib/leadPurpose';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -108,7 +111,14 @@ export default function PlannerPage() {
   const preset = PRESETS[params.get('demo') ?? ''];
   const [containerKey, setContainerKey] = useState<ContainerKey>(preset?.container ?? '20gp');
   const [specs, setSpecs] = useState<Spec[]>(preset?.specs ?? DEFAULT_SPECS);
+  // Draft edits must never be combined with the last calculated boxes/stats.
+  const [appliedSpecs, setAppliedSpecs] = useState<Spec[]>(specs);
+  const hasPendingChanges = JSON.stringify(specs) !== JSON.stringify(appliedSpecs);
+  useEffect(() => {
+    if (hasPendingChanges) track('planner_inputs_changed');
+  }, [hasPendingChanges]);
   const [seed, setSeed] = useState(0); // bump to re-run the packer
+  const optimizationIntent = useRef<'manual' | 'import' | null>(null);
 
   const container = CONTAINERS[containerKey];
   // pallets may allow a small overhang per side — standard practice, but it
@@ -122,10 +132,17 @@ export default function PlannerPage() {
   }, [container, overhangCm, containerKey]);
 
   const result = useMemo(
-    () => packWithConstraints(packSpace, specs),
+    () => packWithConstraints(packSpace, appliedSpecs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [containerKey, seed, packSpace],
+    [seed, packSpace, appliedSpecs],
   );
+  useEffect(() => {
+    // Count an intentional, completed calculation, not the automatic demo on entry.
+    const source = optimizationIntent.current;
+    if (!source) return;
+    optimizationIntent.current = null;
+    track('planner_optimized', source);
+  }, [result]);
 
   // live stats reflect manual edits (falls back to the packer's own stats)
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
@@ -137,7 +154,7 @@ export default function PlannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveBoxes, sharedBoxes, result, container]);
 
-  const totalQty = specs.reduce((s, x) => s + x.qty, 0);
+  const totalQty = appliedSpecs.reduce((s, x) => s + x.qty, 0);
   const balanceWarn = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15;
   const shownBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const axles = useMemo(
@@ -158,8 +175,8 @@ export default function PlannerPage() {
   const topHeavy = cogH != null && cogH.pct > 55;
   // real-world check other tools skip: the door aperture is SMALLER than the interior
   const doorBlocked = useMemo(
-    () => specs.filter((s) => s.qty > 0 && !fitsDoor(s, CONTAINERS[containerKey].door)),
-    [specs, containerKey],
+    () => appliedSpecs.filter((s) => s.qty > 0 && !fitsDoor(s, CONTAINERS[containerKey].door)),
+    [appliedSpecs, containerKey],
   );
 
   const updateSpec = (id: string, patch: Partial<Spec>) =>
@@ -178,7 +195,11 @@ export default function PlannerPage() {
 
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
-  const regen = () => { setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); };
+  const regen = (source: 'manual' | 'import' = 'manual', nextSpecs = specs) => {
+    optimizationIntent.current = source;
+    setAppliedSpecs(nextSpecs);
+    setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1);
+  };
 
   // ---- Excel/CSV import (Tier 2 switching-cost killer — ENTERPRISE.md §4) ----
   // ?import=1 opens the modal on arrival. The /compare/* pages promise "import
@@ -191,7 +212,7 @@ export default function PlannerPage() {
   const onImport = (imported: Spec[]) => {
     setSpecs(imported);
     track('import_cartons', String(imported.length));
-    regen();
+    regen('import', imported);
   };
 
   // ---- share links (free, no gate — sharing is the viral loop) ----
@@ -206,9 +227,10 @@ export default function PlannerPage() {
         if (!res.ok) return;
         const plan = await res.json();
         if (plan.containerKey && CONTAINERS[plan.containerKey as ContainerKey]) setContainerKey(plan.containerKey);
-        if (Array.isArray(plan.specs) && plan.specs.length) setSpecs(plan.specs);
-        if (Array.isArray(plan.boxes) && plan.boxes.length) setSharedBoxes(plan.boxes);
-        else setSeed((n) => n + 1); // specs without boxes: repack for the new specs
+        if (Array.isArray(plan.specs)) { setSpecs(plan.specs); setAppliedSpecs(plan.specs); }
+        setLiveBoxes(null);
+        setSharedBoxes(Array.isArray(plan.boxes) ? plan.boxes : null);
+        setSeed((n) => n + 1);
         track('share_open');
       } catch { /* leave defaults */ }
     })();
@@ -225,15 +247,17 @@ export default function PlannerPage() {
       const plan = await getPlan(savedId);
       if (!plan) return;
       if (CONTAINERS[plan.container_key as ContainerKey]) setContainerKey(plan.container_key as ContainerKey);
-      if (plan.specs?.length) setSpecs(plan.specs);
-      if (plan.boxes?.length) setSharedBoxes(plan.boxes);
-      else setSeed((n) => n + 1); // specs without boxes: repack for the new specs
+      if (Array.isArray(plan.specs)) { setSpecs(plan.specs); setAppliedSpecs(plan.specs); }
+      setLiveBoxes(null);
+      setSharedBoxes(Array.isArray(plan.boxes) ? plan.boxes : null);
+      setSeed((n) => n + 1);
       track('saved_open');
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedId]);
 
   const saveToAccount = async () => {
+    if (hasPendingChanges) return;
     const name = window.prompt('Plan name:', `${container.label} · ${new Date().toLocaleDateString()}`);
     if (!name) return;
     setSaveState('busy');
@@ -241,7 +265,7 @@ export default function PlannerPage() {
       name,
       container_key: containerKey,
       container,
-      specs,
+      specs: appliedSpecs,
       boxes: currentBoxes,
       stats: { volumeUtil: stats.volumeUtil, totalWeight: stats.totalWeight, placedCount: stats.placedCount },
     });
@@ -255,6 +279,7 @@ export default function PlannerPage() {
   };
 
   const sharePlan = async () => {
+    if (hasPendingChanges) return;
     setShareState('busy');
     try {
       const res = await fetch('/api/share', {
@@ -263,7 +288,7 @@ export default function PlannerPage() {
         body: JSON.stringify({
           containerKey,
           container,
-          specs,
+          specs: appliedSpecs,
           boxes: liveBoxes ?? sharedBoxes ?? result.boxes,
         }),
       });
@@ -291,41 +316,55 @@ export default function PlannerPage() {
     weightUnit: 'kg',
     date: new Date().toLocaleDateString(),
   });
-  const runCsv = () => {
-    track('export_csv');
-    downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
-  };
-  const runPdf = () => {
-    track('export_pdf');
-    openPrintablePlan({
-      meta: meta(),
-      stats,
-      zones: result.zones,
-      boxes: currentBoxes,
-      totalRequested: totalQty,
-      imageDataUrl: snapshotFn.current?.() ?? null,
+  const [exportError, setExportError] = useState<string | null>(null);
+  const runExport = (format: ExportFormat) => {
+    if (hasPendingChanges) {
+      trackExport('export_failed', 'planner', format, 'stale_plan');
+      setExportError(T('Select Optimise pack to update your plan first.', '請先按 Optimise pack 更新方案。'));
+      return;
+    }
+    const outcome = performExport('planner', format, () => {
+      if (format === 'csv') return downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
+      return openPrintablePlan({
+        meta: meta(), stats, zones: result.zones, boxes: currentBoxes,
+        totalRequested: totalQty, imageDataUrl: snapshotFn.current?.() ?? null,
+      });
     });
+    setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
+      ? T('Allow pop-ups for this site, then select PDF plan again.', '請允許此網站開啟彈出視窗，再按 PDF plan。')
+      : T('Export did not open. Your plan is still here; please try again.', '匯出未能開啟。方案仍然保留，請再試一次。'));
   };
 
   // export gate: secure Pro (Supabase-verified) OR free email lead-capture
   const ent = useEntitlement();
   const auth = useAuth();
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const pending = useRef<null | (() => void)>(null);
-  const guardExport = (run: () => void) => {
-    if (auth.isPro || ent.canExport) { run(); return; }
-    pending.current = run;
+  const pending = useRef<ExportFormat | null>(null);
+  const guardExport = (format: ExportFormat) => {
+    trackExport('export_requested', 'planner', format);
+    setExportError(null);
+    if (hasPendingChanges || auth.isPro || ent.canExport) { runExport(format); return; }
+    pending.current = format;
+    trackExport('export_gate_viewed', 'planner', format);
     setPaywallOpen(true);
   };
-  const exportCsv = () => guardExport(runCsv);
-  const exportPdf = () => guardExport(runPdf);
-  const onUnlock = (email: string, proWaitlist: boolean) => {
-    ent.submitEmail(email, proWaitlist);
-    setPaywallOpen(false);
-    const run = pending.current;
+  const exportCsv = () => guardExport('csv');
+  const exportPdf = () => guardExport('pdf');
+  const closeExportGate = () => {
+    if (pending.current) trackExport('export_gate_dismissed', 'planner', pending.current);
     pending.current = null;
-    // entitlement state updates async; run the queued export directly
-    if (run) run();
+    setPaywallOpen(false);
+  };
+  const onUnlock = (email: string, proWaitlist: boolean, purpose?: LeadPurpose) => {
+    ent.submitEmail(email, proWaitlist, purpose);
+    setPaywallOpen(false);
+    const format = pending.current;
+    pending.current = null;
+    // Stay inside the click gesture for pop-ups, using the current plan, not an old closure.
+    if (format) {
+      trackExport('export_gate_unlocked', 'planner', format);
+      runExport(format);
+    }
   };
 
   return (
@@ -361,7 +400,7 @@ export default function PlannerPage() {
                 {(Object.keys(CONTAINERS) as ContainerKey[]).filter((k) => CONTAINERS[k].group === g).map((k) => (
                   <button
                     key={k}
-                    onClick={() => { setContainerKey(k); setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); }}
+                    onClick={() => { setContainerKey(k); regen(); }}
                     className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                       containerKey === k ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
                     }`}
@@ -383,7 +422,7 @@ export default function PlannerPage() {
                 {[0, 2.5, 5].map((ov) => (
                   <button
                     key={ov}
-                    onClick={() => { setOverhangCm(ov); setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); }}
+                    onClick={() => { setOverhangCm(ov); regen(); }}
                     className={`px-2 py-0.5 rounded ${overhangCm === ov ? 'bg-teal-600 text-white' : 'bg-slate-100'}`}
                   >
                     {ov === 0 ? 'none' : `${ov} cm/side`}
@@ -491,22 +530,31 @@ export default function PlannerPage() {
           </div>
 
           <button
-            onClick={regen}
+            onClick={() => regen()}
             className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold"
           >
             Optimise pack
           </button>
 
+          {hasPendingChanges && (
+            <p role="status" data-testid="planner-pending-changes" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              {T('Inputs changed. The view and totals still show your last calculated plan. Select Optimise pack to update it before exporting, sharing or saving.', '輸入已修改。畫面與總數仍顯示上次計算嘅方案。請按 Optimise pack 更新後，再匯出、分享或保存。')}
+            </p>
+          )}
+          {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
+
           <div className="flex gap-2">
             <button
               onClick={exportCsv}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200"
+              disabled={hasPendingChanges}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download size={15} /> CSV
             </button>
             <button
               onClick={exportPdf}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900"
+              disabled={hasPendingChanges}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <FileText size={15} /> PDF plan
             </button>
@@ -515,8 +563,8 @@ export default function PlannerPage() {
           <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
           <button
             onClick={sharePlan}
-            disabled={shareState === 'busy'}
-            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            disabled={hasPendingChanges || shareState === 'busy'}
+            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
               shareState === 'copied'
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                 : shareState === 'error'
@@ -535,8 +583,8 @@ export default function PlannerPage() {
             auth.userId ? (
               <button
                 onClick={saveToAccount}
-                disabled={saveState === 'busy'}
-                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                disabled={hasPendingChanges || saveState === 'busy'}
+                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   saveState === 'saved'
                     ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                     : saveState === 'error'
@@ -563,7 +611,7 @@ export default function PlannerPage() {
                 🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.
               </div>
             )}
-            <div className="flex justify-between"><span>Packed</span><span className="font-semibold">{result.boxes.length} / {totalQty}</span></div>
+            <div className="flex justify-between"><span>Packed</span><span data-testid="planner-packed" className="font-semibold">{currentBoxes.length} / {totalQty}</span></div>
             <div className="flex justify-between"><span>Volume utilization</span><span className="font-semibold">{stats.volumeUtil.toFixed(1)}%</span></div>
             <div className="flex justify-between">
               <span>Total weight</span>
@@ -642,8 +690,8 @@ export default function PlannerPage() {
                 </div>
               </div>
             )}
-            {result.unplaced > 0 && (
-              <p className="text-xs text-amber-600">Not everything fits — {result.unplaced} carton(s) left out (volume or weight limit).</p>
+            {totalQty > currentBoxes.length && (
+              <p className="text-xs text-amber-600">{totalQty - currentBoxes.length} carton(s) not placed — check capacity or optimise again after manual edits.</p>
             )}
             {stats.weightUtil != null && stats.weightUtil > 100 && (
               <p className="text-xs text-red-600">Over the container payload limit.</p>
@@ -669,9 +717,9 @@ export default function PlannerPage() {
 
       <PaywallModal
         open={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
+        onClose={closeExportGate}
         onSubmit={onUnlock}
-        auth={auth.enabled ? {
+        auth={auth.enabled && checkoutEnabled ? {
           enabled: true,
           isSignedIn: !!auth.userId,
           email: auth.email,

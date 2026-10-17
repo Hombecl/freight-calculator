@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import type { LeadPurpose } from '../lib/leadPurpose';
 import {
   readEntitlement, canExport, captureLead, setPlan,
   type Entitlement,
@@ -8,8 +9,8 @@ import {
 export function useEntitlement() {
   const [ent, setEnt] = useState<Entitlement>(readEntitlement);
 
-  const submitEmail = useCallback((email: string, proWaitlist = false) => {
-    setEnt(captureLead(email, { proWaitlist, source: proWaitlist ? 'pro-waitlist' : 'planner-export' }));
+  const submitEmail = useCallback((email: string, proWaitlist = false, purpose?: LeadPurpose) => {
+    setEnt(captureLead(email, { proWaitlist, source: 'planner-export', purpose }));
   }, []);
 
   const upgradeLocal = useCallback(() => setEnt(setPlan('pro')), []);

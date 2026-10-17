@@ -15,6 +15,7 @@ import { captureLead } from '../lib/entitlement';
 import { track } from '../lib/track';
 import { savePlan, getPlan } from '../lib/plans';
 import { openWarehousePrintable } from '../lib/exportPlan';
+import { performExport, trackExport } from '../lib/exportTracking';
 import { useAuth } from '../hooks/useAuth';
 
 /**
@@ -325,14 +326,18 @@ export default function WarehousePage() {
     setTimeout(() => setShareState('idle'), 2500);
   };
 
+  const [exportError, setExportError] = useState<string | null>(null);
   const exportPdf = () => {
-    track('export_pdf', 'warehouse');
-    openWarehousePrintable({
+    trackExport('export_requested', 'warehouse', 'pdf');
+    const outcome = performExport('warehouse', 'pdf', () => openWarehousePrintable({
       floor, aisle, dock: dock.join('+'), boxes,
       stats: { floorUtil: reach.floorUtil, unreachable: reach.unreachable, ...capacity },
       imageDataUrl: snapshotFn.current?.() ?? null,
       date: new Date().toLocaleDateString(),
-    });
+    }));
+    setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
+      ? 'Allow pop-ups for this site, then select PDF plan again.'
+      : 'Export did not open. Your layout is still here; please try again.');
   };
 
   const saveToAccount = async () => {
@@ -522,6 +527,7 @@ export default function WarehousePage() {
               <FileText size={14} /> PDF plan
             </button>
           </div>
+          {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
           {auth.enabled && (
             auth.userId ? (
               <button onClick={saveToAccount} disabled={saveState === 'busy'}

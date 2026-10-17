@@ -39,14 +39,19 @@ Bound to the `dimpack3d` Pages project (wrangler.toml). Key patterns:
 | Key pattern | Content |
 |---|---|
 | `<ISO-date>_<rand>` | Email leads (export gate, waitlists) |
+| `notify\|<lead-key>` | Internal notification status and provider message ID (30-day TTL); acceptance is not confirmed delivery. |
+| `notify-sent\|<date>\|<source>\|<email-sha256>` | Internal email notification deduplication marker (2-day TTL). |
 | `ev_…` / `ev2|…` | Legacy analytics events (90-day TTL; no new writes after the Analytics Engine migration) |
 | `share_<10-char-id>` | Shared load plans (1-year TTL) |
 | `apikey|dp_live_<32 hex>` | API key record `{email, tier, company?, useCase?, createdAt, revokedAt?}` — issued by `POST /api/key` (free tier, 5/IP/day). Upgrade a customer by editing `tier` to `starter`/`business`; revoke by setting `revokedAt`. Tier multipliers live in `src/lib/apiTiers.ts`. A companion lead row (`source: "api-key"`) is written alongside. |
 | `rl|<rule>|<window>|ip:<ip>\|key:<key>|<bucket>` | Rate-limit counters (fixed window, TTL 2× window). Keyed callers get their own bucket at tier × limits. |
 
-`GET /api/stats?k=<key>` continues to return leads, shares, and the legacy KV
-event window. The key is at `~/.dimpack3d-stats-key` (local only), Pages secret
-`STATS_KEY`.
+`GET /api/stats` with `Authorization: Bearer <STATS_KEY>` returns leads, shares,
+and the legacy KV event window. The older `?k=` form remains compatible, but new
+tools use a header so the key stays out of URLs. Read the exact `STATS_KEY` field
+through the 1Password service account; do not use local secret caches.
+See `docs/EXPORT-MEASUREMENT.md` for the private manual CSV export command and
+the distinction between stored lead addresses and the public hello@ mailbox.
 
 ## Cloudflare Analytics Engine — dataset `dimpack3d_events`
 

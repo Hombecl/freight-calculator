@@ -33,6 +33,8 @@ interface Props {
   readOnly?: boolean;
   placedCountTestId?: string;
   className?: string;
+  viewportHeight?: number; // fixed hero height avoids shifts when WebGL replaces its preview
+  loadingPreview?: string;
   container: { l: number; w: number; h: number };
   boxes: PlannerBox[];
   grid?: number; // snap step in same unit as dims (default 1)
@@ -102,6 +104,8 @@ export default function InteractiveLoadPlanner({
   readOnly = false,
   placedCountTestId,
   className = '',
+  viewportHeight,
+  loadingPreview,
   container,
   boxes,
   grid = 1,
@@ -122,6 +126,8 @@ export default function InteractiveLoadPlanner({
 }: Props) {
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
+  const autoSpinRef = useRef(autoSpin);
+  autoSpinRef.current = autoSpin;
   const mountRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
   const undoRef = useRef<() => void>(() => {});
@@ -456,12 +462,17 @@ export default function InteractiveLoadPlanner({
     dom.addEventListener('pointerup', onUp);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
+    let visible = true;
+    const visibility = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
+    visibility.observe(mount);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let raf = 0;
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      if (!visible || document.hidden) return;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
-      if (autoSpin && mode === 'idle') {
+      if (autoSpinRef.current && !reducedMotion.matches && mode === 'idle') {
         const idleFor = performance.now() - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022;
@@ -508,6 +519,7 @@ export default function InteractiveLoadPlanner({
 
     return () => {
       cancelAnimationFrame(raf);
+      visibility.disconnect();
       window.removeEventListener('resize', onResize);
       dom.removeEventListener('pointerdown', onDown);
       dom.removeEventListener('pointermove', onMove);
@@ -762,7 +774,9 @@ export default function InteractiveLoadPlanner({
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-          style={{ cursor: selectedId ? 'grab' : 'move' }}
+          style={{ cursor: selectedId ? 'grab' : 'move', height: viewportHeight,
+            backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
+            backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
           {webglFailed ? (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-sm px-6 text-center">
@@ -770,8 +784,8 @@ export default function InteractiveLoadPlanner({
               <span>This device/browser has WebGL disabled. The optimizer still works — utilization and stats are shown below.</span>
             </div>
           ) : !threeLoaded && (
-            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
-              Loading 3D…
+            <div className={`w-full h-full flex justify-center text-slate-300 text-sm ${loadingPreview ? 'items-end pb-4' : 'items-center'}`}>
+              <span className="bg-slate-950/85 rounded-full px-3 py-1">Loading 3D…</span>
             </div>
           )}
         </div>

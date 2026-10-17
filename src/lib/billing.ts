@@ -18,6 +18,7 @@ import { supabase } from './supabaseClient';
  */
 
 const LS_CHECKOUT = (import.meta as any).env?.VITE_LS_CHECKOUT_URL as string | undefined;
+export const checkoutEnabled = Boolean(LS_CHECKOUT);
 
 export interface Subscription {
   status: string; // active | on_trial | past_due | cancelled | expired | ...

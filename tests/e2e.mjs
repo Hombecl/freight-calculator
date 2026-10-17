@@ -76,6 +76,65 @@ await test('home: hero tabs switch pallet/container/carton scene', async () => {
   await page.getByText(/20' GP shipping container/i).waitFor(SWITCH);
 }, page);
 
+await test('home: visible 3D starts automatically and rotation can be paused', async () => {
+  await page.locator('canvas').waitFor({ timeout: 30_000 });
+  await page.getByText(/Boxes: 280/).waitFor();
+  await page.getByRole('button', { name: 'Pause rotation', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).click();
+  const videos = await page.locator('video').evaluateAll(videos => videos.map(v => ({
+    paused: v.paused, preload: v.preload, controls: v.controls, time: v.currentTime,
+  })));
+  if (videos.some(v => !v.paused || v.time !== 0 || v.preload !== 'none' || !v.controls)) {
+    throw new Error('offscreen homepage video started before it was visible');
+  }
+}, page);
+
+await test('home: reduced motion preserves the preview and manual 3D', async () => {
+  const reduced = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const quietPage = await reduced.newPage();
+  try {
+    await quietPage.goto(`${BASE}/`);
+    await quietPage.getByRole('button', { name: /explore in 3d/i }).waitFor();
+    await quietPage.waitForTimeout(4000);
+    if (await quietPage.locator('script[data-three-cdn], canvas').count()) {
+      throw new Error('reduced-motion visitor received automatic WebGL');
+    }
+    await quietPage.getByRole('button', { name: /explore in 3d/i }).click();
+    await quietPage.locator('canvas').waitFor({ timeout: 30_000 });
+    const video = quietPage.locator('video').first();
+    await video.scrollIntoViewIfNeeded();
+    if (!(await video.evaluate(v => v.paused))) throw new Error('reduced-motion video autoplayed');
+    await video.evaluate(v => v.play());
+    await quietPage.waitForFunction(() => document.querySelector('video').currentTime > 0);
+    await video.evaluate(v => v.pause());
+    await quietPage.waitForTimeout(100);
+    await video.evaluate(v => v.play());
+    await quietPage.waitForTimeout(300);
+    if (await video.evaluate(v => v.paused)) throw new Error('manual video resume was overridden');
+  } finally { await reduced.close(); }
+}, page);
+
+await test('home: English and Chinese 3D fit a mobile viewport', async () => {
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    for (const path of ['/', '/zh']) {
+      await mobilePage.goto(`${BASE}${path}`);
+      await mobilePage.locator('button:has(img[src="/hero/container.svg"])').click();
+      await mobilePage.locator('canvas').waitFor({ timeout: 30_000 });
+      const fits = await mobilePage.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        const card = canvas?.closest('.rounded-2xl');
+        const pause = Array.from(document.querySelectorAll('button')).find(b => /Pause rotation|暫停旋轉/.test(b.textContent));
+        return document.body.scrollWidth <= window.innerWidth && !!card && !!pause &&
+          pause.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom;
+      });
+      if (!fits) throw new Error(`${path}: mobile controls overflow the 3D card`);
+    }
+  } finally { await mobileContext.close(); }
+}, page);
+
 await test('home: the four pallet questions link the chain', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
@@ -225,6 +284,25 @@ await test('planner: import modal paste flow', async () => {
   await page.getByPlaceholder(/copy your rows/i).fill('name\tlength\twidth\theight\tweight\tqty\nTest Box\t50\t40\t30\t10\t25\n');
   await page.getByRole('button', { name: /import 1 carton type/i }).click();
   await page.locator('input[value="Test Box"]').waitFor();
+  if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('import did not calculate the imported specs');
+}, page);
+
+await test('planner: draft edits block stale exports and keep totals consistent', async () => {
+  const qty = page.locator('input[type="number"]').nth(4);
+  await qty.fill('3');
+  await page.getByTestId('planner-pending-changes').waitFor();
+  if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('draft quantity leaked into calculated stats');
+  for (const name of [/^csv$/i, /^pdf plan$/i, /share this plan/i]) {
+    if (!await page.getByRole('button', { name }).isDisabled()) throw new Error('stale action is enabled');
+  }
+  await qty.fill('25');
+  await page.getByTestId('planner-pending-changes').waitFor({ state: 'hidden' });
+  if (await page.getByRole('button', { name: /^csv$/i }).isDisabled()) throw new Error('reverting inputs should restore actions without repacking');
+  await qty.fill('3');
+  await page.getByRole('button', { name: /optimise pack/i }).click();
+  await page.getByTestId('planner-pending-changes').waitFor({ state: 'hidden' });
+  if (await page.getByTestId('planner-packed').textContent() !== '3 / 3') throw new Error('optimise did not apply latest quantity');
+  if (await page.getByRole('button', { name: /^csv$/i }).isDisabled()) throw new Error('updated export still disabled');
 }, page);
 
 await test('planner: rotate/drop/delete/undo buttons exist', async () => {
@@ -236,8 +314,12 @@ await test('planner: rotate/drop/delete/undo buttons exist', async () => {
 await test('planner: export gate opens for anonymous CSV', async () => {
   await page.getByRole('button', { name: /^csv$/i }).click();
   await page.getByText(/unlock export/i).waitFor();
+  const purpose = page.getByRole('combobox', { name: /what will you use this plan for/i });
+  if (await purpose.inputValue() !== '') throw new Error('purpose must be optional and unselected');
+  await purpose.selectOption('freight-quote');
+  if (await purpose.inputValue() !== 'freight-quote') throw new Error('purpose selection not retained');
   await page.keyboard.press('Escape');
-  await page.locator('.fixed.inset-0').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
 }, page);
 
 // ---------- warehouse ----------
@@ -668,9 +750,11 @@ await test('planner: door-aperture warning flags a too-tall carton', async () =>
   // but NOT the 234x228 door in any orientation
   const dims = page.locator('input[type="number"]');
   for (const i of [0, 1, 2]) await dims.nth(i).fill('235');
+  await page.getByRole('button', { name: /optimise pack/i }).click();
   await page.getByText(/won't fit through the door/i).waitFor();
   // restore ALL three dims — 60x235x235 still cannot pass (cross-section 235x235)
   for (const [i, v] of [[0, '60'], [1, '50'], [2, '45']]) await dims.nth(i).fill(v);
+  await page.getByRole('button', { name: /optimise pack/i }).click();
   await page.getByText(/won't fit through the door/i).waitFor({ state: 'hidden' });
 }, page);
 
@@ -750,6 +834,10 @@ await test('home: product clips render and load', async () => {
   await page.getByText(/watch the checks fire/i).waitFor();
   const vids = page.locator('video');
   if (await vids.count() < 2) throw new Error('expected 2 product clips');
+  await vids.first().scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('video')).some(v => !v.paused && v.currentTime > 0), undefined, { timeout: 15_000 });
+  await page.getByRole('heading', { name: /plan a mixed load in 3D/i }).scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('video')).every(v => v.paused));
   // both video files must actually be served (not 404-masked)
   for (const src of ['/media/warehouse-checks.webm', '/media/planner-drag.webm']) {
     const r = await page.request.get(`${BASE}${src}`);
