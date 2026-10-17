@@ -8,6 +8,10 @@ export interface CatalogBox {
     l: number;
     w: number;
     h: number;
+    outerL?: number;
+    outerW?: number;
+    outerH?: number;
+    tareWeight?: number;
     maxWeight?: number;
     cost?: number;
 }
@@ -36,6 +40,8 @@ export interface BoxCatalogRequest {
     billing: {
         dimDivisor: number;
         unit: Units;
+        weightIncrement?: number;
+        dimensionIncrement?: number;
         minBillableWeight?: number;
         ratePerKgOrLb?: number;
     };
@@ -46,7 +52,7 @@ export interface BoxCatalogRequest {
 export const BOX_LIMITS = {
     skus: 300, orders: 500, candidates: 40, unitsPerOrder: 60, distinctSkus: 10, bodyBytes: 96 * 1024, searchBudget: 1000
 };
-export const BOX_ENGINE = 'box-catalog-v2';
+export const BOX_ENGINE = 'box-catalog-v3';
 const LB = 0.45359237;
 const weight = (kg: number) => ({ kg, lb: kg / LB });
 const volume = (b: {
@@ -124,8 +130,16 @@ export function parseBoxCatalog(input: unknown) {
             if (ids.has(id))
                 throw new PalletInputError(`${k}.id`, 'duplicate');
             ids.add(id);
+            const inner = dims(b, k, 60000);
+            const outer: Record<string, number> = {};
+            const supplied = ['outerL','outerW','outerH'].filter(key=>b[key]!==undefined);
+            if(supplied.length && supplied.length!==3) throw new PalletInputError(k, 'supply all three outer dimensions');
+            for(const [key,axis] of [['outerL','l'],['outerW','w'],['outerH','h']] as const) {
+                if(b[key]!==undefined) { const n=num(b[key],`${k}.${key}`,.1,60000)*L;
+                    if(n<inner[axis]) throw new PalletInputError(`${k}.${key}`, 'must be at least the inner dimension'); outer[key]=n; }
+            }
             return {
-                id, ...dims(b, k, 60000), ...(b.maxWeight === undefined ? {} : { maxWeight: num(b.maxWeight, `${k}.maxWeight`, 0, 100000) * W }), ...(b.cost === undefined ? {} : { cost: num(b.cost, `${k}.cost`, 0, 1000000) })
+                id, ...inner, ...outer, ...(b.tareWeight===undefined?{}:{tareWeight:num(b.tareWeight,`${k}.tareWeight`,0,100000)*W}), ...(b.maxWeight === undefined ? {} : { maxWeight: num(b.maxWeight, `${k}.maxWeight`, 0, 100000) * W }), ...(b.cost === undefined ? {} : { cost: num(b.cost, `${k}.cost`, 0, 1000000) })
             };
         });
     }
@@ -134,7 +148,7 @@ export function parseBoxCatalog(input: unknown) {
     const b = obj(o.billing, 'billing');
     return {
         coverageFirst: o.coverageFirst !== false, skus, orders, currentBoxes: boxes(o.currentBoxes, 'currentBoxes'), candidateBoxes: boxes(o.candidateBoxes, 'candidateBoxes'), catalogSize: integer(o.catalogSize, 'catalogSize', 1, 12), billing: {
-            unit: units(b.unit, 'billing.unit'), dimDivisor: num(b.dimDivisor, 'billing.dimDivisor', .001, 1000000), minBillableWeight: num(b.minBillableWeight, 'billing.minBillableWeight', 0, 1000000, 0), ...(b.ratePerKgOrLb === undefined ? {} : { ratePerKgOrLb: num(b.ratePerKgOrLb, 'billing.ratePerKgOrLb', 0, 1000000) })
+            weightIncrement: num(b.weightIncrement, 'billing.weightIncrement', 0, 100000, 0), dimensionIncrement: num(b.dimensionIncrement, 'billing.dimensionIncrement', 0, 10000, 0), unit: units(b.unit, 'billing.unit'), dimDivisor: num(b.dimDivisor, 'billing.dimDivisor', .001, 1000000), minBillableWeight: num(b.minBillableWeight, 'billing.minBillableWeight', 0, 1000000, 0), ...(b.ratePerKgOrLb === undefined ? {} : { ratePerKgOrLb: num(b.ratePerKgOrLb, 'billing.ratePerKgOrLb', 0, 1000000) })
         }, voidFillCostPerLitre: num(o.voidFillCostPerLitre, 'voidFillCostPerLitre', 0, 1000000, 0), searchBudget: integer(o.searchBudget, 'searchBudget', 1, 1000, 200)
     };
 }
@@ -148,12 +162,15 @@ function specs(p: Parsed, order: Parsed['orders'][number]): PackItemSpec[] {
     });
 }
 function metrics(p: Parsed, items: PackItemSpec[], b: CatalogBox) {
-    const actual = items.reduce((n, s) => n + s.weight * s.qty, 0), itemVolume = items.reduce((n, s) => n + volume(s) * s.qty, 0);
-    const dim = volume(b) / (p.billing.unit === 'in-lb' ? 2.54 ** 3 : 1) / p.billing.dimDivisor * (p.billing.unit === 'in-lb' ? LB : 1);
-    const billed = Math.max(actual, dim, p.billing.minBillableWeight * (p.billing.unit === 'in-lb' ? LB : 1)), voidLitres = Math.max(0, volume(b) - itemVolume) / 1000;
+    const actual = items.reduce((n, s) => n + s.weight * s.qty, 0) + (b.tareWeight ?? 0), itemVolume = items.reduce((n, s) => n + volume(s) * s.qty, 0);
+    const L=p.billing.unit==='in-lb'?2.54:1, W=p.billing.unit==='in-lb'?LB:1;
+    const roundUp=(n:number,increment:number)=>increment?Math.ceil(n/increment-1e-10)*increment:n;
+    const outer=[b.outerL??b.l,b.outerW??b.w,b.outerH??b.h].map(n=>roundUp(n/L,p.billing.dimensionIncrement));
+    const dim = outer.reduce((a,b)=>a*b,1)/p.billing.dimDivisor*W;
+    const billed = roundUp(Math.max(actual/W,dim/W,p.billing.minBillableWeight),p.billing.weightIncrement)*W, voidLitres = Math.max(0, volume(b) - itemVolume) / 1000;
     const cost = p.billing.ratePerKgOrLb === undefined ? undefined : billed / (p.billing.unit === 'in-lb' ? LB : 1) * p.billing.ratePerKgOrLb + voidLitres * p.voidFillCostPerLitre + (b.cost ?? 0);
     return {
-        billedWeight: weight(billed), actualWeight: weight(actual), dimWeight: weight(dim), voidLitres, ...(cost === undefined ? {} : { cost })
+        billingBasis: b.outerL===undefined?'inner_dimensions_estimate':'outer_dimensions', tareProvided:b.tareWeight!==undefined, billedWeight: weight(billed), actualWeight: weight(actual), dimWeight: weight(dim), voidLitres, ...(cost === undefined ? {} : { cost })
     };
 }
 function generated(p: Parsed): CatalogBox[] {
@@ -277,7 +294,7 @@ export async function optimizeBoxCatalog(input: unknown) {
             return {
                 ...b, dims: { cm: { l: b.l, w: b.w, h: b.h }, in: { l: b.l / 2.54, w: b.w / 2.54, h: b.h / 2.54 } }, usedByOrders, sharePct: usedByOrders / result.totals.orders * 100
             };
-        }), ...result, ...(baseline ? { baseline, savings } : {}), unfitSharePct, checks, searched: { candidates: pool.length, combos, budget: p.searchBudget }, semantics: CHECK_SEMANTICS, notes: ['HEURISTIC_CATALOG_NOT_OPTIMUM', 'NO_CUSHIONING_MODEL', ...(result.totals.unfitOrders ? ['COVERAGE_LIMITED_BY_CATALOG_SIZE'] : [])]
+        }), ...result, ...(baseline ? { baseline, savings } : {}), unfitSharePct, checks, searched: { candidates: pool.length, combos, budget: p.searchBudget }, semantics: CHECK_SEMANTICS, notes: ['HEURISTIC_CATALOG_NOT_OPTIMUM', 'NO_CUSHIONING_MODEL', ...([...pool,...(p.currentBoxes??[])].some(b=>b.outerL===undefined)?['OUTER_DIMENSIONS_MISSING_INNER_USED']:[]), ...([...pool,...(p.currentBoxes??[])].some(b=>b.tareWeight===undefined)?['TARE_WEIGHT_MISSING_ZERO_USED']:[]), ...(result.totals.unfitOrders ? ['COVERAGE_LIMITED_BY_CATALOG_SIZE'] : [])]
     };
 }
 export type BoxCatalogResult = Awaited<ReturnType<typeof optimizeBoxCatalog>>;
@@ -290,7 +307,7 @@ export async function chooseBox(order: Omit<BoxCatalogRequest, 'orders' | 'catal
         ...order, orders: [{ orderId: order.orderId, lines: order.lines }], candidateBoxes: catalog, catalogSize: 1
     };
     const p = parseBoxCatalog(request), s = specs(p, p.orders[0]);
-    const options = p.candidateBoxes!.map(b => ({ b, plan: packContainer(b, s), m: metrics(p, s, b) })).filter(o => !o.plan.unplaced).sort((a, b) => a.m.billedWeight.kg - b.m.billedWeight.kg || volume(a.b) - volume(b.b));
+    const options = p.candidateBoxes!.map(b => ({ b, plan: packContainer(b, s), m: metrics(p, s, b) })).filter(o => !o.plan.unplaced).sort((a, b) => (a.m.cost??a.m.billedWeight.kg) - (b.m.cost??b.m.billedWeight.kg) || volume(a.b) - volume(b.b));
     const choice = options[0];
     const result = await optimizeBoxCatalog({ ...request, ...(choice ? { candidateBoxes: [catalog[p.candidateBoxes!.indexOf(choice.b)]] } : {}) });
     return {

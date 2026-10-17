@@ -713,6 +713,10 @@ await test('build sheet: stored quote steps and actuals round trip', async () =>
   await pallet.waitFor();
   if (await pallet.getByTestId('sheet-build-step').count() !== quote.pallets[0].cartonCount) throw new Error('Wrong build step count');
   if (Number(await pallet.getByTestId('sheet-placed-count').textContent()) !== quote.pallets[0].cartonCount) throw new Error('Wrong rendered count');
+  await pallet.getByRole('checkbox',{name:'Step by layer (same starting height)',exact:true}).check();
+  await pallet.getByRole('button',{name:'Previous layer',exact:true}).click();
+  if(Number(await pallet.getByTestId('sheet-placed-count').textContent()) >= quote.pallets[0].cartonCount) throw new Error('Layer did not step backwards');
+  await pallet.getByRole('button',{name:'Show all',exact:true}).click();
   await page.getByTestId('actual-height-0').fill('100');
   await page.getByTestId('actual-grossWeight-0').fill('45');
   await page.getByTestId('actual-crewInitials-0').fill('AB');

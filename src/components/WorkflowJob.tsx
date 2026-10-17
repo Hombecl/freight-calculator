@@ -1,0 +1,13 @@
+import {useState} from 'react';
+import {useApp} from '../context/AppContext';
+export interface WorkflowJobState {id:string;own:boolean}
+export function useWorkflowJob(tool:string){
+ const key=`dp_active_job_${tool}`;
+ const [job,setJob]=useState<WorkflowJobState>(()=>{try{const v=JSON.parse(localStorage.getItem(key)??'null');if(v&&typeof v.id==='string'&&typeof v.own==='boolean')return v;}catch{}return {id:crypto.randomUUID(),own:false};});
+ const update=(next:WorkflowJobState)=>{setJob(next);try{localStorage.setItem(key,JSON.stringify(next));}catch{}};
+ return [job,update] as const;
+}
+export default function WorkflowJob({job,onChange}:{job:WorkflowJobState;onChange:(next:WorkflowJobState)=>void}){
+ const {lang}=useApp();const T=(a:string,b:string)=>lang==='zh'?b:a;
+ return <section className="rounded border p-3 my-3 print:hidden"><label><input type="checkbox" checked={job.own} onChange={e=>onChange({...job,own:e.target.checked})}/> {T('This is my own job, not a sample','這是我自己的工作，並非範例')}</label><button className="border rounded px-3 py-2 ml-3" onClick={()=>onChange({id:crypto.randomUUID(),own:true})}>{T('Start next job (keep inputs)','開始下一份工作（保留輸入）')}</button><p className="text-xs mt-2">{T('Keep the same job while revising it. Start the next job for a different shipment or analysis. This label stays on this browser.','修改時沿用同一工作；另一批出貨或分析才開始下一份。工作標記留在此瀏覽器。')}</p></section>;
+}

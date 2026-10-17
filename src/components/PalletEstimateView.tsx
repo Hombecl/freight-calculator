@@ -17,6 +17,13 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  const drag=useRef<{x:number;y:number;moved:boolean}|null>(null);
  const pressedBox=useRef<string|null>(null);
  const steps=buildSteps(result), p=result.pallet;
+ const layers=[...new Set(steps.map(b=>b.py))];
+ const [layerMode,setLayerMode]=useState(false),[reducedMotion,setReducedMotion]=useState(false);
+ useEffect(()=>{const m=window.matchMedia('(prefers-reduced-motion: reduce)');const sync=()=>{setReducedMotion(m.matches);if(m.matches)setPlaying(false);};sync();m.addEventListener('change',sync);return()=>m.removeEventListener('change',sync);},[]);
+ const layerEnd=(height:number)=>steps.filter(b=>b.py<=height).length;
+ const currentLayer=step?layers.indexOf(steps[Math.min(step,steps.length)-1]?.py)+1:0;
+ const layerSummary=steps.filter(b=>b.py===layers[currentLayer-1]).reduce((map,b)=>{map.set(b.label,(map.get(b.label)??0)+1);return map;},new Map<string,number>());
+
  useEffect(()=>{
    const pause=()=>{if(document.hidden)setPlaying(false);};
    const observer=new IntersectionObserver(entries=>{if(!entries[0]?.isIntersecting)setPlaying(false);});
@@ -26,9 +33,9 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  },[]);
  useEffect(()=>{
    if(!playing) return;
-   const timer=window.setInterval(()=>setStep(n=>Math.min(n+1,steps.length)),900);
+   const timer=window.setInterval(()=>setStep(n=>layerMode?(layers.find(h=>layerEnd(h)>n)===undefined?steps.length:layerEnd(layers.find(h=>layerEnd(h)>n)!)):Math.min(n+1,steps.length)),900);
    return ()=>clearInterval(timer);
- },[playing,steps.length]);
+ },[playing,steps.length,layerMode]);
  useEffect(()=>{if(step>=steps.length)setPlaying(false);},[step,steps.length]);
  useEffect(()=>{const showAll=()=>{setPlaying(false);setStep(result.boxes.length);};window.addEventListener('beforeprint',showAll);return()=>window.removeEventListener('beforeprint',showAll);},[result.boxes.length]);
  const extentL=Math.max(p.l,...result.boxes.map(b=>b.px+b.l))-Math.min(0,...result.boxes.map(b=>b.px));
@@ -71,10 +78,13 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
 ><title>{`${b.id} · ${b.label}`}</title></polygon>)}
   </svg>
   <div className="px-5 pb-5 space-y-3 print:hidden">
+   <label className="block text-sm"><input type="checkbox" checked={layerMode} onChange={e=>{setLayerMode(e.target.checked);setPlaying(false);}}/> {zh?'逐層操作（同起始高度）':'Step by layer (same starting height)'}</label>
+   <p className="text-sm" aria-live="polite">{zh?'層':'Layer'} {currentLayer}/{layers.length} · {[...layerSummary].map(([sku,n])=>`${sku} × ${n}`).join(' · ')}</p>
+   {reducedMotion&&<p className="text-sm">{zh?'已按減少動態設定停用自動播放，可用前後步。':'Automatic playback is off for reduced motion. Use Previous and Next.'}</p>}
    <div className="flex flex-wrap gap-2">
-    <button className={button} disabled={!steps.length} onClick={()=>{if(playing){setPlaying(false);return;}if(step===steps.length){setStep(0);setSelected(null);}setPlaying(true);}}>{playing?t.pause:t.play}</button>
-    <button className={button} disabled={step===0} onClick={()=>go(step-1)}>{t.previous}</button>
-    <button className={button} disabled={step===steps.length} onClick={()=>go(step+1)}>{t.next}</button>
+    <button className={button} disabled={!steps.length||reducedMotion} onClick={()=>{if(playing){setPlaying(false);return;}if(step===steps.length){setStep(0);setSelected(null);}setPlaying(true);}}>{playing?t.pause:t.play}</button>
+    <button className={button} disabled={step===0} onClick={()=>go(layerMode?(currentLayer<=1?0:layerEnd(layers[currentLayer-2])):step-1)}>{layerMode?(zh?'上一層':'Previous layer'):t.previous}</button>
+    <button className={button} disabled={step===steps.length} onClick={()=>go(layerMode?layerEnd(layers.find(h=>layerEnd(h)>step)??layers[layers.length-1]):step+1)}>{layerMode?(zh?'下一層':'Next layer'):t.next}</button>
     <button className={button} onClick={()=>go(steps.length)}>{t.all}</button>
    </div>
    <label className="block text-sm">{t.step} {step} / {steps.length}<input aria-label={t.step} type="range" min={0} max={steps.length} value={step} onChange={e=>go(+e.target.value)} className="w-full accent-blue-600"/></label>
