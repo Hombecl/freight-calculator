@@ -38,6 +38,28 @@ const browser = await chromium.launch({
   headless: true,
 });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// Observe actual GPU submissions in CI without adding diagnostic UI to the app.
+if (!IS_LIVE) await ctx.addInitScript(() => {
+  Object.defineProperty(window, 'THREE', { configurable: true, set(three) {
+    const observedRenderer = Renderer => class extends Renderer {
+      constructor(...args) {
+        super(...args);
+        const render = this.render.bind(this);
+        this.render = (...renderArgs) => {
+          render(...renderArgs);
+          this.domElement.dataset.drawCalls = String(this.info.render.calls);
+          this.domElement.dataset.renderCount = String(Number(this.domElement.dataset.renderCount ?? 0) + 1);
+        };
+      }
+    };
+    // The CDN UMD script assigns an empty exports object before filling it.
+    if (three.WebGLRenderer) three.WebGLRenderer = observedRenderer(three.WebGLRenderer);
+    else Object.defineProperty(three, 'WebGLRenderer', { configurable: true, set(Renderer) {
+      Object.defineProperty(three, 'WebGLRenderer', { configurable: true, writable: true, value: observedRenderer(Renderer) });
+    } });
+    Object.defineProperty(window, 'THREE', { configurable: true, writable: true, value: three });
+  } });
+});
 // grant clipboard so share-link copy works
 await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
 const page = await ctx.newPage();
@@ -88,6 +110,32 @@ await test('home: visible 3D starts automatically and rotation can be paused', a
   if (videos.some(v => !v.paused || v.time !== 0 || v.preload !== 'none' || !v.controls)) {
     throw new Error('offscreen homepage video started before it was visible');
   }
+}, page);
+
+await test('home: batched cartons stay editable and paused scenes stop redrawing', async () => {
+  const canvas = page.locator('canvas').first();
+  if (!IS_LIVE) {
+    await page.waitForFunction(() => Number(document.querySelector('canvas')?.dataset.drawCalls) > 0);
+    const calls = Number(await canvas.getAttribute('data-draw-calls'));
+    if (!calls || calls > 20) throw new Error(`280-carton preview submitted ${calls} draw calls`);
+  }
+  await page.getByRole('button', { name: 'Pause rotation', exact: true }).click();
+  await page.waitForTimeout(200);
+  const before = await canvas.getAttribute('data-render-count');
+  await page.waitForTimeout(350);
+  if (!IS_LIVE && await canvas.getAttribute('data-render-count') !== before) throw new Error('paused unchanged scene keeps redrawing');
+  const bounds = await canvas.boundingBox();
+  const remove = page.getByRole('button', { name: 'Delete', exact: true });
+  for (const [x, y] of [[0.5, 0.5], [0.45, 0.6], [0.6, 0.55], [0.4, 0.45]]) {
+    await canvas.click({ position: { x: bounds.width * x, y: bounds.height * y } });
+    if (await remove.isEnabled()) break;
+  }
+  if (!await remove.isEnabled()) throw new Error('batched cartons cannot be selected');
+  await remove.click();
+  await page.getByText(/Boxes: 279/).waitFor();
+  await page.getByRole('button', { name: /Undo/ }).click();
+  await page.getByText(/Boxes: 280/).waitFor();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).click();
 }, page);
 
 await test('home: reduced motion preserves the preview and manual 3D', async () => {
@@ -320,6 +368,35 @@ await test('planner: export gate opens for anonymous CSV', async () => {
   if (await purpose.inputValue() !== 'freight-quote') throw new Error('purpose selection not retained');
   await page.keyboard.press('Escape');
   await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
+}, page);
+
+await test('planner: PDF snapshot retains the rendered 3D plan', async () => {
+  let leadBody;
+  await page.route('**/api/lead', async route => {
+    leadBody = route.request().postDataJSON();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+  await page.getByRole('button', { name: /^pdf plan$/i }).click();
+  await page.getByPlaceholder('you@company.com', { exact: true }).fill('render-test@example.test');
+  await page.getByRole('combobox', { name: /what will you use this plan for/i }).selectOption('pallet-planning');
+  const opened = page.waitForEvent('popup');
+  await page.getByRole('button', { name: /unlock & download/i }).click();
+  const pdf = await opened;
+  try {
+    await pdf.locator('img[alt="3D load plan"]').waitFor();
+    const colors = await pdf.locator('img[alt="3D load plan"]').evaluate(async img => {
+      await img.decode();
+      const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 64, 64);
+      const pixels = ctx.getImageData(0, 0, 64, 64).data;
+      const unique = new Set();
+      for (let i = 0; i < pixels.length; i += 4) unique.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]},${pixels[i+3]}`);
+      return unique.size;
+    });
+    if (colors < 5) throw new Error('PDF snapshot is blank or a single background color');
+    if (leadBody?.purpose !== 'pallet-planning' || leadBody?.source !== 'planner-export') throw new Error('export purpose/source not captured');
+    if (leadBody?.proWaitlist !== false) throw new Error('export incorrectly opted into marketing');
+  } finally { await pdf.close(); await page.unroute('**/api/lead'); }
 }, page);
 
 // ---------- warehouse ----------

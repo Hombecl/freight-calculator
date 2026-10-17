@@ -10,6 +10,7 @@ import heroSummary from '../data/hero-summary.json';
 import VisibleVideo from '../components/VisibleVideo';
 import { useVisibleMotion } from '../components/useVisibleMotion';
 const HeroInteractive = lazy(() => import('../components/HeroInteractive'));
+const HeroMotionPreview = lazy(() => import('../components/HeroMotionPreview'));
 type HeroMode = keyof typeof heroSummary;
 import { track } from '../lib/track';
 
@@ -38,16 +39,17 @@ export default function HomePage() {
 
   const [heroMode, setHeroMode] = useState<HeroMode>('container');
   const [interactive, setInteractive] = useState(false);
+  const [animatePreview, setAnimatePreview] = useState(false);
   const [motionPaused, setMotionPaused] = useState(false);
   const { ref: heroRef, visible: heroVisible, allowed: motionAllowed } = useVisibleMotion<HTMLDivElement>();
   const demo = heroSummary[heroMode];
 
   useEffect(() => {
-    if (interactive || !heroVisible || !motionAllowed) return;
+    if (interactive || animatePreview || !heroVisible || !motionAllowed) return;
     let timer: ReturnType<typeof setTimeout>;
     let idle: number | undefined;
     let cancelled = false;
-    const activate = () => { if (!cancelled) setInteractive(true); };
+    const activate = () => { if (!cancelled) setAnimatePreview(true); };
     const schedule = () => {
       timer = setTimeout(() => {
         if ('requestIdleCallback' in window) idle = window.requestIdleCallback(activate, { timeout: 2000 });
@@ -62,7 +64,7 @@ export default function HomePage() {
       if (idle !== undefined) window.cancelIdleCallback(idle);
       window.removeEventListener('load', schedule);
     };
-  }, [interactive, heroVisible, motionAllowed]);
+  }, [interactive, animatePreview, heroVisible, motionAllowed]);
 
   const switchHero = (mode: HeroMode) => {
     setHeroMode(mode);
@@ -272,6 +274,12 @@ export default function HomePage() {
                       className="w-full h-[360px] object-contain bg-slate-900" alt={T('Loading interactive 3D…', '載入互動 3D…')} />}>
                       <HeroInteractive mode={heroMode} autoSpin={motionAllowed && !motionPaused} />
                     </Suspense>
+                  ) : animatePreview ? (
+                    <Suspense fallback={<img src={`/hero/${heroMode}.svg`} width={720} height={440}
+                      className="w-full h-[360px] object-contain bg-slate-900" alt={T('Loading animated 3D…', '載入 3D 動畫…')} />}>
+                      <HeroMotionPreview key={heroMode} mode={heroMode} running={heroVisible && motionAllowed && !motionPaused}
+                        onActivate={() => { setInteractive(true); track('hero_3d_open', heroMode); }} />
+                    </Suspense>
                   ) : (
                     <button type="button" className="relative block w-full h-full rounded-xl overflow-hidden group focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
                       onClick={() => { setInteractive(true); track('hero_3d_open', heroMode); }}>
@@ -283,7 +291,7 @@ export default function HomePage() {
                       </span>
                     </button>
                   )}
-                  {interactive && motionAllowed && <button type="button" aria-pressed={motionPaused}
+                  {(interactive || animatePreview) && motionAllowed && <button type="button" aria-pressed={motionPaused}
                     className="mt-2 text-xs text-slate-300 underline underline-offset-4"
                     onClick={() => setMotionPaused(paused => !paused)}>
                     {motionPaused ? T('Resume rotation', '繼續旋轉') : T('Pause rotation', '暫停旋轉')}
