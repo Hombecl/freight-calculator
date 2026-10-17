@@ -279,7 +279,7 @@ export async function optimizeBoxCatalog(input: unknown) {
             code: 'ALL_ORDERS_FIT', status: result.totals.unfitOrders ? 'fail' : 'pass', observed: result.totals.unfitOrders, limit: 0, assumption: `${unfitSharePct}% of orders would need a box outside this catalog. Best coverage found within the search budget; fallback charges are estimates only and excluded from savings.`
         },
         {
-            code: 'DIVISOR_STATED', status: 'pass', observed: p.billing.dimDivisor, assumption: `User supplied ${p.billing.unit} divisor; no carrier rounding.`
+            code: 'DIVISOR_STATED', status: 'pass', observed: p.billing.dimDivisor, assumption: `User supplied ${p.billing.unit} divisor; dimension increment ${p.billing.dimensionIncrement}, weight increment ${p.billing.weightIncrement} (0 means no rounding).`
         },
         { code: 'RATE_PROVIDED', status: p.billing.ratePerKgOrLb === undefined ? 'not_evaluated' : 'pass', assumption: 'Cost requires ratePerKgOrLb; all monetary inputs must use the same currency.' },
         {
