@@ -348,8 +348,8 @@ export default function OrderQuotePage() {
                       <td className="py-2 pr-3"><input type="number" step="any" className={`${inputCls} py-1 w-24`} value={a.height ?? ''} onChange={(e) => setReq((r) => ({ ...r, actuals: { ...r.actuals, [p.index]: { ...a, height: numOr(e.target.value) } } }))} /></td>
                       <td className="py-2 pr-3"><input type="number" step="any" className={`${inputCls} py-1 w-24`} value={a.grossWeight ?? ''} onChange={(e) => setReq((r) => ({ ...r, actuals: { ...r.actuals, [p.index]: { ...a, grossWeight: numOr(e.target.value) } } }))} /></td>
                       <td className="py-2 text-xs whitespace-nowrap">
-                        {p.variance?.height && <div>H {p.variance.height.delta > 0 ? '+' : ''}{p.variance.height.delta} cm ({p.variance.height.deltaPct}%)</div>}
-                        {p.variance?.grossWeight && <div>W {p.variance.grossWeight.delta > 0 ? '+' : ''}{p.variance.grossWeight.delta} kg ({p.variance.grossWeight.deltaPct}%)</div>}
+                        {p.variance?.height && <div>H {p.variance.height.delta > 0 ? '+' : ''}{r2(p.variance.height.delta)} cm ({r2(p.variance.height.deltaPct)}%)</div>}
+                        {p.variance?.grossWeight && <div>W {p.variance.grossWeight.delta > 0 ? '+' : ''}{r2(p.variance.grossWeight.delta)} kg ({r2(p.variance.grossWeight.deltaPct)}%)</div>}
                         {!p.variance && <span className="text-slate-400">{T('enter + re-run', '輸入後再計')}</span>}
                       </td>
                     </tr>
