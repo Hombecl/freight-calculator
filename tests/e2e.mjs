@@ -322,6 +322,35 @@ await test('planner: export gate opens for anonymous CSV', async () => {
   await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
 }, page);
 
+await test('planner: PDF snapshot retains the rendered 3D plan', async () => {
+  let leadBody;
+  await page.route('**/api/lead', async route => {
+    leadBody = route.request().postDataJSON();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+  await page.getByRole('button', { name: /^pdf plan$/i }).click();
+  await page.getByPlaceholder('you@company.com', { exact: true }).fill('render-test@example.test');
+  await page.getByRole('combobox', { name: /what will you use this plan for/i }).selectOption('pallet-planning');
+  const opened = page.waitForEvent('popup');
+  await page.getByRole('button', { name: /unlock & download/i }).click();
+  const pdf = await opened;
+  try {
+    await pdf.locator('img[alt="3D load plan"]').waitFor();
+    const colors = await pdf.locator('img[alt="3D load plan"]').evaluate(async img => {
+      await img.decode();
+      const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 64, 64);
+      const pixels = ctx.getImageData(0, 0, 64, 64).data;
+      const unique = new Set();
+      for (let i = 0; i < pixels.length; i += 4) unique.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]},${pixels[i+3]}`);
+      return unique.size;
+    });
+    if (colors < 5) throw new Error('PDF snapshot is blank or a single background color');
+    if (leadBody?.purpose !== 'pallet-planning' || leadBody?.source !== 'planner-export') throw new Error('export purpose/source not captured');
+    if (leadBody?.proWaitlist !== false) throw new Error('export incorrectly opted into marketing');
+  } finally { await pdf.close(); await page.unroute('**/api/lead'); }
+}, page);
+
 // ---------- warehouse ----------
 await test('warehouse: tutorial shows and dismisses', async () => {
   await page.goto(`${BASE}/warehouse`, { waitUntil: 'domcontentloaded' });

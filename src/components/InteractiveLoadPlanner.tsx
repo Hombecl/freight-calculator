@@ -34,6 +34,7 @@ interface Props {
   placedCountTestId?: string;
   className?: string;
   viewportHeight?: number; // fixed hero height avoids shifts when WebGL replaces its preview
+  maxPixelRatio?: number; // decorative previews need fewer pixels than exported plans
   loadingPreview?: string;
   container: { l: number; w: number; h: number };
   boxes: PlannerBox[];
@@ -105,6 +106,7 @@ export default function InteractiveLoadPlanner({
   placedCountTestId,
   className = '',
   viewportHeight,
+  maxPixelRatio = 2,
   loadingPreview,
   container,
   boxes,
@@ -151,6 +153,7 @@ export default function InteractiveLoadPlanner({
   const sceneApi = useRef<{
     meshById: Map<string, any>;
     refresh: () => void;
+    invalidate: () => void;
     THREE: any;
     scene: any;
     offset: { x: number; y: number; z: number };
@@ -192,6 +195,7 @@ export default function InteractiveLoadPlanner({
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100000);
     const target = new THREE.Vector3(0, 0, 0);
+    let needsRender = true;
 
     // spherical orbit state
     const maxDim = Math.max(container.l, container.w, container.h);
@@ -205,6 +209,7 @@ export default function InteractiveLoadPlanner({
         target.z + radius * Math.sin(phi) * Math.cos(theta),
       );
       camera.lookAt(target);
+      needsRender = true;
     };
     applyCamera();
 
@@ -212,13 +217,15 @@ export default function InteractiveLoadPlanner({
     // machines). Never let that take down the whole React tree.
     let renderer: any;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      // Snapshots explicitly render and read in the same task, so retaining the
+      // previous frame is unnecessary and prevents GPU buffer optimizations.
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
     } catch {
       setWebglFailed(true);
       return;
     }
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
     mount.innerHTML = '';
     mount.appendChild(renderer.domElement);
 
@@ -304,6 +311,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const applyHighlight = () => {
+      needsRender = true;
       const sel = selectedIdRef.current;
       meshById.forEach((m, id) => {
         m.material.emissive?.setHex(id === sel ? 0x2563eb : 0x000000);
@@ -317,6 +325,7 @@ export default function InteractiveLoadPlanner({
       if (!m) return;
       const w = toWorld(b);
       m.position.set(w.x, w.y, w.z);
+      needsRender = true;
     };
 
     rebuild();
@@ -338,6 +347,7 @@ export default function InteractiveLoadPlanner({
       scene,
       offset: off,
       refresh: () => { rebuild(); },
+      invalidate: () => { needsRender = true; },
     };
 
     // ---------- pointer interaction ----------
@@ -433,6 +443,7 @@ export default function InteractiveLoadPlanner({
       setNdc(e);
       const hid = pickBox();
       if (hid !== hoveredId) {
+        needsRender = true;
         hoveredId = hid;
         meshById.forEach((m: any, id: string) => {
           if (id === selectedIdRef.current) return; // selection highlight wins
@@ -447,6 +458,7 @@ export default function InteractiveLoadPlanner({
       mode = 'idle';
       dragId = null;
       shadow.visible = false;
+      needsRender = true;
       try { dom.releasePointerCapture(e.pointerId); } catch { /* noop */ }
     };
 
@@ -463,29 +475,36 @@ export default function InteractiveLoadPlanner({
     dom.addEventListener('wheel', onWheel, { passive: false });
 
     let visible = true;
-    const visibility = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
+    const visibility = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; needsRender = true; });
     visibility.observe(mount);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let raf = 0;
-    const loop = () => {
+    let lastFrame = performance.now();
+    const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
-      if (!visible || document.hidden) return;
+      if (!visible || document.hidden) { lastFrame = now; return; }
+      // Keep interaction responsive, while decorative motion needs only 30 fps.
+      // Elapsed-time motion preserves the same speed across display refresh rates.
+      const elapsed = now - lastFrame;
+      if (mode === 'idle' && elapsed < 1000 / 30) return;
+      const frameScale = Math.min(elapsed, 100) / (1000 / 60);
+      lastFrame = now;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
       if (autoSpinRef.current && !reducedMotion.matches && mode === 'idle') {
-        const idleFor = performance.now() - lastPointerRef.current;
+        const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
-          theta -= 0.0022;
+          theta -= 0.0022 * frameScale;
           applyCamera();
         } else if (idleFor > 10_000) {
-          theta -= 0.0009;
+          theta -= 0.0009 * frameScale;
           applyCamera();
         }
       }
       // animate the route marker (forklift) along the current path
       const pa = pathAnimRef.current;
       if (pa && pa.total > 0 && pa.marker) {
-        pa.t = (pa.t + Math.min(2.5, pa.total * 0.004) / pa.total) % 1;
+        pa.t = (pa.t + Math.min(2.5, pa.total * 0.004) / pa.total * frameScale) % 1;
         const d = pa.t * pa.total;
         let i = 1;
         while (i < pa.cum.length - 1 && pa.cum[i] < d) i++;
@@ -493,10 +512,11 @@ export default function InteractiveLoadPlanner({
         const f = (d - pa.cum[i - 1]) / seg;
         const a = pa.pts[i - 1], b = pa.pts[i];
         pa.marker.position.set(a.x + (b.x - a.x) * f, a.y, a.z + (b.z - a.z) * f);
+        needsRender = true;
       }
-      renderer.render(scene, camera);
+      if (needsRender) { renderer.render(scene, camera); needsRender = false; }
     };
-    loop();
+    raf = requestAnimationFrame(loop);
 
     // expose a snapshot fn (renders once then reads the buffer)
     registerSnapshot?.(() => {
@@ -514,6 +534,7 @@ export default function InteractiveLoadPlanner({
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      needsRender = true;
     };
     window.addEventListener('resize', onResize);
 
@@ -531,7 +552,7 @@ export default function InteractiveLoadPlanner({
       sceneApi.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges]);
+  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -540,6 +561,7 @@ export default function InteractiveLoadPlanner({
     api.meshById.forEach((m: any, id: string) => {
       m.material.emissive?.setHex(id === selectedId ? 0x2563eb : 0x000000);
     });
+    api.invalidate();
   }, [selectedId]);
 
   // tint flagged boxes red (restores the box's own color when unflagged)
@@ -551,6 +573,7 @@ export default function InteractiveLoadPlanner({
       const original = boxesRef.current.find((b) => b.id === id)?.color ?? 0xfbbf24;
       m.material.color?.setHex(flagged.has(id) ? 0xef4444 : original);
     });
+    api.invalidate();
   }, [flagIds, boxes]);
 
   // animated route (e.g. forklift dock→pallet): dashed line + travelling marker
@@ -562,6 +585,7 @@ export default function InteractiveLoadPlanner({
     const api = sceneApi.current;
     if (!api) return;
     const { THREE, scene, offset } = api;
+    api.invalidate();
     // clear previous
     if (pathAnimRef.current) {
       scene.remove(pathAnimRef.current.line);
@@ -626,6 +650,7 @@ export default function InteractiveLoadPlanner({
         scene.remove(pathAnimRef.current.line);
         scene.remove(pathAnimRef.current.marker);
         pathAnimRef.current = null;
+        api.invalidate();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
