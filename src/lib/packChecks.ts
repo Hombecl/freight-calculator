@@ -73,7 +73,7 @@ export interface ContainerCheckInput {
 export function containerChecks(i: ContainerCheckInput): Check[] {
   const { container: c, specs, boxes, unplaced, totalWeight } = i;
   const out: Check[] = [];
-  const weighted = specs.some((s) => s.weight > 0);
+  const weighted = specs.some((s) => s.weight > 0) && !specs.some(s => s.weightKnown === false);
   const requested = specs.reduce((n, s) => n + s.qty, 0);
 
   out.push({

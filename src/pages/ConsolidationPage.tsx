@@ -1,10 +1,11 @@
+import {readCargoTransfer} from '../lib/workflowTransfer';
 import { checkAssumption, checkName } from '../lib/auditPageLocale';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useApp } from '../context/AppContext';
 import { consolidate, CONSOLIDATION_EXAMPLE, type ConsolidationRequest, type ConsolidationResult, type ConsolidationContainer } from '../lib/consolidation';
-import { parseText, parseFile, type ImportResult } from '../lib/importCartons';
+import { parseText, parseFile, specsInUnits, type ImportResult } from '../lib/importCartons';
 import { downloadText, toPackingCSV } from '../lib/exportPlan';
 import { CONTAINER_PRESETS, type Check } from '../lib/packChecks';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
@@ -19,6 +20,7 @@ export default function ConsolidationPage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => lang === 'zh' ? zh : en;
   const [request, setRequest] = useState<ConsolidationRequest>(() => ({ ...structuredClone(CONSOLIDATION_EXAMPLE), pos: CONSOLIDATION_EXAMPLE.pos.map((po, i) => ({ ...po, items: [{ ...po.items[0], qty: i === 0 ? 12 : 10, l: 60, w: 40, h: 40, weight: 12, keepUpright: true }] })), containers: [{ preset: '20gp', maxCount: 1 }, { preset: '40gp', maxCount: 1 }, { preset: '40hq', maxCount: 1 }] }));
+  const [carriedCargo]=useState(()=>readCargoTransfer());
   const [result, setResult] = useState<ConsolidationResult>();
   const [ranRequest, setRanRequest] = useState<ConsolidationRequest>();
   const [selected, setSelected] = useState<ConsolidationContainer>();
@@ -32,7 +34,7 @@ export default function ConsolidationPage() {
     // The shared importer can skip malformed rows; make that visible and require
     // correction rather than replacing cargo with a silently shortened list.
     if (data.warnings.length) { setMessage(T('Import needs review: ', '匯入需要核對：') + data.warnings.join('; ')); return; }
-    updatePo(i, { items: data.specs.map(s => ({ sku: s.label, label: s.label, l: s.l, w: s.w, h: s.h, qty: s.qty, weight: s.weight, keepUpright: s.keepUpright, maxStack: s.maxStack })) });
+    updatePo(i, { items: specsInUnits(data, (request.units ?? 'cm-kg')).map(s => ({ sku: s.label, label: s.label, l: s.l, w: s.w, h: s.h, qty: s.qty, weight: s.weight, keepUpright: s.keepUpright, maxStack: s.maxStack })) });
     setMessage(T('Rows imported in the selected units.', '已按所選單位匯入。'));
   };
   const run = async () => {
@@ -48,6 +50,7 @@ export default function ConsolidationPage() {
     <h1 className="text-3xl font-black text-slate-900">{T('Multi-PO container consolidation', '多訂單併櫃規劃')}</h1>
     <p className="text-slate-600 max-w-3xl">{T('Same origin region, one destination. Compare the best options found before booking.', '同一出發地區、同一目的地。訂艙前比較搵到嘅最佳方案。')}</p>
     <p className="text-xs text-slate-500">{T('Limits: 30 POs, 60 carton types, 3,000 cartons; up to 120 packing runs.', '上限：30 張 PO、60 種箱型、3,000 箱；最多 120 次砌櫃。')}</p>
+    {carriedCargo&&<section className="border rounded-xl p-4"><p>{T('Available from your previous tool','上一個工具帶入資料')}: {carriedCargo.orderId} · {carriedCargo.revision.slice(0,8)} · {carriedCargo.model==='built-pallets'?T('Built pallets — upright, no stacking; dimensions include the base and allowance.','已砌卡板 — 直立、不疊板；尺寸包括板底同預留。'):T('Loose cartons','散箱')}</p><button className={buttonClass} onClick={()=>{edit({...request,units:'cm-kg',pos:[{poId:carriedCargo.orderId,items:carriedCargo.specs.map(s=>({...s,sku:s.id}))}]});track('workflow_transfer',carriedCargo.model);}}>{T('Replace example cargo with these items','用以上貨物取代示範')}</button></section>}
     <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start"><div className="min-w-0 space-y-4">
     <label className="block text-sm font-semibold text-slate-600">{T('Input units (including imported rows)', '輸入單位（包括匯入資料）')}<select className={inputClass} value={request.units ?? 'cm-kg'} onChange={e => {
       const next = e.target.value as 'cm-kg' | 'in-lb', L = next === 'in-lb' ? 1 / 2.54 : 2.54, W = next === 'in-lb' ? 1 / .45359237 : .45359237;
@@ -61,8 +64,8 @@ export default function ConsolidationPage() {
         {po.items.map((it, j) => <tr key={j} className="border-b border-slate-100"><td className="py-2 pr-2">{it.sku ?? it.label ?? j + 1}</td>{(['l', 'w', 'h', 'qty', 'weight', 'maxStack'] as const).map(k => <td key={k} className="py-1 pr-2"><input aria-label={`${po.poId} ${it.sku ?? j + 1} ${k}`} className={`${inputClass} w-20 py-1`} type="number" value={it[k] ?? ''} onChange={e => updatePo(i, { items: po.items.map((x, n) => n === j ? { ...x, [k]: e.target.value === '' && k === 'maxStack' ? undefined : Number(e.target.value) } : x) })}/></td>)}{(['keepUpright', 'fragile'] as const).map(k => <td key={k} className="py-2 pr-2 text-center"><input aria-label={`${po.poId} ${it.sku ?? j + 1} ${k}`} type="checkbox" checked={it[k] ?? (k === 'keepUpright')} onChange={e => updatePo(i, { items: po.items.map((x, n) => n === j ? { ...x, [k]: e.target.checked } : x) })}/></td>)}</tr>)}
       </tbody></table></div>
         <textarea aria-label={T(`Paste cartons ${i + 1}`, `貼上紙箱 ${i + 1}`)} className={inputClass} placeholder="sku,length,width,height,weight,qty" value={paste[i] ?? ''} onChange={e => setPaste({ ...paste, [i]: e.target.value })} />
-        <button className={buttonClass} onClick={() => imported(i, parseText(paste[i] ?? ''))}>{T('Import pasted rows', '匯入貼上資料')}</button>
-        <label className="block text-sm">{T('Upload CSV / Excel (headers required)', '上載 CSV / Excel（需要欄名）')}<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={async e => { const f = e.target.files?.[0]; if (f) try { imported(i, await parseFile(f)); } catch (err) { setMessage(String(err)); } e.target.value = ''; }} /></label>
+        <button className={buttonClass} onClick={() => imported(i, parseText(paste[i] ?? '', {lengthUnit: (request.units ?? 'cm-kg') === 'in-lb' ? 'in' : 'cm', weightUnit: (request.units ?? 'cm-kg') === 'in-lb' ? 'lb' : 'kg'}))}>{T('Import pasted rows', '匯入貼上資料')}</button>
+        <label className="block text-sm">{T('Upload CSV / Excel (headers required)', '上載 CSV / Excel（需要欄名）')}<input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={async e => { const f = e.target.files?.[0]; if (f) try { imported(i, await parseFile(f, {lengthUnit: (request.units ?? 'cm-kg') === 'in-lb' ? 'in' : 'cm', weightUnit: (request.units ?? 'cm-kg') === 'in-lb' ? 'lb' : 'kg'})); } catch (err) { setMessage(String(err)); } e.target.value = ''; }} /></label>
     </section>)}
     <button className={buttonClass} disabled={request.pos.length >= 30} onClick={() => edit({ ...request, pos: [...request.pos, { poId: `PO-${request.pos.length + 1}`, items: [{ sku: 'A', l: 60, w: 40, h: 40, qty: 1, weight: 10 }] }] })}>{T('Add PO', '新增訂單')}</button>
     </div><section className="min-w-0 rounded-2xl border border-slate-200 p-5 space-y-4"><h2 className="font-black text-slate-900">{T('Containers, LCL and rules', '貨櫃、散貨同規則')}</h2>

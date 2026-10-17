@@ -25,6 +25,7 @@ export interface PackItemSpec {
   w: number;
   h: number;
   weight: number; // per unit, same unit as container.maxWeight
+  weightKnown?: boolean; // false means missing input, not a measured zero
   qty: number;
   color: number;
   allowRotate?: boolean; // default true

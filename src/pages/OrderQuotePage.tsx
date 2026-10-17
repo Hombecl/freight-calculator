@@ -1,3 +1,6 @@
+import {CARGO_TRANSFER,palletTransfer,readCargoTransfer} from '../lib/workflowTransfer';
+import PilotInterest from '../components/PilotInterest';
+import {recordWorkflowOutput} from '../lib/workflowUsage';
 import { applyProfile, attachProfile, loadProfiles, parseProfile } from '../lib/receiverProfiles';
 import { deviceProfiles, quoteStorageKey, SHEET_STORAGE } from '../lib/receiverStorage';
 import PalletEstimateView from '../components/PalletEstimateView';
@@ -67,15 +70,20 @@ export default function OrderQuotePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [profiles, setProfiles] = useState(() => { try { return deviceProfiles(localStorage.getItem('dp_receiver_profiles')); } catch { return loadProfiles(); } });
+  const [ownJob,setOwnJob]=useState(false);
+  const [recent,setRecent]=useState<{key:string;name:string;revision:string}[]>([]);
+
   const [profileId, setProfileId] = useState('');
   const selectedProfile = profiles.find(p => p.id === profileId);
   const [profileChecks, setProfileChecks] = useState<Awaited<ReturnType<typeof attachProfile>>['profileChecks']>([]);
   const [req, setReq] = useState<OrderQuoteRequest>(() => { try { const carried = JSON.parse(sessionStorage.getItem(SHEET_STORAGE) || '{}'); if (carried.request) { parseQuoteRequest(carried.request); return carried.request; } } catch { /* use example when no valid carried request */ } return structuredClone(QUOTE_EXAMPLE); });
+  const [carriedCargo]=useState(()=>readCargoTransfer());
   const units: QuoteUnits = req.units ?? 'cm-kg';
   const lu = units === 'in-lb' ? 'in' : 'cm';
   const wu = units === 'in-lb' ? 'lb' : 'kg';
   const [quotedRequest, setQuotedRequest] = useState<OrderQuoteRequest | null>(null);
   const [quote, setQuote] = useState<OrderQuote | null>(null);
+  useEffect(()=>{try{setRecent(Object.keys(localStorage).filter(k=>k.startsWith('dp_quote_')).map(key=>{const v=JSON.parse(localStorage.getItem(key)??'{}');return {key,name:v.orderId??'Draft',revision:v.inputHash??''};}).filter(x=>x.revision).slice(-20));}catch{}},[quote]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [staleLatch, setStaleLatch] = useState(false);
@@ -95,7 +103,8 @@ export default function OrderQuotePage() {
     try {
       const raw = localStorage.getItem(storageKey(req.orderId));
       if (raw) {
-        const saved = JSON.parse(raw) as { actuals?: OrderQuoteRequest['actuals']; actualsUnits?: QuoteUnits; request?: OrderQuoteRequest };
+        const saved = JSON.parse(raw) as { ownJob?:boolean; actuals?: OrderQuoteRequest['actuals']; actualsUnits?: QuoteUnits; request?: OrderQuoteRequest };
+        setOwnJob(saved.ownJob===true);
         if ('profileSnapshot' in saved && saved.profileSnapshot) { const p = parseProfile(saved.profileSnapshot); setProfiles(old => [...old.filter(v => v.id !== p.id), p]); setProfileId(p.id); }
         if (saved.request) { setReq(saved.request); if ('pallets' in saved) { setQuote(saved as unknown as OrderQuote); setQuotedRequest(structuredClone(saved.request)); setStaleLatch(false); if ('profileChecks' in saved && Array.isArray(saved.profileChecks)) setProfileChecks(saved.profileChecks); } return; }
         if (saved.actuals && Object.keys(saved.actuals).length) setReq((r) => ({ ...r, actuals: toUnits({...r, actuals:saved.actuals},saved.actualsUnits??r.units??'cm-kg',r.units??'cm-kg').actuals }));
@@ -112,14 +121,16 @@ export default function OrderQuotePage() {
     setBusy(true); setError(null); setServerState('');
     const snapshot = structuredClone(req);
     try {
-      const base = await quoteOrder(snapshot);
-      const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+      let base = await quoteOrder(snapshot);
+      if(quote&&base.inputHash!==quote.inputHash&&snapshot.actuals){snapshot.actuals=undefined;base=await quoteOrder(snapshot);setReq(r=>JSON.stringify(r)===JSON.stringify(req)?{...r,actuals:undefined}:r);}
+
+      const q = {...(selectedProfile ? await attachProfile(base, selectedProfile) : base),ownJob};
       setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
       setQuote(q);
       setStaleLatch(false);
       setQuotedRequest(snapshot);
       track('order_quote_run', q.status);
-      try { const old = JSON.parse(localStorage.getItem(storageKey(req.orderId)) || '{}'); localStorage.setItem(storageKey(req.orderId), JSON.stringify({ ...old, ...q, profileSnapshot: selectedProfile, request: snapshot, actuals: snapshot.actuals ?? {}, actualsUnits: req.units ?? 'cm-kg', at: new Date().toISOString() })); } catch { /* */ }
+      try { const saved=JSON.stringify({...q,ownJob,profileSnapshot:selectedProfile,request:snapshot,actuals:snapshot.actuals??{},actualsUnits:req.units??'cm-kg',at:new Date().toISOString()});localStorage.setItem(`${storageKey(req.orderId)}_revision_${q.inputHash}`,saved);localStorage.setItem(storageKey(req.orderId),saved); } catch { /* */ }
     } catch (e) {
       setQuote(null);
       setError(String((e as Error).message || e));
@@ -128,10 +139,11 @@ export default function OrderQuotePage() {
 
   const importRows = async (text?: string, file?: File) => {
     try {
-      const res = file ? await parseFile(file) : parseText(text ?? '');
-      if (!res.specs.length) { setImportNote(res.warnings); return; }
-      const factorL = (importImperial ? CM_PER_IN : 1) / (units === 'in-lb' ? CM_PER_IN : 1);
-      const factorW = (importImperial ? KG_PER_LB : 1) / (units === 'in-lb' ? KG_PER_LB : 1);
+      const importOptions = {lengthUnit: importImperial ? 'in' as const : 'cm' as const, weightUnit: importImperial ? 'lb' as const : 'kg' as const};
+      const res = file ? await parseFile(file, importOptions) : parseText(text ?? '', importOptions);
+      if (!res.specs.length || res.excludedRows || res.specs.some(s => s.weightKnown === false) || res.specs.length > QUOTE_LIMITS.types) { setImportNote([...res.warnings, T('Correct all rows and supply weights before importing this quote.', '請修正所有行並提供重量，再匯入報價。')]); return; }
+      const factorL = 1 / (units === 'in-lb' ? CM_PER_IN : 1);
+      const factorW = 1 / (units === 'in-lb' ? KG_PER_LB : 1);
       const items: Item[] = res.specs.slice(0, QUOTE_LIMITS.types).map((s) => ({
         sku: s.label, label: s.label, l: r2(s.l * factorL), w: r2(s.w * factorL), h: r2(s.h * factorL), qty: s.qty, weight: r2(s.weight * factorW),
         keepUpright: s.keepUpright ?? true, ...(s.maxStack === undefined ? {} : { maxStack: r2(s.maxStack * factorW) }),
@@ -139,7 +151,8 @@ export default function OrderQuotePage() {
       const seen = new Set<string>();
       for (const it of items) { let k = it.sku!; let n = 2; while (seen.has(k)) k = `${it.sku}-${n++}`; seen.add(k); it.sku = k; }
       setReq((r) => ({ ...r, items }));
-      setImportNote([...res.warnings.map(note => importImperial ? note.replace(/cm\/kg/g, 'in/lb').replace(/\(cm\)/g, '(in)') : note), ...(res.specs.length > QUOTE_LIMITS.types ? [T(`Only the first ${QUOTE_LIMITS.types} carton types were kept.`, `只保留首 ${QUOTE_LIMITS.types} 種箱型。`)] : [])]);
+      setImportNote([...res.warnings, ...(res.specs.length > QUOTE_LIMITS.types ? [T(`Only the first ${QUOTE_LIMITS.types} carton types were kept.`, `只保留首 ${QUOTE_LIMITS.types} 種箱型。`)] : [])]);
+      setOwnJob(true);
       track('order_quote_import', file ? 'file' : 'paste');
     } catch (e) { setImportNote([String((e as Error).message || e)]); }
   };
@@ -266,6 +279,12 @@ export default function OrderQuotePage() {
       </div>
 
       {/* ---- result ---- */}
+      {carriedCargo?.model==='loose-cartons'&&<button className={btnCls} onClick={()=>{setReq(r=>({...r,orderId:carriedCargo.orderId,units:'cm-kg',pallet:structuredClone(QUOTE_EXAMPLE.pallet),packagingAllowance:structuredClone(QUOTE_EXAMPLE.packagingAllowance),limits:undefined,actuals:undefined,items:carriedCargo.specs.map((it,i)=>({...it,sku:`${it.label}-${i+1}`}))}));setQuote(null);setOwnJob(true);track('workflow_transfer','cartons_to_quote');}}>{T('Use carton list carried from planner (cm/kg)','使用裝櫃工具帶入嘅散箱貨單（cm/kg）')}</button>}
+      <section className="rounded-xl border p-4 my-4 space-y-3"><h2 className="font-bold">{T('Your orders on this device','本機訂單')}</h2>
+      <label><input type="checkbox" checked={ownJob} onChange={e=>setOwnJob(e.target.checked)}/> {T('I am working on my own order (not the sample)','我正處理自己嘅訂單（非示範）')}</label>
+      <div className="flex flex-wrap gap-3"><button className={btnCls} onClick={()=>{setReq(r=>({...r,orderId:`order-${crypto.randomUUID().slice(0,8)}`,actuals:undefined}));setQuote(null);setQuotedRequest(null);setOwnJob(true);setStaleLatch(false);track('workflow_reuse','new_order');}}>{T('Reuse settings for next order','沿用設定開下一張訂單')}</button>
+      <select aria-label={T('Open saved order','開啟已存訂單')} className={inputCls} value="" onChange={e=>{try{const saved=JSON.parse(localStorage.getItem(e.target.value)??'{}');parseQuoteRequest(saved.request);setReq(saved.request);setQuote(saved);setQuotedRequest(structuredClone(saved.request));setOwnJob(saved.ownJob===true);setStaleLatch(false);track('workflow_reuse','saved_order');}catch{setError(T('Saved order could not be opened.','未能開啟已存訂單。'));}}}><option value="">{T('Open a previous order…','開啟之前嘅訂單…')}</option>{recent.map(r=><option key={r.key} value={r.key}>{r.name} · {r.revision.slice(0,8)}</option>)}</select></div>
+      <p className="text-xs text-slate-500">{T('A next order gets a new ID and keeps carton/pallet settings; actuals start empty. Saved orders stay on this browser. Share a snapshot to another device.','新訂單有新編號，保留箱型／卡板設定，實量由空白開始。訂單只存本機，可分享版本到另一部裝置。')}</p></section>
       {stale && <p role="status" data-testid="quote-stale" className="rounded-lg bg-amber-100 p-3">{T('Inputs changed — re-run to update', '輸入已更改 — 請重新計算')}</p>}
       {quote && (
         <section data-testid="quote-result" className="mb-10">
@@ -282,6 +301,11 @@ export default function OrderQuotePage() {
             <p className="text-[11px] text-slate-500 mt-2 font-mono">inputHash {quote.inputHash.slice(0, 16)}… · {quote.engineVersion} · meter {quote.meter.unit}:{quote.meter.id}</p>
           </div>
 
+          <section className="rounded-xl border p-4 mb-4 space-y-2"><h3 className="font-bold">{T('What changes the result?','邊啲因素影響結果？')}</h3>
+          <p className="text-sm">{T('Outer height = cargo + pallet base + packaging allowance. Reducing the allowed height can require more pallets; carton quantities stay unchanged. Only use dimensions your receiver accepts.','外部高度＝貨物＋板底＋包裝預留。降低容許高度可能增加板數，箱數維持不變；只使用收貨方接受嘅尺寸。')}</p>
+          {[...quote.checks,...quote.pallets.flatMap(p=>p.checks),...profileChecks].filter(c=>c.status==='fail'&&typeof c.observed==='number'&&typeof c.limit==='number').map((c,i)=><p key={i} className="text-sm text-red-800">{c.code}: {c.observed} / {c.limit} · {T('over by','超出')} {Math.max(0,Number(c.observed)-Number(c.limit)).toFixed(2)}</p>)}
+          {quotedRequest?.limits?.maxLoadedHeight&&<button className={btnCls} disabled={stale} onClick={()=>{setReq(r=>({...r,pallet:{...r.pallet,maxHeight:Math.min(r.pallet.maxHeight,r.limits!.maxLoadedHeight!-(r.packagingAllowance?.height??0))}}));track('limit_action','height_cap');}}>{T('Use receiver height as packing cap, then recalculate','按收貨高度限制砌板，再重新計算')}</button>}
+          </section>
           {quote.summary.palletCount >= 2 && quotedRequest && !stale && <OrderOptionsPanel key={quote.inputHash} request={quotedRequest} baseline={quote} onUse={async (option) => {
             if (!window.confirm(T('Apply these quantity changes and use this pallet build?', '套用呢啲數量變更同砌板方案？'))) return;
             const normalized = parseQuoteRequest(quotedRequest);
@@ -291,7 +315,7 @@ export default function OrderQuotePage() {
               return qty ? [{ ...it, qty }] : [];
             }), actuals: { summary: { selectedOptionId: option.id } } };
             const base = await quoteOrder(next);
-            const q = selectedProfile ? await attachProfile(base, selectedProfile) : base;
+            const q = {...(selectedProfile ? await attachProfile(base, selectedProfile) : base),ownJob};
             setProfileChecks(selectedProfile ? (await attachProfile(base, selectedProfile)).profileChecks : []);
             setReq(next); setQuotedRequest(structuredClone(next)); setQuote(q); setServerState('');
             try { localStorage.setItem(storageKey(next.orderId), JSON.stringify({ ...q, profileSnapshot: selectedProfile, request: next, actuals: next.actuals, actualsUnits: next.units ?? 'cm-kg' })); } catch { /* device storage optional */ }
@@ -327,8 +351,10 @@ export default function OrderQuotePage() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            <Link aria-disabled={stale} tabIndex={stale ? -1 : undefined} className={btnCls} to="/build-sheet" onClick={e => {if (stale) { e.preventDefault(); return; } try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
-            <button disabled={stale || busy} className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv'); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
+            <Link className={btnCls} to="/consolidation" aria-disabled={stale||quote.status==='partial'} onClick={e=>{if(stale||quote.status==='partial'){e.preventDefault();return;}try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify(palletTransfer(quote)));track('workflow_transfer','pallets_to_container');}catch(err){e.preventDefault();setError(String(err));}}}>{T('Plan these built pallets in containers','將已砌好卡板放入貨櫃')}</Link>
+
+            <Link aria-disabled={stale} tabIndex={stale ? -1 : undefined} className={btnCls} to={lang==='zh'?'/zh/build-sheet':'/build-sheet'} onClick={e => {if (stale) { e.preventDefault(); return; } try {sessionStorage.setItem(SHEET_STORAGE, JSON.stringify({...JSON.parse(localStorage.getItem(storageKey(quote.orderId)) || '{}'), ...quote, ownJob, request: quotedRequest, profileSnapshot: selectedProfile}));track('order_quote_build_sheet');recordWorkflowOutput(quote.orderId??'draft',quote.inputHash,'build_sheet',!ownJob);} catch(err) {e.preventDefault();setError(String(err));}}}>{T('Open build sheet','打開砌板單')}</Link>
+            <button disabled={stale || busy} className={btnCls} onClick={() => { download(quoteCsv(quote), `${req.orderId || 'order'}-pallets.csv`, 'text/csv'); track('order_quote_csv');recordWorkflowOutput(quote.orderId??'draft',quote.inputHash,'carrier_csv',!ownJob); }}><Download size={14} />{T('Carrier-input CSV', '承運商輸入 CSV')}</button>
             <button disabled={stale || busy} className={btnCls} onClick={() => { download(JSON.stringify(quotedRequest, null, 2), 'order-quote-request.json', 'application/json'); track('order_quote_request_json'); }}><Download size={14} />{T('API request JSON', 'API 請求 JSON')}</button>
             <button disabled={stale || busy} className={btnCls} onClick={() => { download(JSON.stringify(quote, null, 2), `${req.orderId || 'order'}-quote.json`, 'application/json'); }}><Download size={14} />{T('Full result JSON', '完整結果 JSON')}</button>
             <button disabled={stale || busy} className={btnCls} onClick={() => void serverCheck()}><ShieldAlert size={14} />{T('Verify against /api/order-quote', '同 /api/order-quote 對數')}</button>
@@ -355,16 +381,7 @@ export default function OrderQuotePage() {
         </section>
       )}
 
-      {/* ---- pilot ---- */}
-      <section className="min-w-0 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-6">
-        <h2 className="font-black text-slate-900 mb-1.5">{T('Run a 30-order pilot with us', '同我哋做 30 張訂單試點')}</h2>
-        <p className="text-sm text-slate-600 mb-3 max-w-3xl">{T(
-          'Fixed-fee, 30 days: we quote 30 of your real orders, you build them, we compare predicted vs measured height, weight and pallet count against your freight invoices, with tolerances agreed up front. You keep the integration; we keep the evidence. If it does not hold up, you do not pay for month two.',
-          '固定費用,30 日:我哋計你 30 張真實訂單,你砌板,我哋對比預測 vs 實量高度、重量同板數,並對照你嘅運費發票,tolerance 事先講好。整合你留住,證據我哋留住。如果數據企唔住,第二個月唔使俾。',
-        )}</p>
-        <a href={`mailto:hello@dimpack3d.com?subject=${encodeURIComponent('DimPack3D order-quote pilot')}&body=${encodeURIComponent('Company:\nOrders/day:\nWhere the quote is produced today (WMS / spreadsheet / carrier portal):\nTypical pallet + receiver limits:\n')}`} onClick={() => track('order_quote_pilot_click')} className={primaryCls}>{T('Ask about the pilot', '查詢試點')} <ArrowRight size={14} /></a>
-        <Link to="/pallet-height-calculator" className="ml-4 text-sm text-blue-700 font-semibold">{T('Prefer the 3D pallet view? Open the height calculator →', '想睇 3D 卡板?打開高度計算器 →')}</Link>
-      </section>
+      <PilotInterest/>
     </div>
   );
 }

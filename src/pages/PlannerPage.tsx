@@ -1,7 +1,9 @@
+import {CARGO_TRANSFER} from '../lib/workflowTransfer';
+import ShareSnapshot from '../components/ShareSnapshot';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, Share2, Check, Save } from 'lucide-react';
+import { Download, FileText, Check, Save } from 'lucide-react';
 import { IS_ZH } from '../lib/locale';
 import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
@@ -180,7 +182,7 @@ export default function PlannerPage() {
   );
 
   const updateSpec = (id: string, patch: Partial<Spec>) =>
-    setSpecs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    setSpecs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch, ...(patch.weight === undefined ? {} : {weightKnown:true}) } : s)));
 
   const addSpec = () =>
     setSpecs((prev) => [
@@ -216,7 +218,6 @@ export default function PlannerPage() {
   };
 
   // ---- share links (free, no gate — sharing is the viral loop) ----
-  const [shareState, setShareState] = useState<'idle' | 'busy' | 'copied' | 'error'>('idle');
   const shareId = params.get('share');
 
   useEffect(() => {
@@ -278,33 +279,6 @@ export default function PlannerPage() {
     setTimeout(() => setSaveState('idle'), 2500);
   };
 
-  const sharePlan = async () => {
-    if (hasPendingChanges) return;
-    setShareState('busy');
-    try {
-      const res = await fetch('/api/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          containerKey,
-          container,
-          specs: appliedSpecs,
-          boxes: liveBoxes ?? sharedBoxes ?? result.boxes,
-        }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const { id } = await res.json();
-      const url = `${window.location.origin}${IS_ZH ? '/zh' : ''}/planner?share=${id}`;
-      await navigator.clipboard.writeText(url);
-      track('share_create');
-      setShareState('copied');
-      setTimeout(() => setShareState('idle'), 2500);
-    } catch {
-      setShareState('error');
-      setTimeout(() => setShareState('idle'), 2500);
-    }
-  };
-
   // export
   const snapshotFn = useRef<(() => string | null) | null>(null);
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
@@ -323,6 +297,7 @@ export default function PlannerPage() {
       setExportError(T('Select Optimise pack to update your plan first.', '請先按 Optimise pack 更新方案。'));
       return;
     }
+    if(appliedSpecs.some(s=>s.weightKnown===false)) { setExportError(T('Supply each missing carton weight and optimise again before exporting a weight estimate.','請填寫缺少嘅箱重並重新計算，再匯出重量估算。'));return; }
     const outcome = performExport('planner', format, () => {
       if (format === 'csv') return downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
       return openPrintablePlan({
@@ -561,23 +536,10 @@ export default function PlannerPage() {
           </div>
 
           <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
-          <button
-            onClick={sharePlan}
-            disabled={hasPendingChanges || shareState === 'busy'}
-            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-              shareState === 'copied'
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : shareState === 'error'
-                  ? 'border-red-300 bg-red-50 text-red-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            {shareState === 'copied'
-              ? (<><Check size={15} /> Link copied — send it to anyone</>)
-              : shareState === 'error'
-                ? 'Could not create link — try again'
-                : (<><Share2 size={15} /> {shareState === 'busy' ? 'Creating link…' : 'Share this plan'}</>)}
-          </button>
+          <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>{if(hasPendingChanges||appliedSpecs.some(s=>s.weightKnown===false)){e.preventDefault();setExportError(T('Update this plan and supply missing weights first.','請先更新方案並填寫缺少嘅重量。'));return;}try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify({model:'loose-cartons',orderId:`order-${crypto.randomUUID().slice(0,8)}`,revision:'planner',specs:appliedSpecs}));track('workflow_transfer','planner_cartons');}catch{e.preventDefault();setExportError(T('Device storage is full.','本機儲存已滿。'));}}}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
+          {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
+          <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes})}/>
+
 
           {auth.enabled && (
             auth.userId ? (

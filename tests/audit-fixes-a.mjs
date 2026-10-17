@@ -137,14 +137,17 @@ await test('F13 editable rate controls and disclaimer precede cost output', () =
   assert.match(source,/data-testid=\{`\$\{kind\}-rate`\}/);assert.match(source,/rates.airCurrency : rates.seaCurrency/);
   assert.match(source,/setRates\(prev => \(\{\.\.\.prev, \[kind\]: value\}\)\)/);
 });
-await test('F14 every competitor has the exact owner-verified source and date', () => {
+await test('F14 competitor prices link to reviewed primary sources with current date', () => {
   const {competitors}=JSON.parse(readFileSync('src/data/competitors.json','utf8'));
   assert.equal(competitors.length,11);
   for(const c of competitors) {
-    assert.equal(c.pricingSource.checkedAt,'2026-09-10');
-    const expected=c.slug.includes('cubemaster')?'https://www.cubemaster.net/subscription/pricing.asp':c.slug.includes('searates')?'https://www.searates.com/pricing/load-calculator':/cargo-planner|easycargo|3dbinpacking|cargowiz|goodloading/.test(c.slug)?'https://containermath.com/blog/best-container-loading-software':'https://sourceforge.net/software/load-planning/';
-    assert.equal(c.pricingSource.url,expected);
+    assert.equal(c.pricingSource.checkedAt,'2026-10-17');
+    assert.ok(!['containermath.com','sourceforge.net'].includes(new URL(c.pricingSource.url).hostname));
+    assert.ok(c.pricingEn.length>30);
   }
-  const source=readFileSync('src/pages/ComparePage.tsx','utf8');assert.match(source,/Reported by/);assert.match(source,/href=\{c.pricingSource.url\}/);
+  const cube=competitors.find(c=>c.name==='Cube-IQ');assert.ok(!cube.summaryEn.includes('$5,000'));
+  assert.match(competitors.find(c=>c.slug.includes('searates')).pricingEn,/not verified/);
+  const source=readFileSync('src/pages/ComparePage.tsx','utf8');assert.match(source,/href=\{c.pricingSource.url\}/);
 });
+
 console.log(`audit-fixes-a: ${count} regression groups passed`);

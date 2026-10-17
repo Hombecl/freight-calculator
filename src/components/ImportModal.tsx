@@ -1,156 +1,46 @@
 import { useRef, useState } from 'react';
-import { X, Upload, FileSpreadsheet, Check, AlertTriangle } from 'lucide-react';
-import { parseText, parseFile, TEMPLATE_CSV, type ImportResult } from '../lib/importCartons';
+import { X } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { detectColumns, IMPORT_FIELDS, parseDelimited, readImportFile, rowsToSpecs, TEMPLATE_CSV, type ImportRows, type ImportOptions } from '../lib/importCartons';
 import { downloadText } from '../lib/exportPlan';
 import type { PackItemSpec } from '../lib/binPacking';
+import { track } from '../lib/track';
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  onImport: (specs: PackItemSpec[]) => void;
-}
-
-/**
- * Import cartons from the customer's existing data: drop/browse a CSV or
- * Excel file, or paste cells straight from Excel/Sheets (tab-separated).
- * Preview + warnings before committing.
- */
-export default function ImportModal({ open, onClose, onImport }: Props) {
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [pasted, setPasted] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-  if (!open) return null;
-
-  const handleFile = async (f: File | undefined | null) => {
-    if (!f) return;
-    try { setResult(await parseFile(f)); } catch { setResult({ specs: [], warnings: ['Could not read that file'] }); }
-  };
-  const handlePaste = (text: string) => {
-    setPasted(text);
-    if (text.trim()) setResult(parseText(text));
-  };
-  const commit = () => {
-    if (result && result.specs.length) {
-      onImport(result.specs);
-      setResult(null);
-      setPasted('');
-      onClose();
-    }
-  };
-  const reset = () => { setResult(null); setPasted(''); };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <FileSpreadsheet size={18} />
-            </span>
-            <div>
-              <h2 className="font-bold text-slate-800">Import cartons</h2>
-              <p className="text-xs text-slate-500">CSV, Excel, or paste cells — dimensions in cm, weight in kg.</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
-        </div>
-
-        {!result ? (
-          <>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
-              onClick={() => fileRef.current?.click()}
-              className={`rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
-                dragOver ? 'border-blue-400 bg-blue-50' : 'border-slate-300 hover:border-slate-400'
-              }`}
-            >
-              <Upload size={22} className="mx-auto text-slate-400 mb-2" />
-              <p className="text-sm font-semibold text-slate-700">Drop your carton list here</p>
-              <p className="text-xs text-slate-500 mt-1">.xlsx / .csv — or click to browse</p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls"
-                className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-xs text-slate-400">or paste from Excel / Sheets</span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-
-            <textarea
-              value={pasted}
-              onChange={(e) => handlePaste(e.target.value)}
-              placeholder={'Copy your rows in Excel and paste here…\nname\tlength\twidth\theight\tweight\tqty'}
-              rows={4}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono outline-none focus:border-blue-500"
-            />
-
-            <button
-              onClick={() => downloadText('dimpack3d-template.csv', TEMPLATE_CSV)}
-              className="mt-3 text-xs text-blue-600 font-medium"
-            >
-              Download template CSV
-            </button>
-          </>
-        ) : (
-          <>
-            {result.warnings.length > 0 && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 mb-3">
-                {result.warnings.slice(0, 5).map((w, i) => (
-                  <p key={i} className="text-xs text-amber-700 flex gap-1.5"><AlertTriangle size={13} className="shrink-0 mt-0.5" />{w}</p>
-                ))}
-              </div>
-            )}
-            {result.specs.length > 0 && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden mb-4">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 text-left text-slate-500">
-                      <th className="p-2">Carton</th><th className="p-2">L×W×H (cm)</th><th className="p-2">kg</th><th className="p-2">Qty</th><th className="p-2">Flags</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.specs.slice(0, 8).map((s) => (
-                      <tr key={s.id} className="border-t border-slate-100">
-                        <td className="p-2 font-medium text-slate-700">{s.label}</td>
-                        <td className="p-2 font-mono">{s.l}×{s.w}×{s.h}</td>
-                        <td className="p-2">{s.weight || '—'}</td>
-                        <td className="p-2">{s.qty}</td>
-                        <td className="p-2 text-slate-500">
-                          {[s.maxStack === 0 && 'fragile', s.keepUpright && 'upright', s.group, s.unloadOrder && `stop ${s.unloadOrder}`].filter(Boolean).join(' · ') || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {result.specs.length > 8 && (
-                  <p className="text-[11px] text-slate-400 px-2 py-1.5 bg-slate-50">…and {result.specs.length - 8} more</p>
-                )}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button onClick={reset} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium">
-                Back
-              </button>
-              <button
-                onClick={commit}
-                disabled={!result.specs.length}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
-              >
-                <Check size={15} /> Import {result.specs.length} carton type{result.specs.length === 1 ? '' : 's'} &amp; optimize
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+interface Props { open:boolean; onClose:()=>void; onImport:(specs:PackItemSpec[])=>void }
+const cls='rounded-lg border border-slate-300 p-2 text-sm min-w-0';
+const MAPPING_KEY='dp_import_mapping_v1';
+export default function ImportModal({open,onClose,onImport}:Props) {
+ const {lang}=useApp();const T=(en:string,zh:string)=>lang==='zh'?zh:en;
+ const [sheets,setSheets]=useState<{name:string;rows:ImportRows}[]>([]),[sheet,setSheet]=useState(0);
+ const [options,setOptions]=useState<ImportOptions>({lengthUnit:'cm',weightUnit:'kg'});
+ const [paste,setPaste]=useState(''),[error,setError]=useState(''),[confirmed,setConfirmed]=useState(false),[page,setPage]=useState(0);
+ const request=useRef(0);
+ const rows=sheets[sheet]?.rows??[];const result=rowsToSpecs(rows,options);
+ const change=(next:ImportRows,index=sheet)=>{setSheets(old=>old.map((s,i)=>i===index?{...s,rows:next}:s));setConfirmed(false);};
+ const choose=(index:number,data=sheets)=>{setSheet(index);setOptions({lengthUnit:'cm',weightUnit:'kg',...detectColumns(data[index]?.rows??[])});setConfirmed(false);setPage(0);};
+ const file=async(f?:File)=>{if(!f)return;const id=++request.current;try{const data=await readImportFile(f);if(id!==request.current)return;setSheets(data);choose(0,data);setError('');track('import_stage','review');}catch(e){if(id===request.current)setError(String(e));track('import_stage','file_error');}};
+ const update=(patch:Partial<ImportOptions>)=>{setOptions(o=>({...o,...patch}));setConfirmed(false);};
+ if(!open)return null;
+ const names:Record<string,string>={label:T('Name / SKU','名稱／SKU'),l:T('Length','長'),w:T('Width','闊'),h:T('Height','高'),weight:T('Weight each','每件重量'),qty:T('Quantity','數量'),maxStack:T('Max weight on top','頂部承重'),fragile:T('Fragile','易碎'),keepUpright:T('Upright','直立'),group:T('Group / PO','組別／PO'),unloadOrder:T('Delivery stop','送貨次序')};
+ return <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="import-title"><div className="bg-white rounded-2xl p-5 w-full max-w-5xl max-h-[92vh] overflow-y-auto space-y-4">
+ <div className="flex justify-between"><h2 id="import-title" className="font-bold text-xl">{T('Review your carton list','核對貨單')}</h2><button aria-label={T('Close import','關閉匯入')} onClick={onClose}><X/></button></div>
+ <p>{T('Header or cell units take priority. Values without units use your selection below. All accepted rows are converted once to cm / kg.','優先使用欄名或儲存格單位。沒有標示單位嘅數值用以下選擇，接受嘅資料只換算一次成 cm／kg。')}</p>
+ <input aria-label={T('Upload carton list','上載貨單')} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={e=>{void file(e.target.files?.[0]);e.target.value='';}}/>
+ <textarea aria-label={T('Paste carton list','貼上貨單')} className={`${cls} w-full h-24`} value={paste} onChange={e=>setPaste(e.target.value)} placeholder="name,length (in),width (in),height (in),weight (lb),qty"/>
+ <div className="flex flex-wrap gap-3"><button className={cls} onClick={()=>{request.current++;const data=[{name:T('Pasted rows','貼上資料'),rows:parseDelimited(paste)}];setSheets(data);choose(0,data);setError('');track('import_stage','review');}}>{T('Review pasted rows','預覽貼上資料')}</button><button className={cls} onClick={()=>downloadText('dimpack3d-template.csv',TEMPLATE_CSV)}>{T('Download template','下載範本')}</button></div>
+ {error&&<p role="alert" className="text-red-700">{error}</p>}
+ {!!rows.length&&<>
+ <div className="flex flex-wrap gap-4"><label>{T('Worksheet','工作表')} <select className={cls} value={sheet} onChange={e=>choose(+e.target.value)}>{sheets.map((s,i)=><option key={i} value={i}>{s.name}</option>)}</select></label><label><input type="checkbox" checked={options.headerRow??false} onChange={e=>update({headerRow:e.target.checked})}/> {T('First row contains headings','第一行係欄名')}</label>
+ <label>{T('Unlabelled dimensions','未標示尺寸單位')} <select aria-label="Default dimension unit" className={cls} value={options.lengthUnit} onChange={e=>update({lengthUnit:e.target.value as ImportOptions['lengthUnit']})}>{['cm','mm','m','in'].map(u=><option key={u}>{u}</option>)}</select></label>
+ <label>{T('Unlabelled weights','未標示重量單位')} <select aria-label="Default weight unit" className={cls} value={options.weightUnit} onChange={e=>update({weightUnit:e.target.value as ImportOptions['weightUnit']})}>{['kg','g','lb'].map(u=><option key={u}>{u}</option>)}</select></label></div>
+ <div className="grid grid-cols-2 md:grid-cols-4 gap-2">{IMPORT_FIELDS.map(f=><label key={f} className="text-sm">{names[f]}<select aria-label={`Map ${f}`} className={`${cls} w-full`} value={options.columns?.[f]??-1} onChange={e=>{const columns={...options.columns};if(+e.target.value<0)delete columns[f];else columns[f]=+e.target.value;update({columns});}}><option value={-1}>{T('Not supplied','未提供')}</option>{rows[0].map((v,i)=><option key={i} value={i}>{i+1}: {options.headerRow?String(v):T('Column','欄')}</option>)}</select></label>)}</div>
+ <div className="flex gap-3"><button className={cls} onClick={()=>{try{localStorage.setItem(MAPPING_KEY,JSON.stringify({...options,excludeRows:[]}));setError('');track('import_mapping_saved');}catch{setError(T('Mapping could not be saved on this device.','本機未能儲存映射。'));}}}>{T('Remember mapping on this device','本機記住映射')}</button><button className={cls} onClick={()=>{try{const saved=JSON.parse(localStorage.getItem(MAPPING_KEY)??'null');if(!saved?.columns||!['cm','mm','m','in'].includes(saved.lengthUnit)||!['kg','g','lb'].includes(saved.weightUnit)||Object.values(saved.columns).some(v=>!Number.isInteger(v)||Number(v)<0||Number(v)>=rows[0].length))throw Error();update(saved);track('import_mapping_reused');}catch{setError(T('No saved mapping.','未有儲存映射。'));}}}>{T('Reuse saved mapping','沿用映射')}</button></div>
+ <p className="font-semibold">{result.specs.length} {T('accepted types','種已接受')} · {result.acceptedQty??0} {T('cartons','箱')} · {result.excludedRows??0} {T('excluded rows','行已排除')}</p>
+ {!!result.warnings.length&&<details open><summary>{T('Review warnings','核對提示')}</summary><ul className="max-h-32 overflow-auto text-amber-900">{result.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>}
+ <div className="overflow-auto max-h-72"><table className="text-xs w-full"><thead><tr><th>{T('Use','使用')}</th><th>#</th>{rows[0].map((v,i)=><th key={i}>{options.headerRow?String(v):i+1}</th>)}<th>{T('Converted result','換算結果')}</th></tr></thead><tbody>{(result.rows??[]).slice(page*25,page*25+25).map(r=><tr key={r.row} className={r.error?'bg-amber-50':'border-b'}><td><input aria-label={`Use row ${r.row}`} type="checkbox" checked={!options.excludeRows?.includes(r.row)} onChange={e=>update({excludeRows:e.target.checked?(options.excludeRows??[]).filter(n=>n!==r.row):[...(options.excludeRows??[]),r.row]})}/></td><td>{r.row}</td>{rows[r.row-1].map((v,i)=><td key={i}><input aria-label={`Row ${r.row} column ${i+1}`} className="w-24 border rounded p-1" value={String(v??'')} onChange={e=>change(rows.map((row,index)=>index===r.row-1?row.map((c,j)=>j===i?e.target.value:c):row))}/></td>)}<td className="min-w-48">{r.error??r.normalized}</td></tr>)}</tbody></table></div>
+ <div className="flex gap-3"><button className={cls} disabled={page===0} onClick={()=>setPage(p=>p-1)}>{T('Previous rows','上一頁')}</button><button className={cls} disabled={(page+1)*25>=(result.rows?.length??0)} onClick={()=>setPage(p=>p+1)}>{T('Next rows','下一頁')}</button></div>
+ <label className="block"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> {T('I checked units, accepted quantities and excluded rows.','我已核對單位、接受件數同排除行。')}</label>
+ <button className="bg-blue-600 text-white font-bold rounded-lg p-3 disabled:opacity-40" disabled={!confirmed||!result.specs.length} onClick={()=>{track('import_stage',result.excludedRows?'accepted_partial':'accepted');onImport(result.specs);setSheets([]);setPaste('');setConfirmed(false);onClose();}}>{T('Use this list and calculate','使用貨單並計算')}</button>
+ </>}
+ </div></div>;
 }
