@@ -38,6 +38,24 @@ const browser = await chromium.launch({
   headless: true,
 });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// Observe actual GPU submissions in CI without adding diagnostic UI to the app.
+if (!IS_LIVE) await ctx.addInitScript(() => {
+  Object.defineProperty(window, 'THREE', { configurable: true, set(three) {
+    const Renderer = three.WebGLRenderer;
+    three.WebGLRenderer = class extends Renderer {
+      constructor(...args) {
+        super(...args);
+        const render = this.render.bind(this);
+        this.render = (...renderArgs) => {
+          render(...renderArgs);
+          this.domElement.dataset.drawCalls = String(this.info.render.calls);
+          this.domElement.dataset.renderCount = String(Number(this.domElement.dataset.renderCount ?? 0) + 1);
+        };
+      }
+    };
+    Object.defineProperty(window, 'THREE', { configurable: true, writable: true, value: three });
+  } });
+});
 // grant clipboard so share-link copy works
 await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
 const page = await ctx.newPage();
@@ -88,6 +106,31 @@ await test('home: visible 3D starts automatically and rotation can be paused', a
   if (videos.some(v => !v.paused || v.time !== 0 || v.preload !== 'none' || !v.controls)) {
     throw new Error('offscreen homepage video started before it was visible');
   }
+}, page);
+
+await test('home: batched cartons stay editable and paused scenes stop redrawing', async () => {
+  const canvas = page.locator('canvas').first();
+  if (!IS_LIVE) {
+    const calls = Number(await canvas.getAttribute('data-draw-calls'));
+    if (!calls || calls > 20) throw new Error(`280-carton preview submitted ${calls} draw calls`);
+  }
+  await page.getByRole('button', { name: 'Pause rotation', exact: true }).click();
+  await page.waitForTimeout(200);
+  const before = await canvas.getAttribute('data-render-count');
+  await page.waitForTimeout(350);
+  if (!IS_LIVE && await canvas.getAttribute('data-render-count') !== before) throw new Error('paused unchanged scene keeps redrawing');
+  const bounds = await canvas.boundingBox();
+  const remove = page.getByRole('button', { name: 'Delete', exact: true });
+  for (const [x, y] of [[0.5, 0.5], [0.45, 0.6], [0.6, 0.55], [0.4, 0.45]]) {
+    await canvas.click({ position: { x: bounds.width * x, y: bounds.height * y } });
+    if (await remove.isEnabled()) break;
+  }
+  if (!await remove.isEnabled()) throw new Error('batched cartons cannot be selected');
+  await remove.click();
+  await page.getByText(/Boxes: 279/).waitFor();
+  await page.getByRole('button', { name: /Undo/ }).click();
+  await page.getByText(/Boxes: 280/).waitFor();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).click();
 }, page);
 
 await test('home: reduced motion preserves the preview and manual 3D', async () => {

@@ -35,6 +35,7 @@ interface Props {
   className?: string;
   viewportHeight?: number; // fixed hero height avoids shifts when WebGL replaces its preview
   maxPixelRatio?: number; // decorative previews need fewer pixels than exported plans
+  batchBoxes?: boolean; // opaque homepage cartons share two draw calls
   loadingPreview?: string;
   container: { l: number; w: number; h: number };
   boxes: PlannerBox[];
@@ -107,6 +108,7 @@ export default function InteractiveLoadPlanner({
   className = '',
   viewportHeight,
   maxPixelRatio = 2,
+  batchBoxes = false,
   loadingPreview,
   container,
   boxes,
@@ -280,6 +282,18 @@ export default function InteractiveLoadPlanner({
     }
 
     const meshById = new Map<string, any>();
+    let batch: { faces: any; edges: any; indices: Map<string, number>; unitEdges: number[] } | null = null;
+    const disposeObject = (object: any) => object.traverse((child: any) => {
+      child.geometry?.dispose();
+      if (Array.isArray(child.material)) child.material.forEach((material: any) => material.dispose());
+      else child.material?.dispose();
+    });
+    const clearBatch = () => {
+      if (!batch) return;
+      scene.remove(batch.faces, batch.edges);
+      disposeObject(batch.faces); disposeObject(batch.edges);
+      batch = null;
+    };
 
     const buildMesh = (b: PlannerBox) => {
       const zone = isZone(b);
@@ -288,11 +302,10 @@ export default function InteractiveLoadPlanner({
         ? new THREE.MeshBasicMaterial({ color: b.color, transparent: true, opacity: 0.28, depthWrite: false })
         : new THREE.MeshLambertMaterial({ color: b.color });
       const mesh = new THREE.Mesh(geo, mat);
-      const edges = new THREE.LineSegments(
-        new THREE.EdgesGeometry(geo),
-        new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }),
-      );
-      mesh.add(edges);
+      if (!batchBoxes) mesh.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(geo),
+          new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }),
+      ));
       mesh.userData.id = b.id;
       const w = toWorld(b);
       mesh.position.set(w.x, w.y, w.z);
@@ -300,13 +313,34 @@ export default function InteractiveLoadPlanner({
     };
 
     const rebuild = () => {
-      meshById.forEach((m) => scene.remove(m));
+      clearBatch();
+      meshById.forEach((m) => { scene.remove(m); disposeObject(m); });
       meshById.clear();
       boxesRef.current.forEach((b) => {
         const m = buildMesh(b);
         meshById.set(b.id, m);
-        scene.add(m);
+        // Off-scene meshes retain exact geometry for picking and editing.
+        if (!batchBoxes) scene.add(m);
       });
+      if (batchBoxes && boxesRef.current.length) {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const faces = new THREE.InstancedMesh(geometry,
+          new THREE.MeshLambertMaterial({ color: 0xffffff }), boxesRef.current.length);
+        faces.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        faces.frustumCulled = false; // r128 does not bound all transformed instances
+        const template = new THREE.EdgesGeometry(geometry);
+        const unitEdges = Array.from(template.attributes.position.array) as number[];
+        template.dispose();
+        const edgesGeometry = new THREE.BufferGeometry();
+        edgesGeometry.setAttribute('position', new THREE.BufferAttribute(
+          new Float32Array(unitEdges.length * boxesRef.current.length), 3).setUsage(THREE.DynamicDrawUsage));
+        const edges = new THREE.LineSegments(edgesGeometry,
+          new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
+        edges.frustumCulled = false;
+        batch = { faces, edges, unitEdges, indices: new Map(boxesRef.current.map((b, i) => [b.id, i])) };
+        boxesRef.current.forEach(syncMesh);
+        scene.add(faces, edges);
+      }
       applyHighlight();
     };
 
@@ -325,7 +359,37 @@ export default function InteractiveLoadPlanner({
       if (!m) return;
       const w = toWorld(b);
       m.position.set(w.x, w.y, w.z);
+      m.updateMatrixWorld(true);
+      if (batch) {
+        const i = batch.indices.get(b.id);
+        if (i !== undefined) {
+          const matrix = new THREE.Matrix4().makeScale(b.l, isZone(b) ? 3 : b.h, b.w);
+          matrix.setPosition(w.x, w.y, w.z);
+          batch.faces.setMatrixAt(i, matrix);
+          batch.faces.instanceMatrix.needsUpdate = true;
+          const position = batch.edges.geometry.attributes.position;
+          const offset = i * batch.unitEdges.length;
+          for (let j = 0; j < batch.unitEdges.length; j += 3) {
+            position.array[offset + j] = batch.unitEdges[j] * b.l + w.x;
+            position.array[offset + j + 1] = batch.unitEdges[j + 1] * (isZone(b) ? 3 : b.h) + w.y;
+            position.array[offset + j + 2] = batch.unitEdges[j + 2] * b.w + w.z;
+          }
+          position.needsUpdate = true;
+        }
+      }
       needsRender = true;
+    };
+
+    const renderScene = () => {
+      if (batch) {
+        meshById.forEach((m, id) => {
+          const i = batch!.indices.get(id);
+          if (i !== undefined) batch!.faces.setColorAt(i,
+            m.material.color.clone().add(m.material.emissive ?? new THREE.Color(0)));
+        });
+        if (batch.faces.instanceColor) batch.faces.instanceColor.needsUpdate = true;
+      }
+      renderer.render(scene, camera);
     };
 
     rebuild();
@@ -514,14 +578,14 @@ export default function InteractiveLoadPlanner({
         pa.marker.position.set(a.x + (b.x - a.x) * f, a.y, a.z + (b.z - a.z) * f);
         needsRender = true;
       }
-      if (needsRender) { renderer.render(scene, camera); needsRender = false; }
+      if (needsRender) { renderScene(); needsRender = false; }
     };
     raf = requestAnimationFrame(loop);
 
     // expose a snapshot fn (renders once then reads the buffer)
     registerSnapshot?.(() => {
       try {
-        renderer.render(scene, camera);
+        renderScene();
         return renderer.domElement.toDataURL('image/png');
       } catch {
         return null;
@@ -547,12 +611,15 @@ export default function InteractiveLoadPlanner({
       dom.removeEventListener('pointerup', onUp);
       dom.removeEventListener('wheel', onWheel);
       registerSnapshot?.(null);
+      clearBatch();
+      if (batchBoxes) meshById.forEach(disposeObject);
+      disposeObject(scene);
       renderer.dispose();
       mount.innerHTML = '';
       sceneApi.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio]);
+  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
