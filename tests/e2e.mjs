@@ -76,19 +76,33 @@ await test('home: hero tabs switch pallet/container/carton scene', async () => {
   await page.getByText(/20' GP shipping container/i).waitFor(SWITCH);
 }, page);
 
-await test('home: 3D and video wait for user interaction', async () => {
-  if (await page.locator('script[data-three-cdn], canvas').count()) {
-    throw new Error('homepage loaded WebGL before an interaction');
-  }
-  const videos = await page.locator('video').evaluateAll(videos => videos.map(v => ({
-    autoplay: v.autoplay, preload: v.preload, controls: v.controls,
-  })));
-  if (videos.some(v => v.autoplay || v.preload !== 'none' || !v.controls)) {
-    throw new Error('homepage video downloads or plays automatically');
-  }
-  await page.getByRole('button', { name: /explore in 3d/i }).click();
+await test('home: visible 3D starts automatically and rotation can be paused', async () => {
   await page.locator('canvas').waitFor({ timeout: 30_000 });
   await page.getByText(/Boxes: 280/).waitFor();
+  await page.getByRole('button', { name: 'Pause rotation', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Resume rotation', exact: true }).click();
+  const videos = await page.locator('video').evaluateAll(videos => videos.map(v => ({
+    paused: v.paused, preload: v.preload, controls: v.controls, time: v.currentTime,
+  })));
+  if (videos.some(v => !v.paused || v.time !== 0 || v.preload !== 'none' || !v.controls)) {
+    throw new Error('offscreen homepage video started before it was visible');
+  }
+}, page);
+
+await test('home: reduced motion preserves the preview and manual 3D', async () => {
+  const reduced = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const quietPage = await reduced.newPage();
+  try {
+    await quietPage.goto(`${BASE}/`);
+    await quietPage.getByRole('button', { name: /explore in 3d/i }).waitFor();
+    await quietPage.waitForTimeout(4000);
+    if (await quietPage.locator('script[data-three-cdn], canvas').count()) {
+      throw new Error('reduced-motion visitor received automatic WebGL');
+    }
+    await quietPage.getByRole('button', { name: /explore in 3d/i }).click();
+    await quietPage.locator('canvas').waitFor({ timeout: 30_000 });
+  } finally { await reduced.close(); }
 }, page);
 
 await test('home: the four pallet questions link the chain', async () => {
@@ -765,6 +779,10 @@ await test('home: product clips render and load', async () => {
   await page.getByText(/watch the checks fire/i).waitFor();
   const vids = page.locator('video');
   if (await vids.count() < 2) throw new Error('expected 2 product clips');
+  await vids.first().scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('video')).some(v => !v.paused && v.currentTime > 0), undefined, { timeout: 15_000 });
+  await page.getByRole('heading', { name: /plan a mixed load in 3D/i }).scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('video')).every(v => v.paused));
   // both video files must actually be served (not 404-masked)
   for (const src of ['/media/warehouse-checks.webm', '/media/planner-drag.webm']) {
     const r = await page.request.get(`${BASE}${src}`);

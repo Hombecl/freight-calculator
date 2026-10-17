@@ -1,9 +1,10 @@
 import InteractiveLoadPlanner from './InteractiveLoadPlanner';
 import plans from '../data/hero-plans.json';
 
-/** Loaded only after an explicit interaction; no optimizer on the critical path. */
-export default function HeroInteractive({ mode }: { mode: keyof typeof plans }) {
+/** Precomputed scene: automatic motion does not run the optimizer on page load. */
+export default function HeroInteractive({ mode, autoSpin }: { mode: keyof typeof plans; autoSpin: boolean }) {
   const scene = plans[mode];
   return <InteractiveLoadPlanner key={mode} container={scene.container} boxes={scene.boxes}
-    grid={1} unitLabel="cm" showDoor={mode === 'container'} autoSpin hintOverlay />;
+    viewportHeight={360} loadingPreview={`/hero/${mode}.svg`}
+    grid={1} unitLabel="cm" showDoor={mode === 'container'} autoSpin={autoSpin} hintOverlay />;
 }
