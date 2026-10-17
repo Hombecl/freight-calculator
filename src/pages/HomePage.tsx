@@ -283,7 +283,7 @@ export default function HomePage() {
                       </span>
                     </button>
                   )}
-                  {interactive && <button type="button" aria-pressed={motionPaused}
+                  {interactive && motionAllowed && <button type="button" aria-pressed={motionPaused}
                     className="mt-2 text-xs text-slate-300 underline underline-offset-4"
                     onClick={() => setMotionPaused(paused => !paused)}>
                     {motionPaused ? T('Resume rotation', '繼續旋轉') : T('Pause rotation', '暫停旋轉')}

@@ -109,6 +109,7 @@ export default function PlannerPage() {
   const [containerKey, setContainerKey] = useState<ContainerKey>(preset?.container ?? '20gp');
   const [specs, setSpecs] = useState<Spec[]>(preset?.specs ?? DEFAULT_SPECS);
   const [seed, setSeed] = useState(0); // bump to re-run the packer
+  const optimizationIntent = useRef<'manual' | 'import' | null>(null);
 
   const container = CONTAINERS[containerKey];
   // pallets may allow a small overhang per side — standard practice, but it
@@ -126,6 +127,13 @@ export default function PlannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [containerKey, seed, packSpace],
   );
+  useEffect(() => {
+    // Count an intentional, completed calculation, not the automatic demo on entry.
+    const source = optimizationIntent.current;
+    if (!source) return;
+    optimizationIntent.current = null;
+    track('planner_optimized', source);
+  }, [result]);
 
   // live stats reflect manual edits (falls back to the packer's own stats)
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
@@ -178,7 +186,10 @@ export default function PlannerPage() {
 
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
-  const regen = () => { setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1); };
+  const regen = (source: 'manual' | 'import' = 'manual') => {
+    optimizationIntent.current = source;
+    setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1);
+  };
 
   // ---- Excel/CSV import (Tier 2 switching-cost killer — ENTERPRISE.md §4) ----
   // ?import=1 opens the modal on arrival. The /compare/* pages promise "import
@@ -191,7 +202,7 @@ export default function PlannerPage() {
   const onImport = (imported: Spec[]) => {
     setSpecs(imported);
     track('import_cartons', String(imported.length));
-    regen();
+    regen('import');
   };
 
   // ---- share links (free, no gate — sharing is the viral loop) ----
@@ -491,7 +502,7 @@ export default function PlannerPage() {
           </div>
 
           <button
-            onClick={regen}
+            onClick={() => regen()}
             className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold"
           >
             Optimise pack

@@ -105,6 +105,26 @@ await test('home: reduced motion preserves the preview and manual 3D', async () 
   } finally { await reduced.close(); }
 }, page);
 
+await test('home: English and Chinese 3D fit a mobile viewport', async () => {
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    for (const path of ['/', '/zh']) {
+      await mobilePage.goto(`${BASE}${path}`);
+      await mobilePage.locator('button:has(img[src="/hero/container.svg"])').click();
+      await mobilePage.locator('canvas').waitFor({ timeout: 30_000 });
+      const fits = await mobilePage.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        const card = canvas?.closest('.rounded-2xl');
+        const pause = Array.from(document.querySelectorAll('button')).find(b => /Pause rotation|暫停旋轉/.test(b.textContent));
+        return document.body.scrollWidth <= window.innerWidth && !!card && !!pause &&
+          pause.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom;
+      });
+      if (!fits) throw new Error(`${path}: mobile controls overflow the 3D card`);
+    }
+  } finally { await mobileContext.close(); }
+}, page);
+
 await test('home: the four pallet questions link the chain', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
