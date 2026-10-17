@@ -25,3 +25,8 @@ assert.throws(()=>parseCrewFeedback({...report,actuals:{99:{height:10}}},q.input
 assert.throws(()=>parseCrewFeedback({...report,actuals:{0:{height:NaN}}},q.inputHash,q.pallets.length));
 await revoke(ctx('DELETE',null,link.id,link.revokeToken));assert.equal((await submit(ctx('POST',report,link.id,link.crewToken))).status,403);
 console.log('PASS workflow depth: physical billing, rounding, imperial equivalence, cost selection, private revision-bound reports, retry idempotency, revocation');
+
+const {resumeWorkflowJob}=await import('../src/lib/workflowUsage.ts');
+assert.deepEqual(resumeWorkflowJob({id:'same-job',own:true}),{id:'same-job',own:false});
+assert.equal(resumeWorkflowJob(null).own,false);
+console.log('PASS resumed workflow keeps job identity without classifying default sample inputs as own work');

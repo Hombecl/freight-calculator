@@ -223,7 +223,7 @@ export default function OrderQuotePage() {
             <div className="flex gap-2">
               <button className={btnCls} onClick={() => setReviewImport(true)}><FileUp size={14} />{T('CSV / Excel', 'CSV / Excel')}</button>
 
-              <button className={btnCls} onClick={() => { setReq(structuredClone(QUOTE_EXAMPLE)); setQuote(null); setImportNote([]); }}>{T('Example', '例子')}</button>
+              <button className={btnCls} onClick={() => { selectedRestore.current=req.orderId!==QUOTE_EXAMPLE.orderId?(QUOTE_EXAMPLE.orderId??null):null; setReq(structuredClone(QUOTE_EXAMPLE)); setQuote(null); setImportNote([]); setOwnJob(false); }}>{T('Example', '例子')}</button>
             </div>
           </div>
           <p className="text-xs">{T('Import units:', '匯入單位：')} {importImperial ? 'in / lb' : 'cm / kg'}</p>

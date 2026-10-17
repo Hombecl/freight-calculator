@@ -23,3 +23,6 @@ export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_cs
 export async function recordToolOutput(job:{id:string;own:boolean},kind:'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders',result:unknown){
  try{const bytes=new TextEncoder().encode(JSON.stringify(result));const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(b=>b.toString(16).padStart(2,'0')).join('');recordWorkflowOutput(job.id,hash,kind,!job.own);}catch{track('workflow_output',`unknown_storage;${kind}`);}
 }
+
+/** Inputs are not persisted by every tool: never carry own-job consent onto a fresh sample. */
+export function resumeWorkflowJob(value:unknown){const v=value as {id?:unknown}|null;return {id:v&&typeof v.id==='string'?v.id:crypto.randomUUID(),own:false};}
