@@ -8,8 +8,8 @@
  * It is also the lead-capture point for the paid tiers (see /api-pricing).
  *
  * Body: { email, company?, useCase? }  → { key, tier, limits, docs }
- * The key is shown ONCE; we store only its record, no email is sent (no mail
- * infrastructure yet — the page tells the user to save it).
+ * The key is shown ONCE. An optional internal lead notification omits the key;
+ * no customer email is sent, so the page tells the user to save it.
  *
  * Abuse control: 5 keys per IP per day. Keys live in the same LEADS KV as
  * `apikey|<key>`; a lead row is written too so the existing lead tooling
@@ -18,6 +18,7 @@
 
 import { API_KEY_PREFIX, ENDPOINT_BASE_LIMITS, planFor } from '../../src/lib/apiTiers';
 import { apiKeyKvKey, rateLimit, tooManyRequests, type ApiKeyRecord, type RateLimitEnv } from './_rateLimit';
+import { queueLeadNotification, type LeadNotificationEnv } from './_leadNotification';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,7 +54,7 @@ export const onRequestGet: PagesFunction = async () =>
     docs: DOCS,
   });
 
-export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
+export const onRequestPost: PagesFunction<RateLimitEnv & LeadNotificationEnv> = async (ctx) => {
   const rl = await rateLimit(ctx.env, ctx.request, [{ name: 'key', limit: 5, windowSec: 86_400 }]);
   if (!rl.ok) return tooManyRequests(rl, CORS, DOCS);
 
@@ -76,15 +77,18 @@ export const onRequestPost: PagesFunction<RateLimitEnv> = async (ctx) => {
   const now = new Date().toISOString();
   const record: ApiKeyRecord = { email, tier: 'free', company, useCase, createdAt: now };
   const country = (ctx.request as { cf?: { country?: string } }).cf?.country ?? '';
+  const leadKey = `${now}_${key.slice(-8)}`;
+  const lead = { email, source: 'api-key', proWaitlist: false, company, useCase, country, at: now };
 
   await Promise.all([
     ctx.env.LEADS.put(apiKeyKvKey(key), JSON.stringify(record)),
     // same shape as /api/lead so `wrangler kv key list` shows API signups inline
     ctx.env.LEADS.put(
-      `${now}_${key.slice(-8)}`,
-      JSON.stringify({ email, source: 'api-key', proWaitlist: false, company, useCase, country, at: now }),
+      leadKey,
+      JSON.stringify(lead),
     ),
   ]);
+  queueLeadNotification(ctx, lead, leadKey);
 
   return json({ key, tier: 'free', limits: limitsForTier('free'), header: 'X-API-Key', docs: DOCS });
 };

@@ -61,7 +61,20 @@ Its counts are events, not unique users; GA4 provides user/session cohorts.
 Download/waitlist addresses are stored in Cloudflare KV `LEADS`, in timestamp
 keys. API signups have separate companion lead rows with company/useCase.
 The public `hello@dimpack3d.com` mailto link is independent of these records.
-No outbound notification integration or recipient is configured by this change.
+Optional internal notifications use Resend. Configure production secrets
+`RESEND_API_KEY`, `LEAD_NOTIFY_TO` (operator address), and `LEAD_NOTIFY_FROM`
+(a verified sender). Leave them absent in preview to avoid test notifications.
+The recipient is fixed server-side; a submitted address never becomes the
+recipient. Lead storage succeeds independently of delivery via `waitUntil`.
+API keys are excluded. A repeated email/source/day is suppressed after a
+successful send, with a best-effort global limit of 50 notifications per day.
+KV eventual consistency means this is not an exact distributed quota.
+
+`notify|<lead-key>` holds pending/accepted/failed/duplicate/daily_limit for 30
+days, with a provider message ID after acceptance. Accepted is not proof of inbox
+delivery. Provider errors do not delete leads, and there is no automatic retry
+worker; the manual CSV remains the complete review path. Notifications have an
+8-second provider timeout. Never infer marketing consent from an export email.
 
 After deploying the header-auth change to `/api/stats`, manually export:
 
@@ -77,11 +90,31 @@ redirects/truncated results, and writes an exclusively created mode-0600 CSV.
 The parent output directory must already exist. Keep the CSV outside this repo.
 This is a manual command, not an unattended/scheduled job.
 
+If the existing stats secret is unavailable, use a Cloudflare token with KV read
+access, without rotating the live stats secret:
+
+```sh
+node scripts/export-leads.mjs --cloudflare-token-ref 'op://VAULT/ITEM/TOKEN_FIELD' --account-id ACCOUNT_ID --out /private/report-directory/dimpack-leads.csv --days 28
+```
+
+This mode reads only timestamp-prefixed lead keys, follows cursors, rejects
+incomplete lists, and never enumerates API-key or shared-plan namespaces.
+
 CSV contains only timestamp, email, source, country, product-update opt-in,
-company and use case. API keys and saved plans are excluded. Rows remain separate
+company, use case and optional plan purpose. API keys and saved plans are excluded. Rows remain separate
 to preserve repeat requests; the console shows aggregate unique-email counts.
 An export email alone is not product-update consent; retain the opt-in field.
 
+The export gate asks an optional, initially blank task category: container/truck,
+pallet/height, freight quote, packing instructions, exploring, or other. Skipping
+it still unlocks the same download. Only allowlisted values reach KV/internal
+notifications/CSV; they are not sent to GA4. Existing users already unlocked on
+that browser will not see this question, so responses are not a retention census.
+Before this release, an export with product-update opt-in was labelled
+`pro-waitlist`; it was not evidence of a separate waitlist visit. New export-gate
+leads always use `planner-export`, with consent in its separate boolean field.
+
 Before production deployment preserve the existing Supabase build configuration,
 run release validation, and verify auth/save/share plus printable output on the
-deployed URL. Local auth was not configured during development verification.
+deployed URL. Supply the existing public Supabase URL and anon key in a
+gitignored `.env.production.local` for the production build.

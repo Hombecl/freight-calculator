@@ -138,11 +138,11 @@ export async function rateLimitKeyed(
   return { ...res, tier: who.tier, invalidKey: who.invalidKey };
 }
 
-async function rateLimitSubject(
+export async function rateLimitSubject(
   env: RateLimitEnv,
   ip: string,
   rules: RateLimitRule[],
-  nowSec: number,
+  nowSec = Math.floor(Date.now() / 1000),
 ): Promise<RateLimitResult> {
 
   const counts = await Promise.all(

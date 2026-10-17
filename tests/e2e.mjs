@@ -314,6 +314,10 @@ await test('planner: rotate/drop/delete/undo buttons exist', async () => {
 await test('planner: export gate opens for anonymous CSV', async () => {
   await page.getByRole('button', { name: /^csv$/i }).click();
   await page.getByText(/unlock export/i).waitFor();
+  const purpose = page.getByRole('combobox', { name: /what will you use this plan for/i });
+  if (await purpose.inputValue() !== '') throw new Error('purpose must be optional and unselected');
+  await purpose.selectOption('freight-quote');
+  if (await purpose.inputValue() !== 'freight-quote') throw new Error('purpose selection not retained');
   await page.keyboard.press('Escape');
   await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
 }, page);

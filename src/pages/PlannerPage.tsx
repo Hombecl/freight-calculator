@@ -14,6 +14,8 @@ import { useAuth } from '../hooks/useAuth';
 import PaywallModal from '../components/PaywallModal';
 import { track } from '../lib/track';
 import { performExport, trackExport, type ExportFormat } from '../lib/exportTracking';
+import { checkoutEnabled } from '../lib/billing';
+import type { LeadPurpose } from '../lib/leadPurpose';
 
 /**
  * PlannerPage — the interactive load-planning workspace.
@@ -353,8 +355,8 @@ export default function PlannerPage() {
     pending.current = null;
     setPaywallOpen(false);
   };
-  const onUnlock = (email: string, proWaitlist: boolean) => {
-    ent.submitEmail(email, proWaitlist);
+  const onUnlock = (email: string, proWaitlist: boolean, purpose?: LeadPurpose) => {
+    ent.submitEmail(email, proWaitlist, purpose);
     setPaywallOpen(false);
     const format = pending.current;
     pending.current = null;
@@ -717,7 +719,7 @@ export default function PlannerPage() {
         open={paywallOpen}
         onClose={closeExportGate}
         onSubmit={onUnlock}
-        auth={auth.enabled ? {
+        auth={auth.enabled && checkoutEnabled ? {
           enabled: true,
           isSignedIn: !!auth.userId,
           email: auth.email,

@@ -66,6 +66,13 @@ const leads = events().filter(x => x[1] === 'generate_lead');
 assert.equal(leads.length, 1);
 assert.equal(leads[0][2].lead_source, 'pro-waitlist');
 assert.ok(!JSON.stringify(window.dataLayer).includes('private'), 'no email, auth query or search query in analytics');
+let submitted;
+globalThis.fetch = async (_, init) => { submitted = JSON.parse(init.body); return { ok: true, json: async () => ({ ok: true }) }; };
+captureLead('private@example.com', { purpose: 'freight-quote' }); await settle();
+assert.equal(submitted.purpose, 'freight-quote');
+captureLead('private@example.com', { purpose: 'private cargo details' }); await settle();
+assert.equal(submitted.purpose, undefined, 'unknown or free-text purpose is discarded');
+assert.ok(!JSON.stringify(window.dataLayer).includes('freight-quote'), 'purpose stays with private lead records');
 console.log('PASS analytics: routing, attribution, local exclusion, batching, lead success/failure, privacy');
 
 const { performExport, trackExport } = await import('../src/lib/exportTracking.ts');

@@ -28,8 +28,8 @@ export default function PrivacyPage() {
       h: T('What we collect', '我哋收集啲乜'),
       body: [
         T(
-          'Email addresses — only when you submit one to unlock exports or join a waitlist. Stored with the submission source and date on Cloudflare infrastructure. Used to send you the thing you asked for and occasional product updates. Never sold or shared with third parties for marketing.',
-          'Email — 只喺你為解鎖導出或加入等候名單而提交時收集,連同來源同日期儲存喺 Cloudflare 基礎設施。只用嚟提供你要求嘅嘢同偶爾嘅產品更新,永不出售或與第三方共享作營銷用途。',
+          'Email addresses — when you submit one to unlock exports, join a waitlist, request an API key or sign in. Export, waitlist and API requests are stored with their source and date on Cloudflare; optional company and use-case details are stored for API requests, and an optional task category is stored with export requests. Our email provider Resend processes internal notifications to the site operator. Product updates require a separate opt-in; unlocking an export alone does not subscribe you. Addresses are never sold or shared for third-party marketing.',
+          'Email — 喺你提交地址解鎖導出、加入等候名單、申請 API key 或登入時收集。導出、等候名單及 API 申請會連同來源同日期儲存喺 Cloudflare；API 申請亦會儲存你自願填寫嘅公司同用途，導出申請會儲存你自選嘅工作類別。電郵服務 Resend 會處理發畀網站營運者嘅內部通知。產品更新需要另外選擇同意，解鎖導出本身唔代表訂閱。地址永不出售或交畀第三方作營銷用途。',
         ),
         T(
           'Usage analytics — our own cookie-less counter records the event type (e.g. page view, export), the page path, the referring site\'s hostname, and a country code derived from the request. No cookies, no fingerprinting, no persistent identifiers on our side.',
@@ -49,8 +49,8 @@ export default function PrivacyPage() {
       h: T('What we do NOT collect', '我哋唔收集啲乜'),
       body: [
         T(
-          'We do not collect names, accounts, payment details, or the contents of your planning sessions. Calculator inputs and 3D plans do not leave your browser in normal use; API requests are processed server-side without being stored. Local preferences (units, language) are stored in your own browser\'s localStorage.',
-          '我哋唔收集姓名、帳戶、付款資料或你規劃過程嘅內容。正常使用下,計算輸入同 3D 方案永不離開你嘅瀏覽器。本地偏好(單位、語言)存喺你自己瀏覽器嘅 localStorage。',
+          'We do not collect the contents of your local planning sessions. Calculator inputs and 3D plans stay in your browser unless you choose to share or save a plan. Optional sign-in and saved plans use Supabase. API calculation requests are processed server-side without being stored. Local preferences (units, language) are stored in your own browser\'s localStorage.',
+          '我哋唔收集你本地規劃過程嘅內容。計算輸入同 3D 方案留喺瀏覽器，除非你主動分享或儲存方案。自選登入及儲存方案功能使用 Supabase。API 計算請求喺伺服器處理而唔會儲存。本地偏好（單位、語言）存喺你自己瀏覽器嘅 localStorage。',
         ),
       ],
     },

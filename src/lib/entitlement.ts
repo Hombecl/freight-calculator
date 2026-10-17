@@ -10,6 +10,7 @@
  */
 
 import { track } from './track';
+import { validLeadPurpose, type LeadPurpose } from './leadPurpose';
 
 export type Plan = 'free' | 'pro';
 
@@ -45,7 +46,7 @@ export function canExport(e: Entitlement = readEntitlement()): boolean {
 }
 
 export function captureLead(
-  email: string, opts: { proWaitlist?: boolean; source?: string } = {},
+  email: string, opts: { proWaitlist?: boolean; source?: string; purpose?: LeadPurpose } = {},
 ): Entitlement {
   const e: Entitlement = {
     ...readEntitlement(),
@@ -61,7 +62,7 @@ export function captureLead(
     fetch(LEAD_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export' }),
+      body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export', purpose: validLeadPurpose(opts.purpose) }),
     }).then(async (response) => {
       // Unlocking a local export is not proof that we received a lead.
       if (!response.ok || (await response.json()).ok !== true) throw new Error('Lead not acknowledged');

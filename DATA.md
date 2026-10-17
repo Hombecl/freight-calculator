@@ -39,6 +39,8 @@ Bound to the `dimpack3d` Pages project (wrangler.toml). Key patterns:
 | Key pattern | Content |
 |---|---|
 | `<ISO-date>_<rand>` | Email leads (export gate, waitlists) |
+| `notify\|<lead-key>` | Internal notification status and provider message ID (30-day TTL); acceptance is not confirmed delivery. |
+| `notify-sent\|<date>\|<source>\|<email-sha256>` | Internal email notification deduplication marker (2-day TTL). |
 | `ev_…` / `ev2|…` | Legacy analytics events (90-day TTL; no new writes after the Analytics Engine migration) |
 | `share_<10-char-id>` | Shared load plans (1-year TTL) |
 | `apikey|dp_live_<32 hex>` | API key record `{email, tier, company?, useCase?, createdAt, revokedAt?}` — issued by `POST /api/key` (free tier, 5/IP/day). Upgrade a customer by editing `tier` to `starter`/`business`; revoke by setting `revokedAt`. Tier multipliers live in `src/lib/apiTiers.ts`. A companion lead row (`source: "api-key"`) is written alongside. |

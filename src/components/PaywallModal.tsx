@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Check, Lock } from 'lucide-react';
+import { LEAD_PURPOSES, validLeadPurpose, type LeadPurpose } from '../lib/leadPurpose';
 
 export interface PaywallAuth {
   enabled: boolean;
@@ -14,7 +15,7 @@ export interface PaywallAuth {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSubmit: (email: string, proWaitlist: boolean) => void; // free lead-capture unlock
+  onSubmit: (email: string, proWaitlist: boolean, purpose?: LeadPurpose) => void; // free lead-capture unlock
   auth?: PaywallAuth; // present only when a billing backend is configured
   proPrice?: string; // e.g. "$12/mo"
 }
@@ -30,6 +31,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice = '$12/mo' }: Props) {
   const [email, setEmail] = useState('');
   const [wantPro, setWantPro] = useState(false);
+  const [purpose, setPurpose] = useState<LeadPurpose | undefined>();
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
   const [signInErr, setSignInErr] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
   if (!open) return null;
 
   const valid = EMAIL_RE.test(email);
-  const unlockFree = () => { setTouched(true); if (valid) onSubmit(email.trim(), wantPro); };
+  const unlockFree = () => { setTouched(true); if (valid) onSubmit(email.trim(), wantPro, purpose); };
   const signIn = async () => {
     setTouched(true);
     if (!valid || !auth) return;
@@ -54,7 +56,7 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="export-gate-title" className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="export-gate-title" className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <span className="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -81,6 +83,15 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
             }`}
           />
           {touched && !valid && <p className="text-xs text-red-500 mt-1">Enter a valid email.</p>}
+
+          <label className="block mt-3 text-xs text-slate-600">
+            What will you use this plan for? (optional)
+            <select className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-2 text-sm bg-white"
+              value={purpose ?? ''} onChange={(e) => setPurpose(validLeadPurpose(e.target.value))}>
+              <option value="">Choose a task or skip</option>
+              {LEAD_PURPOSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
 
           <label className="flex items-center gap-2 mt-3 text-xs text-slate-600">
             <input type="checkbox" checked={wantPro} onChange={(e) => setWantPro(e.target.checked)} />
