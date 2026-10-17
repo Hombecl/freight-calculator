@@ -17,7 +17,7 @@ const assumptions: Record<string, string> = {
  VGM: 'VGM 必須包括卡板、填充同固定物料，並用認可方法量度；呢個數字唔係申報。',
  ZONE_SEGREGATION: '溫度／危險品分區需要區域幾何同每件貨嘅分區要求；呢個端點未評估。',
  ALL_ORDERS_FIT: '目錄以外紙箱嘅訂單比例；只係搜尋上限內搵到嘅覆蓋率，後備費用係估算，唔計入節省。',
- DIVISOR_STATED: '使用你提供嘅材積除數同單位，未計承運商進位規則。',
+ DIVISOR_STATED: '使用你提供嘅材積除數、單位及進位幅度；進位設為0表示不進位。',
  RATE_PROVIDED: '成本需要每 kg／lb 報價；所有金額必須同一貨幣。',
  CATALOG_SIZE_RESPECTED: '目錄箱型數係上限；候選箱較少，結果亦會較少。',
 };

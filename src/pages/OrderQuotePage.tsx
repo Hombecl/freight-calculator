@@ -1,3 +1,4 @@
+import ImportModal from '../components/ImportModal';
 import {CARGO_TRANSFER,palletTransfer,readCargoTransfer} from '../lib/workflowTransfer';
 import PilotInterest from '../components/PilotInterest';
 import {recordWorkflowOutput} from '../lib/workflowUsage';
@@ -95,7 +96,7 @@ export default function OrderQuotePage() {
   const [paste, setPaste] = useState('');
   const [importNote, setImportNote] = useState<string[]>([]);
   const [serverState, setServerState] = useState<'' | 'match' | 'mismatch' | 'error'>('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [reviewImport,setReviewImport]=useState(false);
 
   useEffect(() => { track('tool_order_quote'); }, []);
 
@@ -187,7 +188,13 @@ export default function OrderQuotePage() {
 
   return (
     <div className="min-w-0 max-w-6xl mx-auto px-4 py-10">
-      <Helmet>
+      <ImportModal open={reviewImport} onClose={()=>setReviewImport(false)} actionLabel={T('Use verified list for this quote','使用已核對貨單報價')} onImport={specs=>{
+      if(specs.length>QUOTE_LIMITS.types||specs.reduce((n,s)=>n+s.qty,0)>200||specs.some(s=>s.weightKnown===false))throw Error(T('Use at most 20 types / 200 cartons and supply every weight.','最多20種／200箱，並須提供所有重量。'));
+      const L=units==='in-lb'?CM_PER_IN:1,W=units==='in-lb'?KG_PER_LB:1;
+      const seen=new Set<string>();const items=specs.map(s=>{let sku=s.label,n=2;while(seen.has(sku))sku=`${s.label}-${n++}`;seen.add(sku);return {sku,label:s.label,l:s.l/L,w:s.w/L,h:s.h/L,weight:s.weight/W,qty:s.qty,keepUpright:s.keepUpright??true,...(s.maxStack===undefined?{}:{maxStack:s.maxStack/W})};});
+      setReq(r=>({...r,items}));setOwnJob(true);setImportNote([]);track('order_quote_import','reviewed');
+    }}/>
+    <Helmet>
         <title>{T('Order to Pallet Quote — pallet count, dimensions and weight before freight quoting', '訂單轉卡板報價 — 報運費前先知板數、尺寸同重量')} | DimPack3D</title>
         <meta name="description" content={T(
           'Paste an order’s carton list and get pallet count, outer dimensions and gross weight (incl. tare and packaging) checked against your carrier or receiver limits — before you quote LTL freight. Deterministic, same engine as the API, carrier-input CSV, predicted-vs-measured tracking.',
@@ -214,9 +221,9 @@ export default function OrderQuotePage() {
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="font-black text-slate-900">{T('1. Cartons in the order', '1. 訂單入面嘅箱')} <span className="text-xs font-semibold text-slate-500">({req.items.length} {T('types', '種')} · {totalCartons} {T('cartons', '箱')})</span></h2>
             <div className="flex gap-2">
-              <button className={btnCls} onClick={() => fileRef.current?.click()}><FileUp size={14} />{T('CSV / Excel', 'CSV / Excel')}</button>
-              <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importRows(undefined, f); e.target.value = ''; }} />
-              <button className={btnCls} onClick={() => { setReq(structuredClone(QUOTE_EXAMPLE)); setQuote(null); setImportNote([]); }}>{T('Example', '例子')}</button>
+              <button className={btnCls} onClick={() => setReviewImport(true)}><FileUp size={14} />{T('CSV / Excel', 'CSV / Excel')}</button>
+
+              <button className={btnCls} onClick={() => { selectedRestore.current=req.orderId!==QUOTE_EXAMPLE.orderId?(QUOTE_EXAMPLE.orderId??null):null; setReq(structuredClone(QUOTE_EXAMPLE)); setQuote(null); setImportNote([]); setOwnJob(false); }}>{T('Example', '例子')}</button>
             </div>
           </div>
           <p className="text-xs">{T('Import units:', '匯入單位：')} {importImperial ? 'in / lb' : 'cm / kg'}</p>
@@ -341,8 +348,8 @@ export default function OrderQuotePage() {
                       <td className="py-2 pr-3"><input type="number" step="any" className={`${inputCls} py-1 w-24`} value={a.height ?? ''} onChange={(e) => setReq((r) => ({ ...r, actuals: { ...r.actuals, [p.index]: { ...a, height: numOr(e.target.value) } } }))} /></td>
                       <td className="py-2 pr-3"><input type="number" step="any" className={`${inputCls} py-1 w-24`} value={a.grossWeight ?? ''} onChange={(e) => setReq((r) => ({ ...r, actuals: { ...r.actuals, [p.index]: { ...a, grossWeight: numOr(e.target.value) } } }))} /></td>
                       <td className="py-2 text-xs whitespace-nowrap">
-                        {p.variance?.height && <div>H {p.variance.height.delta > 0 ? '+' : ''}{p.variance.height.delta} cm ({p.variance.height.deltaPct}%)</div>}
-                        {p.variance?.grossWeight && <div>W {p.variance.grossWeight.delta > 0 ? '+' : ''}{p.variance.grossWeight.delta} kg ({p.variance.grossWeight.deltaPct}%)</div>}
+                        {p.variance?.height && <div>H {p.variance.height.delta > 0 ? '+' : ''}{r2(p.variance.height.delta)} cm ({r2(p.variance.height.deltaPct)}%)</div>}
+                        {p.variance?.grossWeight && <div>W {p.variance.grossWeight.delta > 0 ? '+' : ''}{r2(p.variance.grossWeight.delta)} kg ({r2(p.variance.grossWeight.deltaPct)}%)</div>}
                         {!p.variance && <span className="text-slate-400">{T('enter + re-run', '輸入後再計')}</span>}
                       </td>
                     </tr>

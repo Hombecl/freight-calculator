@@ -90,8 +90,8 @@ await test('upright and fragile use packContainer semantics',async()=>{
  a.skus[0]={sku:'A',l:10,w:10,h:10,weight:1,fragile:true};a.orders[0].lines[0].qty=2;a.candidateBoxes=[{id:'stack',l:10,w:10,h:20}];assert.equal((await optimizeBoxCatalog(a)).totals.unfitOrders,1);
  a.candidateBoxes.push({id:'floor',l:20,w:10,h:10});await geometry(a,a.candidateBoxes);assert.equal((await chooseBox({...a,lines:a.orders[0].lines},a.candidateBoxes)).boxId,'floor');
 });
-await test('single order chooses billed weight even with different box costs',async()=>{
- const a=example();a.candidateBoxes[0].cost=100;const r=await chooseBox({...a,lines:[{sku:'A',qty:1}]},a.candidateBoxes);assert.equal(r.boxId,'small');assert.equal(r.plan.boxes.length,1);assert.equal(r.perOrder[0].boxId,'small');assert.equal(r.semantics,CHECK_SEMANTICS);
+await test('single order chooses total supplied cost, falling back to billed weight without a rate',async()=>{
+ const a=example();a.candidateBoxes[0].cost=100;const r=await chooseBox({...a,lines:[{sku:'A',qty:1}]},a.candidateBoxes);assert.equal(r.boxId,'double');assert.equal(r.plan.boxes.length,1);assert.equal(r.perOrder[0].boxId,'double');delete a.billing.ratePerKgOrLb;assert.equal((await chooseBox({...a,lines:[{sku:'A',qty:1}]},a.candidateBoxes)).boxId,'small');assert.equal(r.semantics,CHECK_SEMANTICS);
 });
 await test('size and bounded budgets, generation and rounding',async()=>{
  for (const budget of [1,2,5,200,1000]) {const a=example();a.searchBudget=budget;a.catalogSize=3;const r=await optimizeBoxCatalog(a);assert.equal(r.catalog.length,3);assert.ok(r.searched.combos<=budget);}

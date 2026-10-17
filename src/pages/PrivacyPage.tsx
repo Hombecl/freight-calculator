@@ -19,8 +19,8 @@ export default function PrivacyPage() {
       h: T('The short version', '重點'),
       body: [
         T(
-          'Your shipment data stays on your device when you use the planner and calculators: those computations run in your browser, and carton lists and load plans are not uploaded unless you explicitly create a share link or save a plan to your account. If you call the REST API (/api/*), the request is processed on Cloudflare edge servers and is not stored; we keep only per-key rate-limit counters. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
-          '用規劃器同計算器時,你嘅貨運數據留喺你部機:計算喺瀏覽器進行,除非你主動建立分享連結或儲存方案,箱單同裝載方案唔會上傳。如果你調用 REST API(/api/*),請求會喺 Cloudflare edge 伺服器處理,唔會儲存;我哋只保留每條 key 嘅限流計數。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
+          'Your shipment data stays on your device when you use the planner and calculators: those computations run in your browser, and carton lists and load plans are not uploaded unless you explicitly create a share link or save a plan to your account. If you call a calculation REST API, the request is processed on Cloudflare edge servers and is not stored; we keep only per-key rate-limit counters. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
+          '用規劃器同計算器時,你嘅貨運數據留喺你部機:計算喺瀏覽器進行,除非你主動建立分享連結或儲存方案,箱單同裝載方案唔會上傳。如果你調用計算 REST API,請求會喺 Cloudflare edge 伺服器處理,唔會儲存;我哋只保留每條 key 嘅限流計數。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
         ),
       ],
     },
@@ -40,8 +40,8 @@ export default function PrivacyPage() {
           'Google Analytics 4 — 我哋亦載入 GA4,佢使用 cookie 統計訪問。你可用任何標準攔截器封鎖佢,網站功能完全不受影響。',
         ),
         T(
-          'Share links — if you click "Share", the current plan (container, cartons, positions) is stored on our servers under a random ID so the link can be opened by others. Do not share plans containing information you consider confidential.',
-          '分享連結 — 你撳「分享」時,當前方案(貨櫃、紙箱、位置)會以隨機 ID 儲存喺我哋伺服器,令連結可被打開。如方案含機密資料請勿分享。',
+          'Share links — if you click "Share", the current plan (container, cartons, positions) is stored on our servers under a random ID so the link can be opened by others. Links expire after the chosen 1, 7 or 30 days and may be revoked. If you enable crew reporting, recipients with the separate crew link can explicitly submit numerical measurements and pallet counts for your review, stored until that share expires. Photos, initials and checklist responses are not submitted. Reports are not exposed by the public viewing link. Do not share plans containing information you consider confidential.',
+          '分享連結 — 你撳「分享」時,當前方案(貨櫃、紙箱、位置)會以隨機 ID 儲存喺我哋伺服器,令連結可被打開。連結按所選1、7或30日到期，亦可撤銷。開啟倉務回報後，持有獨立倉務連結者可明確提交數值實量及板數供你覆核，儲存至分享到期。相片、簡稱及檢查表不會提交，公開查看連結不會顯示回報。如方案含機密資料請勿分享。',
         ),
       ],
     },

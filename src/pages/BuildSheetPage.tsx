@@ -1,3 +1,4 @@
+import {parseCrewFeedback} from '../lib/crewFeedback';
 import ShareSnapshot from '../components/ShareSnapshot';
 import {recordWorkflowOutput} from '../lib/workflowUsage';
 import { checkAssumption, ruleText, profileText, unverifiedText, screeningSemanticsZh } from '../lib/auditPageLocale';
@@ -19,6 +20,10 @@ const primaryCls = 'inline-flex items-center justify-center gap-2 rounded-lg bg-
 
 export default function BuildSheetPage() {
   const {lang}=useApp();const T=(en:string,zh:string)=>lang==='zh'?zh:en;
+  const [shareId]=useState(()=>new URLSearchParams(location.search).get('share')??'');
+  const [crewToken]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('crew')??'');
+  const [consent,setConsent]=useState(false),[sending,setSending]=useState(false);
+  const [pendingReport,setPendingReport]=useState<{body:string;id:string}|null>(null);
   const [q,setQ]=useState<SheetQuote|null>(null),[paste,setPaste]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [profiles,setProfiles]=useState(()=>{try{return deviceProfiles(localStorage.getItem('dp_receiver_profiles'));}catch{return loadProfiles();}});
   const [profileId,setProfileId]=useState('custom'),[checks,setChecks]=useState<Record<number,Check[]>>({}),[version,setVersion]=useState('');
@@ -35,6 +40,13 @@ export default function BuildSheetPage() {
     recordWorkflowOutput(q.orderId??'draft',q.inputHash,'actuals',!(q as SheetQuote & {ownJob?:boolean}).ownJob);
     setMessage(T('Actuals saved locally','實量已儲存喺本機'));track('build_sheet_actuals_save');
   }catch(e){setError(String(e));}};
+  const sendReport=async()=>{if(!q||!consent)return;setSending(true);setError('');try{
+    const values=parseCrewFeedback({revision:q.inputHash,reportId:'0'.repeat(32),actuals,palletCount:count},q.inputHash,q.pallets.length);
+    const body=JSON.stringify(values);const id=pendingReport?.body===body?pendingReport.id:crypto.randomUUID().replace(/-/g,'');setPendingReport({body,id});
+    const r=await fetch(`/api/share-feedback?id=${shareId}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${crewToken}`},body:JSON.stringify({...values,reportId:id})});
+    if(!r.ok)throw Error(T('Report not accepted. Check measurements or ask the planner for a new crew link.','回報未獲接收，請核對實量或向規劃者索取新倉務連結。'));
+    setMessage(T('Measurements sent for planner review. The original plan is unchanged.','實量已送交規劃者覆核，原方案未有改動。'));track('crew_report_submit');
+  }catch(e){setError(String(e));}finally{setSending(false);}};
   return <main className="[&_input[type=file]]:max-w-full [&_fieldset]:min-w-0 [&_label]:min-w-0 break-words max-w-6xl mx-auto px-4 py-8 space-y-4">
     <Helmet><title>{T('Crew build sheet','倉務砌板單')} | DimPack3D</title><meta name="description" content={T('Pallet build steps, receiver screening and measured actuals.','卡板砌板步驟、收貨方篩查同實量記錄。')}/></Helmet>
     <style>{`@media print { header, footer, nav { display:none!important } .sheet-pallet { break-after:page; } .sheet-pallet:last-child { break-after:auto; } .sheet-steps { columns:3;font-size:8pt } .sheet-pallet svg { max-height:210px } }`}</style>
@@ -47,12 +59,12 @@ export default function BuildSheetPage() {
       <input aria-label={T('Upload quote JSON','上載報價 JSON')} type="file" accept=".json,application/json" onChange={async e=>{try{const f=e.target.files?.[0];if(!f)return;if(f.size>5000000)throw new Error('File too large');load(JSON.parse(await f.text()));}catch(e){setError(String(e));}}}/>
       </details>
       <label className="block">{T('Receiver profile','收貨方設定')}<select className={inputCls} value={profileId} onChange={e=>{setProfileId(e.target.value);setManual({});}}>{profiles.map(p=><option key={p.id} value={p.id}>{profileText(p, 'name', lang)}</option>)}</select></label>
-      <Link className="underline" to="/order-quote">{T('Return to quote and variance','返回報價同偏差記錄')}</Link></section>
+      <Link className="underline" to="/order-quote" onClick={e=>{if(!q?.request)return;try{sessionStorage.setItem(SHEET_STORAGE,JSON.stringify(q));}catch{e.preventDefault();setError(T('Device storage is full.','本機儲存已滿。'));}}}>{T('Return to quote and variance','返回報價同偏差記錄')}</Link></section>
     </div>
     {!q&&<Link className={primaryCls} to="/order-quote">{T('Start with an order quote','由訂單報價開始')}</Link>}
     {error&&<p role="alert">{error}</p>}{q&&<><div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 space-y-2"><p className="font-bold text-slate-900"><span className="mr-2 inline-flex rounded-full bg-slate-200 px-2 py-1 text-xs font-black uppercase">{T(q.status, {complete:'完成',partial:'部分完成',needs_review:'需要核對'}[q.status])}</span>{q.orderId??q.meter.id} · {q.summary.cartonsPlaced}/{q.summary.cartonsRequested} {T('cartons placed','箱已放入')} · {T('Revision','版本')} {q.inputHash.slice(0,8)}</p><p className="text-xs">{T(q.semantics, screeningSemanticsZh)}</p></div>
     {profile.template&&<p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{T('Verify with your buyer','請同買家核實')}</p>}<p>{profileText(profile, 'name', lang)} · {version.slice(0,8)} · {profile.approvedBy} {profile.approvedAt}</p>{!!profile.unverified?.length&&<p>{T('Unverified','未核實')}: {unverifiedText(profile.unverified, lang)}</p>}
-    <ShareSnapshot path={lang==='zh'?'/zh/build-sheet':'/build-sheet'} payload={()=>({type:'build-sheet',quote:q})}/>
+    <ShareSnapshot path={lang==='zh'?'/zh/build-sheet':'/build-sheet'} payload={()=>({type:'build-sheet',quote:q})} onFeedback={report=>{try{const clean=parseCrewFeedback(report,q.inputHash,q.pallets.length);setActuals(old=>Object.fromEntries([...new Set([...Object.keys(old),...Object.keys(clean.actuals)])].map(k=>[k,{...old[k],...clean.actuals[k]}])));setCount(clean.palletCount);setMessage(T('Report loaded into the form. Review and Save actuals to accept.','回報已載入欄位，請覆核後按儲存實量。'));}catch{setError(T('This report belongs to a different revision. Open that saved revision first.','回報屬另一版本，請先開啟對應已存版本。'));}}}/>
     {q.pallets.map(p=><article key={q.inputHash+p.index} data-testid="sheet-pallet" className="sheet-pallet rounded-2xl border border-slate-200 p-5 space-y-4">
       <h2 className="text-xl font-black text-slate-900">{T('Pallet','卡板')} {p.index+1} · {p.cartonCount} {T('cartons','箱')}</h2><p className="text-xs">{q.orderId??q.meter.id} · {q.inputHash.slice(0,8)} · {profileText(profile, 'name', lang)} · {T('Profile version','設定版本')}: {version.slice(0,8)}</p>
       <div className="grid lg:grid-cols-2 gap-6 items-start"><div className="min-w-0 overflow-auto max-h-96 print:max-h-none"><table className="sheet-steps w-full text-sm border-collapse"><thead className="text-left text-slate-500 border-b border-slate-200"><tr>{['#', 'SKU', T('x / y / z (cm)', 'x／y／z（cm）'), T('Layer', '層')].map(h=><th key={h} className="py-2 pr-3 font-semibold">{h}</th>)}</tr></thead><tbody>{buildSteps(p).map((b,i)=><tr data-testid="sheet-build-step" key={b.id} className="border-b border-slate-100"><td className="py-2 pr-3">{i+1}</td><td className="py-2 pr-3">{b.label}<span className="block text-xs text-slate-500">{b.id} · {b.l}×{b.w}×{b.h} cm</span></td><td className="py-2 pr-3">{b.px} / {b.py} / {b.pz}</td><td className="py-2">{[...new Set(p.boxes.map(box=>box.py))].sort((a,b)=>a-b).indexOf(b.py)+1}</td></tr>)}</tbody></table><p className="mt-3 text-xs text-slate-500">{T('Position: x, height above pallet deck, z (cm). Layers group cartons at the same starting height.', '位置：x、板面以上高度、z（cm）。同一起始高度嘅箱歸為一層。')}</p></div><div className="min-w-0 order-first lg:order-last">
@@ -65,7 +77,7 @@ export default function BuildSheetPage() {
         {actuals[p.index]?.photo&&<img className="max-h-40" src={actuals[p.index].photo} alt={T('Measured pallet photo','實際卡板相片')}/>}
       </fieldset>
     </article>)}
-    <div className="print:hidden"><label>{T('Actual pallet count','實際板數')}<input data-testid="actual-pallet-count" className={inputCls} type="number" min="0" step="1" value={count??''} onChange={e=>setCount(e.target.value===''?undefined:+e.target.value)}/></label><button className={primaryCls} data-testid="save-actuals" onClick={save}>{T('Save actuals','儲存實量')}</button><p role="status">{message}</p></div></>}
+    <div className="print:hidden"><label>{T('Actual pallet count','實際板數')}<input data-testid="actual-pallet-count" className={inputCls} type="number" min="0" step="1" value={count??''} onChange={e=>setCount(e.target.value===''?undefined:+e.target.value)}/></label><button className={primaryCls} data-testid="save-actuals" onClick={save}>{T('Save actuals','儲存實量')}</button>{shareId&&crewToken&&<section className="border rounded p-4 my-3"><p>{T('Send measurements in cm/kg and pallet count to the planner for this revision. Photos, initials and checklist responses stay on this device. Reports expire with this share.','將本版本嘅 cm/kg 實量及板數送交規劃者。相片、簡稱及檢查表只留本機，回報隨分享到期。')}</p><label><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> {T('Send these measurements to the planner','將以上實量交予規劃者')}</label><button className={btnCls} disabled={!consent||sending} onClick={()=>void sendReport()}>{T('Submit measurements for review','提交實量供覆核')}</button></section>}<p role="status">{message}</p></div></>}
     <nav aria-label={T('Related tools', '相關工具')} className="flex flex-wrap gap-3 border-t border-slate-200 pt-5 print:hidden">
       <Link className={btnCls} to="/order-quote">{T('Order → pallet quote', '訂單 → 卡板報價')} →</Link>
       <Link className={btnCls} to="/case-designer">{T('Case designer', '裝箱設計')} →</Link>

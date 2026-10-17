@@ -1,3 +1,5 @@
+import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
+import {recordToolOutput} from '../lib/workflowUsage';
 import {CARGO_TRANSFER} from '../lib/workflowTransfer';
 import ShareSnapshot from '../components/ShareSnapshot';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -114,6 +116,7 @@ export default function PlannerPage() {
   const [containerKey, setContainerKey] = useState<ContainerKey>(preset?.container ?? '20gp');
   const [specs, setSpecs] = useState<Spec[]>(preset?.specs ?? DEFAULT_SPECS);
   // Draft edits must never be combined with the last calculated boxes/stats.
+  const [workflowJob,setWorkflowJob]=useWorkflowJob('planner');
   const [appliedSpecs, setAppliedSpecs] = useState<Spec[]>(specs);
   const hasPendingChanges = JSON.stringify(specs) !== JSON.stringify(appliedSpecs);
   useEffect(() => {
@@ -305,6 +308,7 @@ export default function PlannerPage() {
         totalRequested: totalQty, imageDataUrl: snapshotFn.current?.() ?? null,
       });
     });
+    if(outcome.ok){if(currentBoxes.length===totalQty)void recordToolOutput(workflowJob,format==='pdf'?'planner_pdf':'planner_csv',{containerKey,specs:appliedSpecs,boxes:currentBoxes});else track('workflow_result','planner_partial');}
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? T('Allow pop-ups for this site, then select PDF plan again.', '請允許此網站開啟彈出視窗，再按 PDF plan。')
       : T('Export did not open. Your plan is still here; please try again.', '匯出未能開啟。方案仍然保留，請再試一次。'));
@@ -538,6 +542,7 @@ export default function PlannerPage() {
           <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
           <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>{if(hasPendingChanges||appliedSpecs.some(s=>s.weightKnown===false)){e.preventDefault();setExportError(T('Update this plan and supply missing weights first.','請先更新方案並填寫缺少嘅重量。'));return;}try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify({model:'loose-cartons',orderId:`order-${crypto.randomUUID().slice(0,8)}`,revision:'planner',specs:appliedSpecs}));track('workflow_transfer','planner_cartons');}catch{e.preventDefault();setExportError(T('Device storage is full.','本機儲存已滿。'));}}}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
           {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
+          <WorkflowJob job={workflowJob} onChange={setWorkflowJob}/>
           <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes})}/>
 
 

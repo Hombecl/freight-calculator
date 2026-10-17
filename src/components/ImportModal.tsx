@@ -6,10 +6,10 @@ import { downloadText } from '../lib/exportPlan';
 import type { PackItemSpec } from '../lib/binPacking';
 import { track } from '../lib/track';
 
-interface Props { open:boolean; onClose:()=>void; onImport:(specs:PackItemSpec[])=>void }
+interface Props { open:boolean; onClose:()=>void; onImport:(specs:PackItemSpec[])=>void; actionLabel?:string }
 const cls='rounded-lg border border-slate-300 p-2 text-sm min-w-0';
 const MAPPING_KEY='dp_import_mapping_v1';
-export default function ImportModal({open,onClose,onImport}:Props) {
+export default function ImportModal({open,onClose,onImport,actionLabel}:Props) {
  const {lang}=useApp();const T=(en:string,zh:string)=>lang==='zh'?zh:en;
  const [sheets,setSheets]=useState<{name:string;rows:ImportRows}[]>([]),[sheet,setSheet]=useState(0);
  const [options,setOptions]=useState<ImportOptions>({lengthUnit:'cm',weightUnit:'kg'});
@@ -40,7 +40,7 @@ export default function ImportModal({open,onClose,onImport}:Props) {
  <div className="overflow-auto max-h-72"><table className="text-xs w-full"><thead><tr><th>{T('Use','使用')}</th><th>#</th>{rows[0].map((v,i)=><th key={i}>{options.headerRow?String(v):i+1}</th>)}<th>{T('Converted result','換算結果')}</th></tr></thead><tbody>{(result.rows??[]).slice(page*25,page*25+25).map(r=><tr key={r.row} className={r.error?'bg-amber-50':'border-b'}><td><input aria-label={`Use row ${r.row}`} type="checkbox" checked={!options.excludeRows?.includes(r.row)} onChange={e=>update({excludeRows:e.target.checked?(options.excludeRows??[]).filter(n=>n!==r.row):[...(options.excludeRows??[]),r.row]})}/></td><td>{r.row}</td>{rows[r.row-1].map((v,i)=><td key={i}><input aria-label={`Row ${r.row} column ${i+1}`} className="w-24 border rounded p-1" value={String(v??'')} onChange={e=>change(rows.map((row,index)=>index===r.row-1?row.map((c,j)=>j===i?e.target.value:c):row))}/></td>)}<td className="min-w-48">{r.error??r.normalized}</td></tr>)}</tbody></table></div>
  <div className="flex gap-3"><button className={cls} disabled={page===0} onClick={()=>setPage(p=>p-1)}>{T('Previous rows','上一頁')}</button><button className={cls} disabled={(page+1)*25>=(result.rows?.length??0)} onClick={()=>setPage(p=>p+1)}>{T('Next rows','下一頁')}</button></div>
  <label className="block"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> {T('I checked units, accepted quantities and excluded rows.','我已核對單位、接受件數同排除行。')}</label>
- <button className="bg-blue-600 text-white font-bold rounded-lg p-3 disabled:opacity-40" disabled={!confirmed||!result.specs.length} onClick={()=>{track('import_stage',result.excludedRows?'accepted_partial':'accepted');onImport(result.specs);setSheets([]);setPaste('');setConfirmed(false);onClose();}}>{T('Use this list and calculate','使用貨單並計算')}</button>
+ <button className="bg-blue-600 text-white font-bold rounded-lg p-3 disabled:opacity-40" disabled={!confirmed||!result.specs.length} onClick={()=>{try{onImport(result.specs);track('import_stage',result.excludedRows?'accepted_partial':'accepted');setSheets([]);setPaste('');setConfirmed(false);onClose();}catch(e){setError(String(e));}}}>{actionLabel??T('Use this list and calculate','使用貨單並計算')}</button>
  </>}
  </div></div>;
 }
