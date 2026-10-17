@@ -55,6 +55,8 @@ export function captureLead(
   };
   write(e);
   if (LEAD_ENDPOINT) {
+    const source = opts.source ?? 'planner-export';
+    const trackedSource = ['planner-export', 'pro-waitlist', 'warehouse-beta'].includes(source) ? source : 'other';
     // fire-and-forget; never blocks the UI
     fetch(LEAD_ENDPOINT, {
       method: 'POST',
@@ -62,10 +64,9 @@ export function captureLead(
       body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export' }),
     }).then(async (response) => {
       // Unlocking a local export is not proof that we received a lead.
-      if (!response.ok || (await response.json()).ok !== true) return;
-      const source = opts.source ?? 'planner-export';
-      track('generate_lead', ['planner-export', 'pro-waitlist', 'warehouse-beta'].includes(source) ? source : 'other');
-    }).catch(() => { /* no conversion on rejection, invalid JSON, or offline */ });
+      if (!response.ok || (await response.json()).ok !== true) throw new Error('Lead not acknowledged');
+      track('generate_lead', trackedSource);
+    }).catch(() => { track('lead_submit_failed', trackedSource); });
   }
   return e;
 }

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { selectLeads, leadCSV, leadSummary } from '../scripts/export-leads.mjs';
+const now = Date.parse('2026-10-17T00:00:00Z');
+const recent = { at: '2026-10-16T10:00:00Z', email: 'person@example.test', source: 'api-key', company: '=HYPERLINK("url")', useCase: 'pallet, height\nquote', proWaitlist: false, key: 'secret-key' };
+const rows = selectLeads({ leads: [recent, { ...recent, email: 'PERSON@example.test', proWaitlist: true }, { ...recent, at: '2026-01-01' }, { ...recent, at: 'invalid' }, { ...recent, at: '2027-01-01' }] }, 28, now);
+assert.equal(rows.length, 2);
+assert.equal('key' in rows[0], false);
+assert.deepEqual(leadSummary(rows), { records: 2, uniqueEmails: 1, productUpdateOptIns: 1, sources: { 'api-key': 2 } });
+assert.ok(leadCSV(rows).includes("'=HYPERLINK"));
+assert.ok(leadCSV(rows).includes('"pallet, height\nquote"'));
+assert.ok(!leadCSV(rows).includes('secret-key'));
+assert.throws(() => selectLeads({ leads: [], truncated: true }, 28, now), /Incomplete/);
+console.log('PASS lead export: date bounds, dedup summary, consent flag, field allowlist, CSV escaping and truncation');

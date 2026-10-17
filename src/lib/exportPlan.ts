@@ -56,10 +56,13 @@ export function downloadText(filename: string, text: string, mime = 'text/csv') 
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try {
+    document.body.appendChild(a);
+    a.click();
+  } finally {
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 export interface PrintablePlanOpts {
@@ -72,11 +75,23 @@ export interface PrintablePlanOpts {
 }
 
 /** Open a clean printable page and trigger the browser's print/save-as-PDF. */
-export function openPrintablePlan(opts: PrintablePlanOpts) {
+export type PrintResult = { ok: true } | { ok: false; reason: 'popup_blocked' | 'render_error' };
+
+function openPrintableHTML(html: string): PrintResult {
   const win = window.open('', '_blank');
-  if (!win) return; // pop-up blocked
-  win.document.write(buildPrintableHTML(opts));
-  win.document.close();
+  if (!win) return { ok: false, reason: 'popup_blocked' };
+  try {
+    win.document.write(html);
+    win.document.close();
+    return { ok: true };
+  } catch {
+    win.close();
+    return { ok: false, reason: 'render_error' };
+  }
+}
+
+export function openPrintablePlan(opts: PrintablePlanOpts): PrintResult {
+  return openPrintableHTML(buildPrintableHTML(opts));
 }
 
 /** Pure HTML builder for the printable plan (also used to render previews). */
@@ -213,9 +228,6 @@ export function buildWarehousePrintableHTML(o: WarehousePrintOpts): string {
 }
 
 /** Open the warehouse plan in a printable window (browser print → PDF). */
-export function openWarehousePrintable(o: WarehousePrintOpts) {
-  const win = window.open('', '_blank');
-  if (!win) return;
-  win.document.write(buildWarehousePrintableHTML(o));
-  win.document.close();
+export function openWarehousePrintable(o: WarehousePrintOpts): PrintResult {
+  return openPrintableHTML(buildWarehousePrintableHTML(o));
 }

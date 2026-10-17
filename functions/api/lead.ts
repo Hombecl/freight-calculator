@@ -1,9 +1,8 @@
 /**
  * POST /api/lead — store an email lead in KV.
  * Called by the export gate and the warehouse waitlist (see entitlement.ts).
- * Read back with:
- *   wrangler kv key list --namespace-id=13e65133a1414b1ebe5d125d38d43eb8 --remote
- *   wrangler kv key get <key> --namespace-id=... --remote
+ * Read back with the private manual scripts/export-leads.mjs command.
+ * See docs/EXPORT-MEASUREMENT.md. This function stores leads; it does not send email.
  */
 
 interface Env {

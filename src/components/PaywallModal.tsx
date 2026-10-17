@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Check, Lock } from 'lucide-react';
 
 export interface PaywallAuth {
@@ -33,6 +33,12 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
   const [touched, setTouched] = useState(false);
   const [sent, setSent] = useState(false);
   const [signInErr, setSignInErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
   if (!open) return null;
 
   const valid = EMAIL_RE.test(email);
@@ -48,18 +54,18 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="export-gate-title" className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <span className="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
               <Lock size={18} />
             </span>
             <div>
-              <h2 className="font-bold text-slate-800">Unlock export</h2>
+              <h2 id="export-gate-title" className="font-bold text-slate-800">Unlock export</h2>
               <p className="text-xs text-slate-500">Download your packing list &amp; PDF plan — free.</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Close export dialog" className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
         </div>
 
         <div className="mt-4">

@@ -90,7 +90,13 @@ function hookLifecycle() {
   });
 }
 
-export function track(event: string, meta?: string) {
+export interface ExportParameters {
+  export_tool: 'planner' | 'warehouse';
+  export_format: 'pdf' | 'csv';
+  export_reason?: 'stale_plan' | 'popup_blocked' | 'render_error' | 'download_error';
+}
+
+export function track(event: string, meta?: string, details?: ExportParameters) {
   try {
     if (!DEBUG && (navigator.webdriver || !['dimpack3d.com', 'www.dimpack3d.com'].includes(location.hostname))) return;
     const path = analyticsPath(location.pathname);
@@ -107,6 +113,11 @@ export function track(event: string, meta?: string) {
     const parameters = { ...context,
       ...(meta ? { meta } : {}),
       ...(event === 'generate_lead' ? { lead_source: meta } : {}),
+      ...(details ? {
+        export_tool: details.export_tool,
+        export_format: details.export_format,
+        ...(details.export_reason ? { export_reason: details.export_reason } : {}),
+      } : {}),
     };
     if (DEBUG) { console.info('[analytics]', event === 'pageview' ? 'page_view' : event, parameters); return; }
     initialize(context);

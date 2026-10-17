@@ -38,8 +38,9 @@ async function listAll(kv: KVNamespace, prefix: string, maxPages = 100) {
 
 export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   const url = new URL(ctx.request.url);
-  if (!ctx.env.STATS_KEY || url.searchParams.get('k') !== ctx.env.STATS_KEY) {
-    return new Response('forbidden', { status: 403 });
+  const bearer = ctx.request.headers.get('Authorization')?.match(/^Bearer (.+)$/i)?.[1];
+  if (!ctx.env.STATS_KEY || (bearer ?? url.searchParams.get('k')) !== ctx.env.STATS_KEY) {
+    return new Response('forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
   const days = Math.min(365, Math.max(1, Number(url.searchParams.get('days')) || 90));
   const cutoff = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
@@ -75,11 +76,13 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   }
 
   // shares — count only, values never needed
-  const shares = (await listAll(ctx.env.LEADS, 'share_')).names.length;
+  const shareKeys = await listAll(ctx.env.LEADS, 'share_');
+  const shares = shareKeys.names.length;
 
   // leads — keys are bare ISO timestamps (start with the year); few enough
   // to fetch values, in parallel batches
-  const leadNames = (await listAll(ctx.env.LEADS, '20')).names;
+  const leadKeys = await listAll(ctx.env.LEADS, '20');
+  const leadNames = leadKeys.names;
   const leads: unknown[] = [];
   for (let i = 0; i < leadNames.length; i += 50) {
     const batch = leadNames.slice(i, i + 50);
@@ -102,7 +105,7 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
         note: 'Event fields below contain the legacy KV window only; query Analytics Engine for current events.',
       },
       scanned: ev2.names.length + legacy.names.length,
-      truncated: ev2.truncated || legacy.truncated,
+      truncated: ev2.truncated || legacy.truncated || shareKeys.truncated || leadKeys.truncated,
       shares,
       byDay,
       byEvent: top(byEvent, 50),
@@ -112,6 +115,6 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
       byMeta: top(byMeta, 30),
       leads,
     }, null, 2),
-    { headers: { 'Content-Type': 'application/json' } },
+    { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } },
   );
 };

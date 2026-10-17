@@ -69,3 +69,17 @@ function context(body, { origin = '', country = 'HK' } = {}) {
 }
 
 console.log('PASS  analytics Pages Function migration');
+
+const { onRequestGet: readStats } = await import('../functions/api/stats.ts');
+const lead = { email: 'person@example.test', source: 'planner-export', at: new Date().toISOString() };
+const kv = { list: async ({ prefix }) => ({ keys: prefix === '20' ? [{ name: lead.at + '_12345678' }] : [], list_complete: true }), get: async () => JSON.stringify(lead) };
+for (const [headers, query, status] of [[{}, '', 403], [{ Authorization: 'Bearer wrong' }, '', 403], [{ Authorization: 'Bearer test-key' }, '', 200], [{}, '?k=test-key', 200]]) {
+  const response = await readStats({ request: new Request('https://www.dimpack3d.com/api/stats' + query, { headers }), env: { LEADS: kv, STATS_KEY: 'test-key' } });
+  assert.equal(response.status, status);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  if (status === 200) assert.equal((await response.json()).leads[0].email, lead.email);
+}
+const truncatedKV = { ...kv, list: async ({ prefix }) => ({ keys: [], list_complete: prefix !== '20', cursor: prefix === '20' ? 'more' : undefined }) };
+const truncatedResponse = await readStats({ request: new Request('https://www.dimpack3d.com/api/stats', { headers: { Authorization: 'Bearer test-key' } }), env: { LEADS: truncatedKV, STATS_KEY: 'test-key' } });
+assert.equal((await truncatedResponse.json()).truncated, true, 'lead pagination limit must not silently omit leads');
+console.log('PASS stats: header authorization, legacy compatibility, no-store and lead truncation');

@@ -284,6 +284,25 @@ await test('planner: import modal paste flow', async () => {
   await page.getByPlaceholder(/copy your rows/i).fill('name\tlength\twidth\theight\tweight\tqty\nTest Box\t50\t40\t30\t10\t25\n');
   await page.getByRole('button', { name: /import 1 carton type/i }).click();
   await page.locator('input[value="Test Box"]').waitFor();
+  if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('import did not calculate the imported specs');
+}, page);
+
+await test('planner: draft edits block stale exports and keep totals consistent', async () => {
+  const qty = page.locator('input[type="number"]').nth(4);
+  await qty.fill('3');
+  await page.getByTestId('planner-pending-changes').waitFor();
+  if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('draft quantity leaked into calculated stats');
+  for (const name of [/^csv$/i, /^pdf plan$/i, /share this plan/i]) {
+    if (!await page.getByRole('button', { name }).isDisabled()) throw new Error('stale action is enabled');
+  }
+  await qty.fill('25');
+  await page.getByTestId('planner-pending-changes').waitFor({ state: 'hidden' });
+  if (await page.getByRole('button', { name: /^csv$/i }).isDisabled()) throw new Error('reverting inputs should restore actions without repacking');
+  await qty.fill('3');
+  await page.getByRole('button', { name: /optimise pack/i }).click();
+  await page.getByTestId('planner-pending-changes').waitFor({ state: 'hidden' });
+  if (await page.getByTestId('planner-packed').textContent() !== '3 / 3') throw new Error('optimise did not apply latest quantity');
+  if (await page.getByRole('button', { name: /^csv$/i }).isDisabled()) throw new Error('updated export still disabled');
 }, page);
 
 await test('planner: rotate/drop/delete/undo buttons exist', async () => {
@@ -296,7 +315,7 @@ await test('planner: export gate opens for anonymous CSV', async () => {
   await page.getByRole('button', { name: /^csv$/i }).click();
   await page.getByText(/unlock export/i).waitFor();
   await page.keyboard.press('Escape');
-  await page.locator('.fixed.inset-0').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
 }, page);
 
 // ---------- warehouse ----------
@@ -727,9 +746,11 @@ await test('planner: door-aperture warning flags a too-tall carton', async () =>
   // but NOT the 234x228 door in any orientation
   const dims = page.locator('input[type="number"]');
   for (const i of [0, 1, 2]) await dims.nth(i).fill('235');
+  await page.getByRole('button', { name: /optimise pack/i }).click();
   await page.getByText(/won't fit through the door/i).waitFor();
   // restore ALL three dims — 60x235x235 still cannot pass (cross-section 235x235)
   for (const [i, v] of [[0, '60'], [1, '50'], [2, '45']]) await dims.nth(i).fill(v);
+  await page.getByRole('button', { name: /optimise pack/i }).click();
   await page.getByText(/won't fit through the door/i).waitFor({ state: 'hidden' });
 }, page);
 
