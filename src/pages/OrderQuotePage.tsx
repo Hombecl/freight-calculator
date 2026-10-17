@@ -70,6 +70,7 @@ export default function OrderQuotePage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [profiles, setProfiles] = useState(() => { try { return deviceProfiles(localStorage.getItem('dp_receiver_profiles')); } catch { return loadProfiles(); } });
+  const selectedRestore=useRef<string|null>(null);
   const [ownJob,setOwnJob]=useState(false);
   const [recent,setRecent]=useState<{key:string;name:string;revision:string}[]>([]);
 
@@ -83,7 +84,7 @@ export default function OrderQuotePage() {
   const wu = units === 'in-lb' ? 'lb' : 'kg';
   const [quotedRequest, setQuotedRequest] = useState<OrderQuoteRequest | null>(null);
   const [quote, setQuote] = useState<OrderQuote | null>(null);
-  useEffect(()=>{try{setRecent(Object.keys(localStorage).filter(k=>k.startsWith('dp_quote_')).map(key=>{const v=JSON.parse(localStorage.getItem(key)??'{}');return {key,name:v.orderId??'Draft',revision:v.inputHash??''};}).filter(x=>x.revision).slice(-20));}catch{}},[quote]);
+  useEffect(()=>{try{setRecent(Object.keys(localStorage).filter(k=>k.startsWith('dp_quote_')).map(key=>{const v=JSON.parse(localStorage.getItem(key)??'{}');return {key,name:v.orderId??'Draft',revision:v.inputHash??''};}).filter((x,i,all)=>x.revision&&all.findIndex(y=>y.name===x.name&&y.revision===x.revision)===i).slice(-20));}catch{}},[quote]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [staleLatch, setStaleLatch] = useState(false);
@@ -98,8 +99,9 @@ export default function OrderQuotePage() {
 
   useEffect(() => { track('tool_order_quote'); }, []);
 
-  // restore actuals for this orderId (evidence lives on the device only)
+  // Restore the latest typed order, but do not replace an explicitly selected revision.
   useEffect(() => {
+    if(selectedRestore.current===req.orderId){selectedRestore.current=null;return;}
     try {
       const raw = localStorage.getItem(storageKey(req.orderId));
       if (raw) {
@@ -283,7 +285,7 @@ export default function OrderQuotePage() {
       <section className="rounded-xl border p-4 my-4 space-y-3"><h2 className="font-bold">{T('Your orders on this device','本機訂單')}</h2>
       <label><input type="checkbox" checked={ownJob} onChange={e=>setOwnJob(e.target.checked)}/> {T('I am working on my own order (not the sample)','我正處理自己嘅訂單（非示範）')}</label>
       <div className="flex flex-wrap gap-3"><button className={btnCls} onClick={()=>{setReq(r=>({...r,orderId:`order-${crypto.randomUUID().slice(0,8)}`,actuals:undefined}));setQuote(null);setQuotedRequest(null);setOwnJob(true);setStaleLatch(false);track('workflow_reuse','new_order');}}>{T('Reuse settings for next order','沿用設定開下一張訂單')}</button>
-      <select aria-label={T('Open saved order','開啟已存訂單')} className={inputCls} value="" onChange={e=>{try{const saved=JSON.parse(localStorage.getItem(e.target.value)??'{}');parseQuoteRequest(saved.request);setReq(saved.request);setQuote(saved);setQuotedRequest(structuredClone(saved.request));setOwnJob(saved.ownJob===true);setStaleLatch(false);track('workflow_reuse','saved_order');}catch{setError(T('Saved order could not be opened.','未能開啟已存訂單。'));}}}><option value="">{T('Open a previous order…','開啟之前嘅訂單…')}</option>{recent.map(r=><option key={r.key} value={r.key}>{r.name} · {r.revision.slice(0,8)}</option>)}</select></div>
+      <select aria-label={T('Open saved order','開啟已存訂單')} className={inputCls} value="" onChange={e=>{try{const saved=JSON.parse(localStorage.getItem(e.target.value)??'{}');parseQuoteRequest(saved.request);selectedRestore.current=req.orderId!==saved.request.orderId?saved.request.orderId:null;if(saved.profileSnapshot){const profile=parseProfile(saved.profileSnapshot);setProfiles(old=>[...old.filter(p=>p.id!==profile.id),profile]);setProfileId(profile.id);}else setProfileId('');setProfileChecks(saved.profileChecks??[]);setReq(saved.request);setQuote(saved);setQuotedRequest(structuredClone(saved.request));setOwnJob(saved.ownJob===true);setStaleLatch(false);track('workflow_reuse','saved_order');}catch{setError(T('Saved order could not be opened.','未能開啟已存訂單。'));}}}><option value="">{T('Open a previous order…','開啟之前嘅訂單…')}</option>{recent.map(r=><option key={r.key} value={r.key}>{r.name} · {r.revision.slice(0,8)}</option>)}</select></div>
       <p className="text-xs text-slate-500">{T('A next order gets a new ID and keeps carton/pallet settings; actuals start empty. Saved orders stay on this browser. Share a snapshot to another device.','新訂單有新編號，保留箱型／卡板設定，實量由空白開始。訂單只存本機，可分享版本到另一部裝置。')}</p></section>
       {stale && <p role="status" data-testid="quote-stale" className="rounded-lg bg-amber-100 p-3">{T('Inputs changed — re-run to update', '輸入已更改 — 請重新計算')}</p>}
       {quote && (

@@ -17,7 +17,7 @@ This release turns the study into a first usable workflow. It does not establish
 
 `workflow_output` metadata is a fixed-category string:
 - `sample;carrier_csv`, `sample;build_sheet`, or `sample;actuals`.
-- `own;<kind>;<first_job|next_job|revision>;<same_day|1_6d|7_29d|30d_plus>`.
+- `own;<kind>;<first_job|next_job|revision|same_version>;<same_day|1_6d|7_29d|30d_plus>`.
 - `unknown_storage;<kind>` if local deduplication storage is unavailable.
 
 Raw order IDs, revision hashes, carton labels, measurements and photos are never sent by these events. Local history retains up to 200 entries within 90 days. Existing tracking excludes localhost, previews and webdriver; QA is not customer evidence. GA4 attribution can connect these categorical events with acquisition; first-party aggregate counts alone do not identify unique people.

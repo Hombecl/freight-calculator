@@ -7,7 +7,7 @@ export function usageTransition(state:UsageState,entry:UsageRecord){
  if(records.some(r=>r.job===entry.job&&r.revision===entry.revision&&r.kind===entry.kind))return {state:{records},event:null};
  const previous=records.filter(r=>r.job===entry.job);
  const gap=records.length?entry.day-Math.max(...records.map(r=>r.day)):0;
- return {state:{records:[...records,entry]},event:{job:previous.length?'revision':records.length?'next_job':'first_job',return:gap>=30?'30d_plus':gap>=7?'7_29d':gap>=1?'1_6d':'same_day'}};
+ return {state:{records:[...records,entry]},event:{job:previous.some(r=>r.revision===entry.revision)?'same_version':previous.length?'revision':records.length?'next_job':'first_job',return:gap>=30?'30d_plus':gap>=7?'7_29d':gap>=1?'1_6d':'same_day'}};
 }
 export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_csv'|'build_sheet'|'actuals',sample:boolean){
  if(sample){track('workflow_output',`sample;${kind}`);return;}

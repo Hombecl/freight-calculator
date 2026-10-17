@@ -22,3 +22,5 @@ const {palletTransfer}=await import('../src/lib/workflowTransfer.ts');
 const cargo=palletTransfer(q);assert.equal(cargo.model,'built-pallets');assert.equal(cargo.specs.length,q.pallets.length);assert.ok(cargo.specs.every(s=>s.qty===1&&s.keepUpright&&s.maxStack===0));close(cargo.specs[0].h,q.pallets[0].outerDims.h.cm);assert.throws(()=>palletTransfer({...q,status:'partial'}));
 const corrected=await quoteOrder({...QUOTE_EXAMPLE,pallet:{...QUOTE_EXAMPLE.pallet,maxHeight:QUOTE_EXAMPLE.limits.maxLoadedHeight-QUOTE_EXAMPLE.packagingAllowance.height}});assert.equal(corrected.summary.cartonsRequested,q.summary.cartonsRequested);assert.equal(corrected.summary.cartonsPlaced,q.summary.cartonsRequested);assert.ok(corrected.summary.maxOuterHeight.cm<=QUOTE_EXAMPLE.limits.maxLoadedHeight);
 console.log('transfer preserves built-pallet model; height correction preserves entire order');
+
+assert.equal(usageTransition(u.state,{...entry,kind:'build_sheet'}).event.job,'same_version');
