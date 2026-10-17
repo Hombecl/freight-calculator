@@ -41,8 +41,7 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 // Observe actual GPU submissions in CI without adding diagnostic UI to the app.
 if (!IS_LIVE) await ctx.addInitScript(() => {
   Object.defineProperty(window, 'THREE', { configurable: true, set(three) {
-    const Renderer = three.WebGLRenderer;
-    three.WebGLRenderer = class extends Renderer {
+    const observedRenderer = Renderer => class extends Renderer {
       constructor(...args) {
         super(...args);
         const render = this.render.bind(this);
@@ -53,6 +52,11 @@ if (!IS_LIVE) await ctx.addInitScript(() => {
         };
       }
     };
+    // The CDN UMD script assigns an empty exports object before filling it.
+    if (three.WebGLRenderer) three.WebGLRenderer = observedRenderer(three.WebGLRenderer);
+    else Object.defineProperty(three, 'WebGLRenderer', { configurable: true, set(Renderer) {
+      Object.defineProperty(three, 'WebGLRenderer', { configurable: true, writable: true, value: observedRenderer(Renderer) });
+    } });
     Object.defineProperty(window, 'THREE', { configurable: true, writable: true, value: three });
   } });
 });
