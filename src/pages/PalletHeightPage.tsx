@@ -187,7 +187,6 @@ export default function PalletHeightPage() {
   const length = (n: number) => `${fmt(n / lf)} ${lu}`,
     weight = (n: number) => `${fmt(n / wf)} ${wu}`;
   useEffect(() => {
-    track("pageview");
     try {
       setOrders(loadDeviceOrders());
       setRules(loadRules());

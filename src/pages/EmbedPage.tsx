@@ -18,7 +18,6 @@ import { track } from '../lib/track';
  */
 export default function EmbedPage() {
   useEffect(() => {
-    track('pageview');
     track('embed_view', document.referrer ? new URL(document.referrer).hostname : 'direct');
 
     if (window.parent === window) return; // opened directly, nothing to resize

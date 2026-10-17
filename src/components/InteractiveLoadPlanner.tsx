@@ -456,12 +456,17 @@ export default function InteractiveLoadPlanner({
     dom.addEventListener('pointerup', onUp);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
+    let visible = true;
+    const visibility = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
+    visibility.observe(mount);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let raf = 0;
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      if (!visible || document.hidden) return;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
-      if (autoSpin && mode === 'idle') {
+      if (autoSpin && !reducedMotion.matches && mode === 'idle') {
         const idleFor = performance.now() - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022;
@@ -508,6 +513,7 @@ export default function InteractiveLoadPlanner({
 
     return () => {
       cancelAnimationFrame(raf);
+      visibility.disconnect();
       window.removeEventListener('resize', onResize);
       dom.removeEventListener('pointerdown', onDown);
       dom.removeEventListener('pointermove', onMove);

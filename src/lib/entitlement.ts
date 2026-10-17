@@ -9,6 +9,8 @@
  * touching the UI: replace read/canExport with a server check.
  */
 
+import { track } from './track';
+
 export type Plan = 'free' | 'pro';
 
 export interface Entitlement {
@@ -58,7 +60,12 @@ export function captureLead(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, proWaitlist: e.proWaitlist, source: opts.source ?? 'planner-export' }),
-    }).catch(() => { /* ignore */ });
+    }).then(async (response) => {
+      // Unlocking a local export is not proof that we received a lead.
+      if (!response.ok || (await response.json()).ok !== true) return;
+      const source = opts.source ?? 'planner-export';
+      track('generate_lead', ['planner-export', 'pro-waitlist', 'warehouse-beta'].includes(source) ? source : 'other');
+    }).catch(() => { /* no conversion on rejection, invalid JSON, or offline */ });
   }
   return e;
 }

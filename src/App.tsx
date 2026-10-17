@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import AnalyticsRoute from './components/AnalyticsRoute';
 
 // Route-level code-splitting: each page is its own chunk, so the homepage
 // doesn't pay for supabase/xlsx/guides it never uses.
@@ -54,6 +55,7 @@ const EmbedPage = lazy(() => import('./pages/EmbedPage'));
 export default function App() {
   return (
     <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-sm">Loading…</div>}>
+    <AnalyticsRoute />
     <Routes>
       {/* Chrome-less widget embed — outside Layout on purpose (no header/footer/canonical) */}
       <Route path="embed" element={<EmbedPage />} />

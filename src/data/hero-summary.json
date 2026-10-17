@@ -1,0 +1,17 @@
+{
+  "container": {
+    "placedCount": 280,
+    "volumeUtil": 85.00838165259195,
+    "totalWeight": 4140
+  },
+  "pallet": {
+    "placedCount": 61,
+    "volumeUtil": 84.06080292341268,
+    "totalWeight": 668
+  },
+  "carton": {
+    "placedCount": 80,
+    "volumeUtil": 84,
+    "totalWeight": 31.99999999999995
+  }
+}

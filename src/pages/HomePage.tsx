@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -6,51 +6,20 @@ import {
   FileText, ShieldCheck, Warehouse, Layers,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
-import { packWithConstraints, type PackItemSpec } from '../lib/binPacking';
+import heroSummary from '../data/hero-summary.json';
+const HeroInteractive = lazy(() => import('../components/HeroInteractive'));
+type HeroMode = keyof typeof heroSummary;
 import { track } from '../lib/track';
 
 /**
- * Homepage v4 — less text, more product.
+ * Homepage — preview first; interactive 3D loads on demand.
  *
- * IA: short hero (live 3D demo with motion affordance) → task-based navigation
+ * IA: short hero (packing preview with optional live 3D) → task-based navigation
  * to ALL tools ("What do you need to do?") → how-it-works told with real
  * product screenshots → the PDF deliverable → slim proof (comparison + engine
  * rules) → FAQ → CTA. Personas/feature-paragraph sections were cut: every
  * remaining block is either interactive, an image, or a table.
  */
-
-// Two hero scenes, one per level of the packing problem — the tabs above the
-// demo make it obvious WHICH problem is being shown. Both must look FULL.
-const CONTAINER_SCENE = {
-  container: { l: 589, w: 235, h: 239, maxWeight: 28200 }, // 20' GP
-  specs: [
-    { id: 'd1', label: 'Master carton', l: 58, w: 46, h: 47, weight: 18, qty: 160, color: 0xfbbf24 },
-    { id: 'd2', label: 'Half carton', l: 48, w: 39, h: 39, weight: 12, qty: 90, color: 0x60a5fa },
-    { id: 'd3', label: 'Fragile', l: 45, w: 38, h: 29, weight: 6, qty: 30, color: 0x34d399, maxStack: 0 },
-  ] as PackItemSpec[],
-};
-const CARTON_SCENE = {
-  container: { l: 60, w: 40, h: 40 }, // a single master carton
-  specs: [
-    { id: 'u1', label: 'Product unit', l: 14, w: 9, h: 8, weight: 0.4, qty: 100, color: 0xfbbf24 },
-    { id: 'u2', label: 'Accessory box', l: 12, w: 8, h: 6, weight: 0.2, qty: 40, color: 0x60a5fa },
-  ] as PackItemSpec[],
-};
-// ⛔ 2026-08-26 (POSITIONING.md v2 §2): the hero defaults to the CONTAINER scene
-// again, and it is the mixed-carton one on purpose. Pallet questions are 63% of
-// search demand and remain the acquisition WEDGE — but the differentiated thing,
-// the one nothing else free does, is mixed-load 3D planning with operator
-// checks. v1 reasoned from demand share straight to company position in one
-// step; the homepage should EARN visitors via pallet questions and then show
-// them the planner, not declare itself a pallet calculator.
-const PALLET_SCENE = {
-  container: { l: 122, w: 102, h: 152, maxWeight: 1134 },
-  specs: [
-    { id: 'p1', label: 'Case 40×30×25', l: 40, w: 30, h: 25, weight: 12, qty: 45, color: 0xfbbf24 },
-    { id: 'p2', label: 'Case 30×25×20', l: 30, w: 25, h: 20, weight: 8, qty: 18, color: 0x60a5fa },
-  ] as PackItemSpec[],
-};
 
 export default function HomePage() {
   const { lang } = useApp();
@@ -65,21 +34,9 @@ export default function HomePage() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }, [location.hash]);
 
-  type HeroMode = 'pallet' | 'container' | 'carton';
   const [heroMode, setHeroMode] = useState<HeroMode>('container');
-  const containerDemo = useMemo(() => packWithConstraints(CONTAINER_SCENE.container, CONTAINER_SCENE.specs), []);
-  const cartonDemo = useMemo(() => packWithConstraints(CARTON_SCENE.container, CARTON_SCENE.specs), []);
-  const palletDemo = useMemo(() => packWithConstraints(PALLET_SCENE.container, PALLET_SCENE.specs), []);
-  // CARTON_SCENE has no maxWeight (a single carton has no payload rating), so
-  // the record is typed on a widened scene shape rather than typeof CONTAINER_SCENE.
-  type HeroScene = { container: { l: number; w: number; h: number; maxWeight?: number }; specs: PackItemSpec[] };
-  const SCENES: Record<HeroMode, { scene: HeroScene; demo: typeof containerDemo }> = {
-    pallet: { scene: PALLET_SCENE, demo: palletDemo },
-    container: { scene: CONTAINER_SCENE, demo: containerDemo },
-    carton: { scene: CARTON_SCENE, demo: cartonDemo },
-  };
-  const demo = SCENES[heroMode].demo;
-  const scene = SCENES[heroMode].scene;
+  const [interactive, setInteractive] = useState(false);
+  const demo = heroSummary[heroMode];
 
   const switchHero = (mode: HeroMode) => {
     setHeroMode(mode);
@@ -218,32 +175,33 @@ export default function HomePage() {
               </div>
               <div className="flex flex-wrap gap-2 mt-8">
                 <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-emerald-300 rounded-full px-3 py-1">
-                  {demo.stats.volumeUtil.toFixed(1)}% {T('utilization', '利用率')}
+                  {demo.volumeUtil.toFixed(1)}% {T('utilization', '利用率')}
                 </span>
                 <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                  {demo.boxes.length} {heroMode === 'carton' ? T('units', '件') : T('cartons', '箱')}
+                  {demo.placedCount} {heroMode === 'carton' ? T('units', '件') : T('cartons', '箱')}
                 </span>
                 {heroMode === 'container' && (
                   <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                    {(demo.stats.totalWeight / 1000).toFixed(1)}t / 28.2t
+                    {(demo.totalWeight / 1000).toFixed(1)}t / 28.2t
                   </span>
                 )}
                 {heroMode === 'pallet' && (
                   <span className="text-xs font-mono bg-slate-800/80 border border-slate-700 text-slate-300 rounded-full px-3 py-1">
-                    {Math.round(demo.stats.totalWeight)} kg / 1,134 kg
+                    {Math.round(demo.totalWeight)} kg / 1,134 kg
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                {T('Live numbers — computed by the optimizer in your browser right now.', '實時數據 — 由優化引擎喺你瀏覽器即刻計出。')}
+                {T('Example plan generated by our packing engine. Open 3D to explore.', '由裝箱引擎產生嘅示範方案。開啟 3D 即可探索。')}
               </p>
             </div>
 
-            {/* the actual product, live + motion affordance + explicit mode tabs */}
+            {/* engine-generated preview + on-demand interaction + explicit mode tabs */}
             <div>
-              <div className="flex gap-1.5 mb-3">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 <button
                   onClick={() => switchHero('container')}
+                  aria-pressed={heroMode === 'container'}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'container' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
@@ -252,6 +210,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() => switchHero('pallet')}
+                  aria-pressed={heroMode === 'pallet'}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'pallet' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
@@ -260,6 +219,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() => switchHero('carton')}
+                  aria-pressed={heroMode === 'carton'}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     heroMode === 'carton' ? 'bg-blue-500 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
                   }`}
@@ -281,16 +241,21 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="p-3 [&_p]:text-slate-500 [&_.bg-slate-100]:bg-slate-800 [&_.bg-slate-100]:text-slate-300 [&_.text-slate-700]:text-slate-300 [&_.bg-slate-200]:bg-slate-700 [&_.bg-slate-200]:text-slate-200">
-                  <InteractiveLoadPlanner
-                    key={heroMode}
-                    container={scene.container}
-                    boxes={demo.boxes}
-                    grid={1}
-                    unitLabel="cm"
-                    showDoor={heroMode === 'container'}
-                    autoSpin
-                    hintOverlay
-                  />
+                  {interactive ? (
+                    <Suspense fallback={<div className="h-[360px] grid place-items-center text-slate-300" role="status">{T('Loading 3D…', '載入 3D…')}</div>}>
+                      <HeroInteractive mode={heroMode} />
+                    </Suspense>
+                  ) : (
+                    <button type="button" className="relative block w-full rounded-xl overflow-hidden group focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400"
+                      onClick={() => { setInteractive(true); track('hero_3d_open', heroMode); }}>
+                      <img src={`/hero/${heroMode}.svg`} width={720} height={440} fetchPriority="high"
+                        className="w-full h-[360px] object-contain bg-slate-900"
+                        alt={T('Example mixed load generated by the packing engine', '裝箱引擎產生嘅混裝示範')} />
+                      <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap inline-flex items-center gap-2 rounded-full bg-blue-500 group-hover:bg-blue-400 px-5 py-2.5 text-sm font-bold text-white shadow-lg">
+                        <Move3d size={18} /> {T('Explore in 3D', '開啟互動 3D')}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -489,6 +454,7 @@ export default function HomePage() {
             <div className="order-1 lg:order-2">
               <img
                 src="/screenshots/planner-ui.png"
+                width={1400} height={900}
                 alt={T('The DimPack3D planner: carton inputs on the left, packed 3D container on the right', 'DimPack3D 規劃器:左邊輸入紙箱,右邊 3D 裝櫃結果')}
                 loading="lazy"
                 className="rounded-2xl border border-slate-200 shadow-xl w-full"
@@ -500,6 +466,7 @@ export default function HomePage() {
             <div>
               <img
                 src="/screenshots/load-plan-pdf.png"
+                width={820} height={1160}
                 alt={T('The exported PDF load plan: 3D snapshot, utilization stats and a carton-by-carton packing list', '導出嘅 PDF 裝載方案:3D 截圖、利用率統計、逐箱裝箱單')}
                 loading="lazy"
                 className="rounded-2xl border border-slate-200 shadow-xl w-full max-w-md mx-auto"
@@ -537,7 +504,7 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-6">
             <div>
               <video
-                autoPlay muted loop playsInline
+                controls muted playsInline preload="none"
                 poster="/media/warehouse-checks-poster.jpg"
                 width={1280} height={720}
                 className="rounded-2xl border border-slate-200 shadow-xl w-full h-auto"
@@ -554,7 +521,7 @@ export default function HomePage() {
             </div>
             <div>
               <video
-                autoPlay muted loop playsInline
+                controls muted playsInline preload="none"
                 poster="/media/planner-drag-poster.jpg"
                 width={1280} height={720}
                 className="rounded-2xl border border-slate-200 shadow-xl w-full h-auto"

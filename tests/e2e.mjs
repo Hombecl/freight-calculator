@@ -76,6 +76,21 @@ await test('home: hero tabs switch pallet/container/carton scene', async () => {
   await page.getByText(/20' GP shipping container/i).waitFor(SWITCH);
 }, page);
 
+await test('home: 3D and video wait for user interaction', async () => {
+  if (await page.locator('script[data-three-cdn], canvas').count()) {
+    throw new Error('homepage loaded WebGL before an interaction');
+  }
+  const videos = await page.locator('video').evaluateAll(videos => videos.map(v => ({
+    autoplay: v.autoplay, preload: v.preload, controls: v.controls,
+  })));
+  if (videos.some(v => v.autoplay || v.preload !== 'none' || !v.controls)) {
+    throw new Error('homepage video downloads or plays automatically');
+  }
+  await page.getByRole('button', { name: /explore in 3d/i }).click();
+  await page.locator('canvas').waitFor({ timeout: 30_000 });
+  await page.getByText(/Boxes: 280/).waitFor();
+}, page);
+
 await test('home: the four pallet questions link the chain', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
