@@ -89,7 +89,7 @@ export const ORDER_ROUTES = [
   ...["de", "fr", "es", "pt"].map((l) => `/${l}/pallet-height-calculator`),
 ];
 ROUTES.push(...ORDER_ROUTES.slice(2));
-export const INDEXABLE_ROUTES = ROUTES.filter((r) => !r.endsWith("/embed"));
+export const INDEXABLE_ROUTES = ROUTES.filter((r) => !NOSITEMAP_ROUTES.includes(r.replace(/^\/zh(?=\/)/, "")));
 export const outputPath = (route, dir = "dist") =>
   join(dir, route === "/" ? "index.html" : `${route.slice(1)}.html`);
 

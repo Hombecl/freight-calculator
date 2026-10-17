@@ -22,3 +22,6 @@ assert.equal(subscriptionEvent({...event,meta:{...event.meta,event_name:'subscri
 assert.equal(subscriptionEvent({...event,data:{...event.data,attributes:{...event.data.attributes,test_mode:true}}},'1','2'),null);
 assert.throws(()=>subscriptionEvent({...event,data:{...event.data,attributes:{...event.data.attributes,updated_at:'invalid'}}},'1','2'));
 console.log('Workspace payload privacy, packing equivalence, cancellation expiry and webhook object/mode/product validation passed');
+
+const {INDEXABLE_ROUTES,ROUTES}=await import('../scripts/release-routes.mjs');
+for(const route of ['/workspace','/zh/workspace','/plans','/zh/plans','/embed','/zh/embed']){assert.ok(ROUTES.includes(route));assert.ok(!INDEXABLE_ROUTES.includes(route),'Private route leaked into sitemap');}
