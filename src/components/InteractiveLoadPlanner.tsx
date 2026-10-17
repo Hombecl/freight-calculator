@@ -221,7 +221,9 @@ export default function InteractiveLoadPlanner({
     try {
       // Snapshots explicitly render and read in the same task, so retaining the
       // previous frame is unnecessary and prevents GPU buffer optimizations.
-      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+      // The compact homepage preview uses outlined cartons without costly MSAA;
+      // the full editor and its exported images retain antialiasing.
+      renderer = new THREE.WebGLRenderer({ antialias: !batchBoxes, preserveDrawingBuffer: false });
     } catch {
       setWebglFailed(true);
       return;
