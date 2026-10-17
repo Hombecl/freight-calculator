@@ -15,6 +15,7 @@ interface GuideCard {
 }
 
 const guides: GuideCard[] = [
+  {slug:'excel-container-load-plan', title:'Excel Packing List to 3D Container Load Plan', titleZh:'Excel 貨單轉 3D 裝櫃圖：完整實例', description:'Download a two-SKU CSV example, verify 20 cartons and 280 kg, review imports and create a visual handoff.', descriptionZh:'下載兩種箱型的 CSV，核對 20 箱及 280 kg，檢查匯入並產生視覺裝載圖。', readTime:'5 min', tags:['Excel','Container','CSV'], featured:true},
   {slug:'mixed-pallet-height', title:'Mixed Carton Pallet Height: A Worked Order Example', titleZh:'混合紙箱棧板高度：完整訂單實例', description:'Compare one and three pallets for a 20-carton order, then download the example and try the 3D calculator.', descriptionZh:'用 20 箱訂單比較一板與三板，下載範例，再用互動擺位工具試算。', readTime:'4 min', tags:['Pallet','3D','Mixed cartons'], featured:true},
   {
     slug: 'fba-size-tiers-2025',

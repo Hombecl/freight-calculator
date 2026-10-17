@@ -9,6 +9,7 @@ import { Download, FileText, Check, Save } from 'lucide-react';
 import { IS_ZH } from '../lib/locale';
 import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
+import { PACKING_LIST_EXAMPLE } from '../lib/packingListExample';
 import { TEMPLATE_CSV } from '../lib/importCartons';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
@@ -81,6 +82,7 @@ const DEFAULT_SPECS: Spec[] = [
 
 /** Example scenarios reachable from the homepage via /planner?demo=... */
 const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
+  excel: { container: '20gp', specs: PACKING_LIST_EXAMPLE },
   retail: {
     container: '20gp',
     specs: DEFAULT_SPECS,
@@ -698,9 +700,10 @@ export default function PlannerPage() {
           <details><summary className="cursor-pointer font-semibold text-slate-900">{T('Which container dimensions should I use?', '應採用哪個貨櫃尺寸？')}</summary><p className="mt-2">{T('The 20ft GP, 40ft GP and 40ft HQ presets are planning assumptions. Confirm your actual equipment dimensions, door opening and permitted payload with the carrier before loading.', '20 呎 GP、40 呎 GP 及 40 呎 HQ 預設值是規劃假設。裝貨前請向承運人確認實際內尺寸、櫃門及允許載重。')}</p></details>
         </div>
         <nav aria-label={T('Related loading tools', '相關裝載工具')} className="mt-6 flex flex-wrap gap-4 text-sm font-semibold text-blue-700">
-          <Link to={IS_ZH ? '/zh/pallets-per-container' : '/pallets-per-container'}>{T('Pallets per container →', '每櫃棧板數 →')}</Link>
-          <Link to={IS_ZH ? '/zh/ti-hi-calculator' : '/ti-hi-calculator'}>{T('Cases per pallet: TI / HI →', '每板箱數：TI／HI →')}</Link>
-          <Link to={IS_ZH ? '/zh/container' : '/container'}>{T('Quick container capacity check →', '快速核對貨櫃容量 →')}</Link>
+          <Link to="/guides/excel-container-load-plan">{T('Excel import: worked example →', 'Excel 匯入：完整實例 →')}</Link>
+          <Link to="/pallets-per-container">{T('Pallets per container →', '每櫃棧板數 →')}</Link>
+          <Link to="/ti-hi-calculator">{T('Cases per pallet: TI / HI →', '每板箱數：TI／HI →')}</Link>
+          <Link to="/container">{T('Quick container capacity check →', '快速核對貨櫃容量 →')}</Link>
         </nav>
       </section>
 

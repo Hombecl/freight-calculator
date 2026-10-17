@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { PACKING_LIST_EXAMPLE } from '../src/lib/packingListExample.ts';
+import { parseDelimited, detectColumns, rowsToSpecs } from '../src/lib/importCartons.ts';
+import { packWithConstraints } from '../src/lib/binPacking.ts';
+const rows=parseDelimited(readFileSync(new URL('../public/examples/container-packing-list.csv',import.meta.url),'utf8'));
+const imported=rowsToSpecs(rows,{...detectColumns(rows),lengthUnit:'cm',weightUnit:'kg'});
+assert.equal(imported.acceptedQty,20);assert.equal(imported.specs.length,2);assert.equal(imported.warnings.length,0);
+for(let i=0;i<2;i++)for(const key of ['label','l','w','h','weight','qty','keepUpright'])assert.equal(imported.specs[i][key],PACKING_LIST_EXAMPLE[i][key],key);
+const packed=packWithConstraints({l:589,w:235,h:239,maxWeight:28200},imported.specs);
+assert.equal(packed.boxes.length,20);assert.equal(packed.stats.totalWeight,280);
+assert.ok(Math.abs(imported.specs.reduce((n,s)=>n+s.qty*s.l*s.w*s.h/1e6,0)-1.32)<1e-9);
+console.log('Search workflow: downloadable example matches live preset; 20 cartons, 280 kg, 1.32 CBM verified');

@@ -82,7 +82,7 @@ export default function TiHiCalcPage() {
     </div>
     <div className="max-w-4xl mx-auto px-4 py-10 print:hidden">
       <Helmet>
-        <title>{T('TI HI Calculator — cases per layer (TI) × layers high (HI), free | DimPack3D', 'TI HI 計算機 — 每層箱數 (TI) × 層數 (HI) | DimPack3D')}</title>
+        <title>{T('TI HI Calculator: Cases per Pallet & Layer Layout | DimPack3D', 'TI HI 計算機 — 每層箱數 (TI) × 層數 (HI) | DimPack3D')}</title>
         <meta name="description" content={T(
           'Free TI HI calculator. Enter case dimensions and pallet type to get TI (cases per layer), HI (layers high), cases per pallet and load height — EUR, US GMA 48×40 and industrial pallets, with a custom max-height option for retailer compliance. No signup.',
           '免費 TI HI 計算機：計算棧板每層箱數（TI）、堆疊層數（HI）、每板總箱數與貨物高度。支援歐規、美規 48×40 英吋及工業棧板，可自訂高度上限，免註冊。')} />
@@ -158,9 +158,9 @@ export default function TiHiCalcPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">{T(`Max load height, ${unit} (blank = pallet default)`, `最大堆疊高度 ${unit}(留空 = 卡板預設)`)}</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">{T(`Cargo stack height, ${unit} (excludes pallet; blank = default)`, `貨物堆疊高度 ${unit}（不含棧板；留空用預設）`)}</label>
             <input type="number" min={0} value={maxH || ''} placeholder={String(Math.round(pallet.maxH / (unit === 'in' ? CM_PER_IN : 1)))} onChange={(e) => setMaxH(Math.max(0, Number(e.target.value) || 0))} className={inputCls} />
-            <p className="text-[11px] text-slate-400 mt-1">{T('Retail routing guides often cap loaded height — enter yours.', '零售商 routing guide 通常有高度上限 — 有就填。')}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{T('If your limit includes the pallet, subtract the pallet base height first. This calculation does not check weight.', '若上限包括棧板，請先扣除棧板底座高度。此計算未檢查重量。')}</p>
           </div>
           <PresetChips
             title={T('Try a common case:', '試下常見箱:')}
@@ -217,19 +217,24 @@ export default function TiHiCalcPage() {
 
           <div className="mt-4 rounded-2xl bg-blue-50 border border-blue-100 p-5">
             <p className="text-sm text-slate-700 font-semibold mb-1.5">
-              {T('TI-HI is the spec. The build is where pallets fail.', 'TI-HI 係規格,砌板先係出事位。')}
+              {T('Next: check weight and order quantity', '下一步：核對重量及訂單數量')}
             </p>
             <p className="text-sm text-slate-600 mb-3">
-              {T('Build the pallet in 3D — see the layer pattern, catch overhang, and check weight against the pallet rating.',
-                 '用 3D 砌出個卡板 — 睇每層擺法、捉懸出、對照卡板載重上限。')}
+              {T('Carry your case dimensions and pallet type into the pallet calculator, then enter case weight and order quantity. That calculator uses the selected pallet’s preset height; recheck any custom height limit.',
+                 '將箱尺寸及棧板類型帶入棧板計算器，再填每箱重量及訂單數量。該工具使用棧板預設高度；請另行核對自訂高度限制。')}
             </p>
-            <Link to="/planner" onClick={() => track('tool_tihi_cta')} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">
-              {T('Build it in the load planner', '入裝載規劃器砌')} <ArrowRight size={15} />
+            <Link to={`/pallet-calculator?${new URLSearchParams({u:unit,l:String(cl),w:String(cw),h:String(ch),p:palletKey,wt:'0'})}`} onClick={() => track('tool_tihi_cta', 'weight_check')} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">
+              {T('Check weight and pallets needed', '核對重量及所需棧板數')} <ArrowRight size={15} />
             </Link>
           </div>
         </div>
       </div>
 
+      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="text-lg font-bold">{T('Worked example: 40 cases on a EUR pallet', '實例：歐規棧板放 40 箱')}</h2>
+        <p className="mt-2 text-sm">{T('For upright 40 × 30 × 30 cm cases on a 120 × 80 cm deck: rotate the footprint to fit 4 × 2 = 8 cases per layer. With 150 cm of cargo height, HI = floor(150 / 30) = 5, giving 8 × 5 = 40 cases. Add the actual pallet base height to get total loaded height. Weight, compression and stability still need checking.', '40 × 30 × 30 cm 紙箱直立放在 120 × 80 cm 板面：旋轉箱底方向可放 4 × 2 = 8 箱一層。貨物可用高度 150 cm，HI = floor(150 / 30) = 5，共 8 × 5 = 40 箱。加上實際棧板底座高度才是總高度；仍需核對重量、抗壓及穩定性。')}</p>
+        <Link to="/guides/excel-container-load-plan" className="mt-3 inline-block text-blue-700 underline">{T('Have several carton types? Start with an Excel packing list →', '有多種箱型？由 Excel 貨單開始 →')}</Link>
+      </section>
       <section className="mt-12 max-w-3xl">
         <Accordion title={<h2 className="text-lg font-black text-slate-900">{T('What TI and HI mean', 'TI 同 HI 係咩')}</h2>}>
         <ol className="space-y-4">

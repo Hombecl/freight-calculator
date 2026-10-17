@@ -1188,6 +1188,35 @@ if (IS_LIVE) {
   }, page);
 }
 
+const searchPage = await ctx.newPage();
+await test('search workflow: downloadable guide example opens the matching 20-carton plan', async () => {
+  await searchPage.goto(`${BASE}/guides/excel-container-load-plan`);
+  await searchPage.getByRole('heading', {name:'Excel Packing List to 3D Container Load Plan',exact:true}).waitFor();
+  const sample=await ctx.request.get(`${BASE}/examples/container-packing-list.csv`);
+  if(!sample.ok()||!(await sample.text()).includes('Master carton,60,40,40,18,10,yes'))throw Error('Missing downloadable example');
+  await searchPage.getByRole('link',{name:'Open this example in 3D',exact:true}).click();
+  await searchPage.getByText('20 / 20',{exact:true}).waitFor();
+  if(await searchPage.getByLabel('This is my own job, not a sample').isChecked())throw Error('Example counted as own job');
+}, searchPage);
+await test('search workflow: Traditional Chinese planner links use exactly one locale prefix', async () => {
+  await searchPage.goto(`${BASE}/zh/planner`);
+  const nav=searchPage.getByRole('navigation',{name:'相關裝載工具'});
+  await nav.waitFor();
+  const links=await nav.locator('a').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+  if(links.length!==4||links.some(h=>!h.startsWith('/zh/')||h.includes('/zh/zh/')))throw Error('Broken locale links');
+  await nav.getByRole('link',{name:'Excel 匯入：完整實例 →',exact:true}).click();
+  await searchPage.getByRole('heading',{name:'Excel 貨單轉 3D 裝櫃圖：完整實例',exact:true}).waitFor();
+}, searchPage);
+await test('search workflow: TI/HI carries dimensions and requests weight verification', async () => {
+  await searchPage.goto(`${BASE}/ti-hi-calculator?u=cm&l=50&w=35&h=25&p=ind&mh=150`);
+  await searchPage.getByRole('link',{name:'Check weight and pallets needed',exact:true}).click();
+  await searchPage.getByLabel('Length cm',{exact:true}).waitFor();
+  if(await searchPage.getByLabel('Length cm',{exact:true}).inputValue()!=='50')throw Error('Case length lost');
+  if(await searchPage.getByLabel('Height cm',{exact:true}).inputValue()!=='25')throw Error('Case height lost');
+  if(new URL(searchPage.url()).searchParams.get('wt')!=='0')throw Error('Invented weight');
+}, searchPage);
+await searchPage.close();
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));
