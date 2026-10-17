@@ -9,7 +9,8 @@
 // Then set this function's URL as the webhook target in Lemon Squeezy, and make
 // sure the checkout passes checkout[custom][user_id].
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {subscriptionEvent} from '../_shared/billingEvent.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 const enc = new TextEncoder();
 
@@ -26,7 +27,7 @@ async function verify(secret: string, body: string, signature: string): Promise<
   return diff === 0;
 }
 
-const ACTIVE = new Set(['active', 'on_trial', 'past_due', 'paused']);
+
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
@@ -42,34 +43,19 @@ Deno.serve(async (req) => {
   let payload: any;
   try { payload = JSON.parse(raw); } catch { return new Response('bad json', { status: 400 }); }
 
-  const eventName: string = payload?.meta?.event_name ?? '';
-  const custom = payload?.meta?.custom_data ?? {};
-  const attrs = payload?.data?.attributes ?? {};
-  const userId: string | undefined = custom.user_id;
-  if (!userId) return new Response('no user_id', { status: 202 }); // ack, nothing to map
-
-  // derive status
-  let status = attrs.status ?? 'none';
-  if (eventName === 'subscription_expired' || eventName === 'subscription_cancelled') {
-    // LS still reports status; keep as reported. cancelled stays active until period end.
-  }
+  const store=Deno.env.get('LS_STORE_ID'), variant=Deno.env.get('LS_VARIANT_ID');
+  if(!store||!variant)return new Response('Billing product is not configured',{status:503});
+  let row;
+  try{row=subscriptionEvent(payload,store,variant);}catch{return new Response('Invalid subscription event',{status:400});}
+  if(!row)return new Response('ignored',{status:202});
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const { error } = await supabase.from('dp_subscriptions').upsert({
-    user_id: userId,
-    email: attrs.user_email ?? null,
-    status: ACTIVE.has(status) ? status : status,
-    plan: attrs.product_name ?? attrs.variant_name ?? null,
-    ls_subscription_id: String(payload?.data?.id ?? ''),
-    ls_customer_id: String(attrs.customer_id ?? ''),
-    current_period_end: attrs.renews_at ?? attrs.ends_at ?? null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  const { error } = await supabase.rpc('dp_apply_subscription_event', {event:row});
 
-  if (error) return new Response(`db error: ${error.message}`, { status: 500 });
+  if (error) return new Response('Subscription update failed', { status: 500 });
   return new Response('ok', { status: 200 });
 });

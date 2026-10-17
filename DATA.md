@@ -16,6 +16,8 @@ another paid project). It shares the **commerce-ops SG** project:
 
 | Table | Purpose | Writes |
 |---|---|---|
+| `dp_workspaces`, `dp_workspace_members`, `dp_workspace_invites` | Team ownership, editor/viewer access and hashed single-use invitations | Authenticated owner / acceptance RPC |
+| `dp_workspace_records`, `dp_workspace_revisions` | Shared cargo, receiver requirements, immutable order inputs | Team owner/editor; RLS and serialized version checks |
 | `dp_plans` | Saved load plans (workspace/Tier 1) | Signed-in user (RLS: own rows only) |
 | `dp_subscriptions` | Pro billing status | Billing webhook only (service role); users read own row |
 

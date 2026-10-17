@@ -27,3 +27,5 @@ npm-debug.log*
 
 # wrangler pages dev local state (KV shim, build cache)
 .wrangler/
+
+supabase/.temp/

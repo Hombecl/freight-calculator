@@ -1,3 +1,4 @@
+import WorkspaceSave from '../components/WorkspaceSave';
 import { ruleText, profileText, unverifiedText } from '../lib/auditPageLocale';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
@@ -63,5 +64,6 @@ export default function ReceiverProfilesPage() {
       <Link className={btnCls} to="/box-catalog">{T('Box catalog', '紙箱目錄')} →</Link>
       <Link className={btnCls} to="/build-sheet">{T('Crew build sheet', '倉務砌板單')} →</Link>
     </nav>
+    {draft&&<WorkspaceSave kind="receiver" value={(()=>{try{return {...draft,rules:JSON.parse(rules)};}catch{return null;}})()} />}
   </main>;
 }

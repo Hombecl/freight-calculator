@@ -34,7 +34,7 @@ export function useAuth(): AuthState {
   useEffect(() => {
     if (!supabase) return;
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => { load(); });
+    const { data: sub } = supabase.auth.onAuthStateChange(() => { queueMicrotask(() => { void load(); }); });
     return () => sub.subscription.unsubscribe();
   }, [load]);
 
