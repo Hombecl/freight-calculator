@@ -22,6 +22,7 @@ const BASE_ROUTES = [
   "/terms",
   "/guides",
   "/guides/mixed-pallet-height",
+  "/guides/excel-container-load-plan",
   "/reality-checks",
   "/warehouse-space-calculator",
   "/forklift-aisle-width-calculator",

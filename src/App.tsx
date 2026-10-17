@@ -41,6 +41,7 @@ const PalletsPerContainerPage = lazy(() => import('./pages/PalletsPerContainerPa
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const MixedPalletHeightGuide = lazy(() => import("./pages/guides/MixedPalletHeightGuide"));
+const ExcelLoadPlanGuide = lazy(() => import('./pages/guides/ExcelLoadPlanGuide'));
 const GuidesPage = lazy(() => import('./pages/guides/GuidesPage'));
 const FbaSizeTiersGuide = lazy(() => import('./pages/guides/FbaSizeTiersGuide'));
 const CbmCalculatorGuide = lazy(() => import('./pages/guides/CbmCalculatorGuide'));
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="terms" element={<TermsPage />} />
         <Route path="guides/mixed-pallet-height" element={<MixedPalletHeightGuide />} />
         <Route path="guides" element={<GuidesPage />} />
+        <Route path="guides/excel-container-load-plan" element={<ExcelLoadPlanGuide />} />
         <Route path="guides/fba-size-tiers-2025" element={<FbaSizeTiersGuide />} />
         <Route path="guides/cbm-calculator-shipping" element={<CbmCalculatorGuide />} />
         <Route path="guides/container-loading-optimization" element={<ContainerLoadingGuide />} />

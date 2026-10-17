@@ -9,6 +9,8 @@ import { Download, FileText, Check, Save } from 'lucide-react';
 import { IS_ZH } from '../lib/locale';
 import { savePlan, getPlan } from '../lib/plans';
 import ImportModal from '../components/ImportModal';
+import { PACKING_LIST_EXAMPLE } from '../lib/packingListExample';
+import { TEMPLATE_CSV } from '../lib/importCartons';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, loadVoids, type AxleConfig } from '../lib/realism';
@@ -80,6 +82,7 @@ const DEFAULT_SPECS: Spec[] = [
 
 /** Example scenarios reachable from the homepage via /planner?demo=... */
 const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
+  excel: { container: '20gp', specs: PACKING_LIST_EXAMPLE },
   retail: {
     container: '20gp',
     specs: DEFAULT_SPECS,
@@ -355,16 +358,16 @@ export default function PlannerPage() {
             zero. This page now targets its own cluster: "3d load planner",
             "container loading simulator", "load plan". Do not re-add
             "packing simulator" here; that phrase belongs to the homepage. */}
-        <title>{T("3D Load Planner — container loading simulator, drag & stack, free | DimPack3D", "3D 裝載規劃器 — 貨櫃裝載模擬、拖拉堆疊,免費 | DimPack3D")}</title>
+        <title>{T("Free 3D Container Loading Calculator & Load Planner | DimPack3D", "免費 3D 裝櫃計算器 — 貨單匯入與裝載規劃 | DimPack3D")}</title>
         <meta name="description" content={T(
-          "Interactive 3D load planner for containers, trucks and pallets. Auto-arrange with real bin-packing (weight & stack limits), then drag, rotate and stack cartons by hand. Free, no signup.",
-          "貨櫃、貨車同卡板嘅互動 3D 裝載規劃器。用真實裝箱演算法自動排位(計重量同堆疊上限),再手動拖動、旋轉、堆疊紙箱。免費,唔使註冊。")} />
+          "Plan 20ft and 40ft container loads in 3D. Import Excel/CSV, check weight and stacking limits, and export a PDF plan. No signup to plan; free export asks for email.",
+          "免費規劃 20 呎、40 呎貨櫃 3D 裝載。匯入 Excel／CSV 貨單，檢查重量與堆疊限制，匯出 PDF 裝載圖。規劃毋須註冊；免費匯出需填電郵。")} />
       </Helmet>
 
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-800">{T("Interactive 3D Load Planner", "互動 3D 裝載規劃器")}</h1>
+        <h1 className="text-2xl font-bold text-slate-800">{T("Free 3D Container Loading Calculator", "免費 3D 裝櫃計算器")}</h1>
         <p className="text-slate-500 text-sm mt-1">
-          {T("Optimise a container with real bin-packing (weight & stack limits), then fine-tune by hand.", "按重量與堆疊限制自動排列紙箱，再手動微調擺位。")}
+          {T("Turn your carton list into a container load plan. Choose a 20ft, 40ft or high-cube container, check what fits, then adjust the 3D layout by hand.", "將紙箱貨單變成裝櫃計劃。選擇 20 呎、40 呎或高櫃，檢查可裝數量，再手動微調 3D 擺位。")}
         </p>
       </div>
 
@@ -679,6 +682,30 @@ export default function PlannerPage() {
           />
         </div>
       </div>
+
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" aria-labelledby="load-plan-guide">
+        <h2 id="load-plan-guide" className="text-xl font-bold text-slate-900">{T('From Excel packing list to a 3D load plan', '由 Excel 貨單到 3D 裝櫃計劃')}</h2>
+        <p className="mt-2 text-sm text-slate-600">{T('For exporters, freight forwarders and warehouse teams checking a shipment before loading. Planning needs no account; free PDF and CSV export asks for an email. Product updates are optional.', '適合出口商、貨運代理及倉庫團隊裝貨前核對。規劃毋須帳戶；免費 PDF 與 CSV 匯出需填電郵，產品消息可自行選擇。')}</p>
+        <ol className="mt-5 grid gap-5 sm:grid-cols-3 text-sm text-slate-600">
+          <li><h3 className="font-semibold text-slate-900">{T('1. Review your cargo', '1. 核對貨單')}</h3><p className="mt-1">{T('Import Excel or CSV, choose the worksheet and map your columns. Check units, accepted quantities and excluded rows before calculating. The CSV template uses cm and kg.', '匯入 Excel 或 CSV，選擇工作表及對應欄位。計算前核對單位、接受數量及排除行。CSV 範本使用 cm 及 kg。')}</p></li>
+          <li><h3 className="font-semibold text-slate-900">{T('2. Calculate and inspect', '2. 計算並檢查')}</h3><p className="mt-1">{T('Choose the container and set fragile, upright and stacking rules. Optimise, rotate the view and check unplaced cartons, payload and balance. A packing estimate is not a certified loading or securing plan.', '選擇貨櫃並設定易碎、直立及堆疊規則。最佳化後旋轉視圖，檢查未裝入箱數、載重及平衡。裝載估算並非經認證的裝貨或固定方案。')}</p></li>
+          <li><h3 className="font-semibold text-slate-900">{T('3. Hand off the result', '3. 交付結果')}</h3><p className="mt-1">{T('Export a PDF plan or CSV placement list, or share a snapshot for review. For pallet shipments, send the same carton list to pallet quoting using the action above.', '匯出 PDF 裝載圖或 CSV 位置表，亦可分享快照供核對。棧板貨物可用上方按鈕將同一貨單帶入棧板報價流程。')}</p></li>
+        </ol>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => { setImportOpen(true); track('planner_guide_action', 'import'); }}>{T('Import my packing list', '匯入我的貨單')}</button>
+          <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => { downloadText('dimpack3d-template.csv', TEMPLATE_CSV); track('planner_guide_action', 'template'); }}>{T('Download CSV template (cm / kg)', '下載 CSV 範本（cm／kg）')}</button>
+        </div>
+        <div className="mt-6 space-y-3 text-sm text-slate-600">
+          <details><summary className="cursor-pointer font-semibold text-slate-900">{T('Why do some cartons remain unplaced?', '為何有部分紙箱未能裝入？')}</summary><p className="mt-2">{T('Available volume alone does not determine fit. Carton dimensions, door clearance, orientation, payload and stacking rules can limit the result. Review the highlighted constraints and recalculate after edits; the heuristic does not guarantee the mathematical optimum.', '體積足夠不代表一定放得下。箱尺寸、櫃門淨空、方向、載重及堆疊規則都會影響結果。核對提示並在修改後重新計算；啟發式演算法不保證數學上的最佳解。')}</p></details>
+          <details><summary className="cursor-pointer font-semibold text-slate-900">{T('Which container dimensions should I use?', '應採用哪個貨櫃尺寸？')}</summary><p className="mt-2">{T('The 20ft GP, 40ft GP and 40ft HQ presets are planning assumptions. Confirm your actual equipment dimensions, door opening and permitted payload with the carrier before loading.', '20 呎 GP、40 呎 GP 及 40 呎 HQ 預設值是規劃假設。裝貨前請向承運人確認實際內尺寸、櫃門及允許載重。')}</p></details>
+        </div>
+        <nav aria-label={T('Related loading tools', '相關裝載工具')} className="mt-6 flex flex-wrap gap-4 text-sm font-semibold text-blue-700">
+          <Link to="/guides/excel-container-load-plan">{T('Excel import: worked example →', 'Excel 匯入：完整實例 →')}</Link>
+          <Link to="/pallets-per-container">{T('Pallets per container →', '每櫃棧板數 →')}</Link>
+          <Link to="/ti-hi-calculator">{T('Cases per pallet: TI / HI →', '每板箱數：TI／HI →')}</Link>
+          <Link to="/container">{T('Quick container capacity check →', '快速核對貨櫃容量 →')}</Link>
+        </nav>
+      </section>
 
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={onImport} />
 

@@ -113,9 +113,9 @@ export default function PalletCalcPage() {
             packer": perLayer() below is block arithmetic, and palletBoxes()
             deliberately bypasses the 3D engine. Do not reintroduce engine
             language here. */}
-        <title>{T('Pallet Calculator — cartons per pallet, with the layer pattern drawn | DimPack3D', '棧板計算機（卡板）— 每板箱數與堆疊排列 | DimPack3D')}</title>
+        <title>{T('Pallet Calculator: How Many Boxes Fit on a Pallet? | DimPack3D', '棧板計算機（卡板）— 每板箱數與堆疊排列 | DimPack3D')}</title>
         <meta name="description" content={T(
-          'Free pallet calculator. Enter carton size and weight to get cartons per layer, layers to max load height, cartons per pallet (capped by the pallet weight rating), footprint utilisation, and pallets needed for your order — EUR, US GMA and industrial pallets. No signup.',
+          'See how many boxes fit on a pallet. Enter dimensions, weight and order quantity for a layer diagram, cases per pallet and pallets needed. Free, no signup.',
           '免費棧板計算機：輸入紙箱尺寸與重量，計算每層箱數、堆疊層數、每板箱數、板面利用率及訂單所需棧板數。支援歐規、美規 GMA 和工業棧板，提供排列圖，免註冊。')} />
         <script type="application/ld+json">
           {JSON.stringify({
@@ -406,6 +406,14 @@ export default function PalletCalcPage() {
           <Link to="/warehouse-space-calculator" className="text-blue-600 hover:underline">{T('Warehouse space calculator', '倉庫面積計算器')}</Link>
           {' · '}
           <Link to="/guides/pallet-calculator" className="text-blue-600 hover:underline">{T('Pallet calculator guide', '卡板計算指南')}</Link>
+        </div>
+      </section>
+      <section className="mt-8 rounded-xl border border-slate-200 p-5">
+        <h2 className="text-lg font-bold text-slate-900">{T('Turn the count into a shipment plan', '將箱數變成出貨計劃')}</h2>
+        <p className="mt-2 text-sm text-slate-600">{T('For identical cartons, use the layer diagram and print the specification above. Enter your full order quantity to see the pallet count, then continue to container capacity or storage space below. For mixed carton sizes or receiver-specific height limits, use the mixed-order workflow and review its assumptions before creating crew instructions.', '同尺寸紙箱可使用上方層圖及列印規格。填寫整張訂單數量以計算棧板數，再用下方入口查看裝櫃容量或倉存空間。混合箱型或指定收貨高度限制，請使用混合訂單流程，核對假設後再產生倉庫指示。')}</p>
+        <div className="mt-3 flex flex-wrap gap-4 text-blue-700 text-sm font-semibold">
+          <Link to="/pallet-height-calculator" onClick={()=>track('pallet_next_task','mixed_order')}>{T('Mixed cartons and receiver limits →', '混合箱型及收貨限制 →')}</Link>
+          <Link to="/guides/excel-container-load-plan">{T('Import an Excel cargo list →', '匯入 Excel 貨單 →')}</Link>
         </div>
       </section>
       <SavePalletPlan
