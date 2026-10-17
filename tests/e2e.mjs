@@ -115,6 +115,7 @@ await test('home: visible 3D starts automatically and rotation can be paused', a
 await test('home: batched cartons stay editable and paused scenes stop redrawing', async () => {
   const canvas = page.locator('canvas').first();
   if (!IS_LIVE) {
+    await page.waitForFunction(() => Number(document.querySelector('canvas')?.dataset.drawCalls) > 0);
     const calls = Number(await canvas.getAttribute('data-draw-calls'));
     if (!calls || calls > 20) throw new Error(`280-carton preview submitted ${calls} draw calls`);
   }
