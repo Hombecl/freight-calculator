@@ -28,7 +28,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * in via Supabase magic link, then opens the Lemon Squeezy checkout. Pro status
  * itself is verified server-side (see billing.ts / the webhook), not here.
  */
-export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice = '$12/mo' }: Props) {
+export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice = 'See checkout pricing' }: Props) {
   const [email, setEmail] = useState('');
   const [wantPro, setWantPro] = useState(false);
   const [purpose, setPurpose] = useState<LeadPurpose | undefined>();
@@ -117,8 +117,8 @@ export default function PaywallModal({ open, onClose, onSubmit, auth, proPrice =
           <div>
             <p className="font-semibold text-indigo-700">Pro {backend ? <span className="text-slate-400 font-normal">{proPrice}</span> : <span className="text-slate-400 font-normal">(soon)</span>}</p>
             <ul className="mt-1 space-y-1 text-slate-500">
-              <li className="flex gap-1"><Check size={13} className="text-indigo-500 mt-0.5" /> Saved projects &amp; teams</li>
-              <li className="flex gap-1"><Check size={13} className="text-indigo-500 mt-0.5" /> Branding-free PDF + API</li>
+              <li className="flex gap-1"><Check size={13} className="text-indigo-500 mt-0.5" /> Paid plan details at checkout</li>
+              <li className="flex gap-1"><Check size={13} className="text-indigo-500 mt-0.5" /> Billing activation in progress</li>
             </ul>
             {backend && (
               <div className="mt-2">

@@ -1,3 +1,5 @@
+export {isActive,type Subscription} from './subscriptionState';
+import type {Subscription} from './subscriptionState';
 import { supabase } from './supabaseClient';
 
 /**
@@ -18,15 +20,7 @@ import { supabase } from './supabaseClient';
  */
 
 const LS_CHECKOUT = (import.meta as any).env?.VITE_LS_CHECKOUT_URL as string | undefined;
-export const checkoutEnabled = Boolean(LS_CHECKOUT);
-
-export interface Subscription {
-  status: string; // active | on_trial | past_due | cancelled | expired | ...
-  plan: string | null;
-  current_period_end: string | null;
-}
-
-const ACTIVE = new Set(['active', 'on_trial', 'past_due']);
+export const checkoutEnabled = Boolean(LS_CHECKOUT) && (import.meta as any).env?.VITE_BILLING_VERIFIED === 'true';
 
 /** Read the signed-in user's subscription. Null if not signed in / none. */
 export async function fetchSubscription(): Promise<Subscription | null> {
@@ -43,13 +37,9 @@ export async function fetchSubscription(): Promise<Subscription | null> {
   return data as Subscription;
 }
 
-export function isActive(sub: Subscription | null): boolean {
-  return !!sub && ACTIVE.has(sub.status);
-}
-
 /** Build the Lemon Squeezy checkout URL with the account id attached. */
 export function checkoutUrl(userId: string, email: string): string | null {
-  if (!LS_CHECKOUT) return null;
+  if (!checkoutEnabled || !LS_CHECKOUT) return null;
   const u = new URL(LS_CHECKOUT);
   // Lemon Squeezy passes checkout[custom][*] through to the webhook
   u.searchParams.set('checkout[custom][user_id]', userId);

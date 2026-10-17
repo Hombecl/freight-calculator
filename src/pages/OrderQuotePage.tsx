@@ -1,3 +1,4 @@
+import WorkspaceSave from '../components/WorkspaceSave';
 import ImportModal from '../components/ImportModal';
 import {CARGO_TRANSFER,palletTransfer,readCargoTransfer} from '../lib/workflowTransfer';
 import PilotInterest from '../components/PilotInterest';
@@ -72,6 +73,7 @@ export default function OrderQuotePage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
   const [profiles, setProfiles] = useState(() => { try { return deviceProfiles(localStorage.getItem('dp_receiver_profiles')); } catch { return loadProfiles(); } });
   const selectedRestore=useRef<string|null>(null);
+  const workspaceRestore=useRef(true);
   const [ownJob,setOwnJob]=useState(false);
   const [recent,setRecent]=useState<{key:string;name:string;revision:string}[]>([]);
 
@@ -102,6 +104,7 @@ export default function OrderQuotePage() {
 
   // Restore the latest typed order, but do not replace an explicitly selected revision.
   useEffect(() => {
+    if(workspaceRestore.current){workspaceRestore.current=false;try{const carried=JSON.parse(sessionStorage.getItem(SHEET_STORAGE)||'{}');if(carried.workspaceRestore){parseQuoteRequest(carried.request);setReq(carried.request);setOwnJob(carried.ownJob===true);if(carried.profileSnapshot){const p=parseProfile(carried.profileSnapshot);setProfiles(old=>[...old.filter(x=>x.id!==p.id),p]);setProfileId(p.id);}sessionStorage.setItem(SHEET_STORAGE,JSON.stringify({...carried,workspaceRestore:false}));return;}}catch{}}
     if(selectedRestore.current===req.orderId){selectedRestore.current=null;return;}
     try {
       const raw = localStorage.getItem(storageKey(req.orderId));
@@ -295,6 +298,8 @@ export default function OrderQuotePage() {
       <select aria-label={T('Open saved order','開啟已存訂單')} className={inputCls} value="" onChange={e=>{try{const saved=JSON.parse(localStorage.getItem(e.target.value)??'{}');parseQuoteRequest(saved.request);selectedRestore.current=req.orderId!==saved.request.orderId?saved.request.orderId:null;if(saved.profileSnapshot){const profile=parseProfile(saved.profileSnapshot);setProfiles(old=>[...old.filter(p=>p.id!==profile.id),profile]);setProfileId(profile.id);}else setProfileId('');setProfileChecks(saved.profileChecks??[]);setReq(saved.request);setQuote(saved);setQuotedRequest(structuredClone(saved.request));setOwnJob(saved.ownJob===true);setStaleLatch(false);track('workflow_reuse','saved_order');}catch{setError(T('Saved order could not be opened.','未能開啟已存訂單。'));}}}><option value="">{T('Open a previous order…','開啟之前嘅訂單…')}</option>{recent.map(r=><option key={r.key} value={r.key}>{r.name} · {r.revision.slice(0,8)}</option>)}</select></div>
       <p className="text-xs text-slate-500">{T('A next order gets a new ID and keeps carton/pallet settings; actuals start empty. Saved orders stay on this browser. Share a snapshot to another device.','新訂單有新編號，保留箱型／卡板設定，實量由空白開始。訂單只存本機，可分享版本到另一部裝置。')}</p></section>
       {stale && <p role="status" data-testid="quote-stale" className="rounded-lg bg-amber-100 p-3">{T('Inputs changed — re-run to update', '輸入已更改 — 請重新計算')}</p>}
+      <WorkspaceSave kind="order" value={{request:req,profileSnapshot:selectedProfile}} ownJob={ownJob} />
+      <details><summary>{T('Save cargo list for reuse','保存貨品清單供重用')}</summary><WorkspaceSave kind="cargo" value={{units:req.units,items:req.items}} /></details>
       {quote && (
         <section data-testid="quote-result" className="mb-10">
           <div className={`rounded-2xl border-2 p-5 mb-4 ${quote.status === 'complete' ? 'border-emerald-300 bg-emerald-50/50' : quote.status === 'partial' ? 'border-red-300 bg-red-50/50' : 'border-amber-300 bg-amber-50/50'}`}>

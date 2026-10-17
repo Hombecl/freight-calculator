@@ -1217,6 +1217,17 @@ await test('search workflow: TI/HI carries dimensions and requests weight verifi
 }, searchPage);
 await searchPage.close();
 
+await test('workspace: bilingual sign-in and private noindex route', async () => {
+  await page.goto(`${BASE}/zh/workspace`,{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'團隊工作區',exact:true}).waitFor();
+  await page.getByRole('textbox',{name:'Email',exact:true}).waitFor();
+  if(!await page.locator('meta[name="robots"]').evaluateAll(nodes=>nodes.some(n=>n.content.includes('noindex'))))throw Error('Private route must be noindex');
+  if(await page.getByRole('button',{name:'建立工作區',exact:true}).count())throw Error('Guest sees team mutations');
+  await page.goto(`${BASE}/order-quote`,{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'Save to team workspace',exact:true}).waitFor();
+  await page.getByRole('link',{name:'Open team workspace',exact:true}).waitFor();
+},page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

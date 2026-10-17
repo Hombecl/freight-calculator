@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowRight, Trash2, FolderOpen, LogOut, UserCheck, Check } from 'lucide-react';
@@ -19,9 +19,6 @@ const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
  * The ROI numbers state their assumptions inline; honest math only.
  */
 
-const BASELINE_UTIL = 70; // industry-typical unoptimized utilization, stated in the UI
-const DEFAULT_CONTAINER_COST = 3000; // USD, stated in the UI
-
 export default function MyPlansPage() {
   const { lang } = useApp();
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
@@ -33,17 +30,6 @@ export default function MyPlansPage() {
   useEffect(() => {
     if (auth.userId) listPlans().then(setPlans);
   }, [auth.userId]);
-
-  const roi = useMemo(() => {
-    if (!plans || plans.length === 0) return null;
-    const utils = plans.filter(p => p.container_key !== 'pallet-order').map((p) => Number(p.stats?.volumeUtil ?? 0)).filter((u) => u > 0);
-    if (!utils.length) return null;
-    const avg = utils.reduce((s, u) => s + u, 0) / utils.length;
-    const upliftPct = Math.max(0, avg - BASELINE_UTIL);
-    // space reclaimed vs baseline ≈ containers you didn't have to book
-    const saved = utils.length * (upliftPct / 100) * DEFAULT_CONTAINER_COST;
-    return { count: utils.length, avg, upliftPct, saved };
-  }, [plans]);
 
   const remove = async (id: string) => {
     if (!window.confirm(T('Delete this plan?', '刪除呢個方案?'))) return;
@@ -72,6 +58,7 @@ export default function MyPlansPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <Helmet>
         <title>{T('My Plans', '我的方案')} | DimPack3D</title>
+        <meta name="description" content={T('Your private saved packing plans and team workspace.','你嘅私人裝載方案及團隊工作區。')} />
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -110,32 +97,7 @@ export default function MyPlansPage() {
         </div>
       ) : (
         <>
-          {/* ROI summary — the six-figure slide, with assumptions stated */}
-          {roi && (
-            <div className="rounded-2xl bg-slate-950 text-white p-6 mb-8">
-              <div className="grid sm:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-3xl font-black">{roi.count}</p>
-                  <p className="text-sm text-slate-400">{T('containers planned', '已規劃貨櫃')}</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-emerald-400">{roi.avg.toFixed(1)}%</p>
-                  <p className="text-sm text-slate-400">{T(`avg utilization (baseline ${BASELINE_UTIL}%)`, `平均利用率(基線 ${BASELINE_UTIL}%)`)}</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-emerald-400">≈ ${roi.saved.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                  <p className="text-sm text-slate-400">{T('est. freight saved', '估算節省運費')}</p>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-4">
-                {T(
-                  `Estimate: (avg utilization − ${BASELINE_UTIL}% baseline) × plans × $${DEFAULT_CONTAINER_COST.toLocaleString()}/container. Adjust for your real freight rates.`,
-                  `估算方式:(平均利用率 − ${BASELINE_UTIL}% 基線)× 方案數 × 每櫃 $${DEFAULT_CONTAINER_COST.toLocaleString()}。請按實際運費調整。`,
-                )}
-              </p>
-            </div>
-          )}
-
+          <div className="rounded-xl bg-blue-50 p-5 mb-6"><Link className="font-bold text-blue-700" to="/workspace">{T('Open team workspace', '開啟團隊工作區')}</Link><p>{T('Shared cargo, receiver requirements and versioned orders across devices.', '跨裝置共用貨品、收貨要求及有版本記錄嘅訂單。')}</p><p className="text-sm mt-2">{T(`${plans?.length ?? 0} saved plans. Planning records do not prove shipped loads or freight savings.`, `已存 ${plans?.length ?? 0} 個方案。規劃記錄並不代表已出貨或實際節省運費。`)}</p></div>
           {plans === null ? (
             <p className="text-slate-400">{T('Loading…', '載入中…')}</p>
           ) : plans.length === 0 ? (

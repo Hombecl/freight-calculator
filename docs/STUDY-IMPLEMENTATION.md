@@ -40,3 +40,7 @@ Unit/regression tests cover imperial conversion, explicit conflicts, missing vs 
 - B4: planner and catalog outputs can now be classified as sample or own job, with an explicit next-job control and local revision deduplication. Partial plans do not count as complete workflow outputs. Existing export events remain unchanged. These are device/job proxies, not unique people or mature retention rates.
 
 Validation: workflow-depth tests cover physical billing and rounding, imperial equivalence, cost-based selection, private revision-bound reports, retries and revocation. Existing box-selection regression now asserts cost choice when a rate is supplied and weight choice when it is missing. Browser QA checks shared import precision and per-layer steps. A matched competitor solver benchmark and real operator/customer validation remain pending; this release makes no superiority or revenue claim.
+
+## Follow-up: team workspace (18 October)
+
+The authenticated shared workspace now provides cross-device order inputs, cargo lists, receiver requirements and immutable revisions with owner/editor/viewer access. See `TEAM-RELEASE.md` for scope, tests and billing activation gates. Shared actuals/photos, matched competitor results, verified customer retention and settled payments remain separate unfinished validation.

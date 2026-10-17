@@ -76,7 +76,7 @@ const COMPARE_ROUTES = competitorsData.competitors.map(
 export const EN_ROUTES = [...BASE_ROUTES, ...ANSWER_ROUTES, ...COMPARE_ROUTES];
 // prerendered but noindex + kept out of the sitemap: without a snapshot the
 // SPA fallback serves the HOMEPAGE snapshot (three.js tag and all) for /embed
-const NOSITEMAP_ROUTES = ["/embed"];
+const NOSITEMAP_ROUTES = ["/embed", "/workspace", "/plans"];
 // every page exists in both locales; /zh/* serves Traditional Chinese
 export const ROUTES = [...EN_ROUTES, ...NOSITEMAP_ROUTES].flatMap((r) => [
   r,
@@ -158,7 +158,7 @@ export function validateSnapshot(html, route) {
   const noindex = /<meta[^>]*name="robots"[^>]*content="[^"]*noindex/.test(
     html
   );
-  if (noindex !== route.endsWith("/embed"))
+  if (noindex !== NOSITEMAP_ROUTES.includes(route.replace(/^\/zh(?=\/)/, "")))
     throw new Error(`${route}: unexpected indexing directive`);
   if (ORDER_ROUTES.includes(route)) {
     for (const r of ORDER_ROUTES)

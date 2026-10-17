@@ -13,6 +13,7 @@ const PlannerPage = lazy(() => import('./pages/PlannerPage'));
 const AnswersHub = lazy(() => import('./pages/AnswersHub'));
 const AnswerPage = lazy(() => import('./pages/AnswerPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
 const MyPlansPage = lazy(() => import('./pages/MyPlansPage'));
 const ReviewPage = lazy(() => import('./pages/ReviewPage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="warehouse" element={<WarehousePage />} />
         <Route path="answers" element={<AnswersHub />} />
         <Route path="answers/:slug" element={<AnswerPage />} />
+        <Route path="workspace" element={<WorkspacePage />} />
         <Route path="plans" element={<MyPlansPage />} />
         <Route path="review/:id" element={<ReviewPage />} />
         <Route path="compare/:slug" element={<ComparePage />} />
