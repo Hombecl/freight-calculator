@@ -102,6 +102,16 @@ await test('home: reduced motion preserves the preview and manual 3D', async () 
     }
     await quietPage.getByRole('button', { name: /explore in 3d/i }).click();
     await quietPage.locator('canvas').waitFor({ timeout: 30_000 });
+    const video = quietPage.locator('video').first();
+    await video.scrollIntoViewIfNeeded();
+    if (!(await video.evaluate(v => v.paused))) throw new Error('reduced-motion video autoplayed');
+    await video.evaluate(v => v.play());
+    await quietPage.waitForFunction(() => document.querySelector('video').currentTime > 0);
+    await video.evaluate(v => v.pause());
+    await quietPage.waitForTimeout(100);
+    await video.evaluate(v => v.play());
+    await quietPage.waitForTimeout(300);
+    if (await video.evaluate(v => v.paused)) throw new Error('manual video resume was overridden');
   } finally { await reduced.close(); }
 }, page);
 
