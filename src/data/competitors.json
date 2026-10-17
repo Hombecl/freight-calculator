@@ -9,26 +9,26 @@
       "theyHaveEn": [
         "Truck types and pallets as first-class vehicles",
         "Established customer base and long track record",
-        "Team/enterprise licensing (enterprise tier from $2,400+ orders)"
+        "Per-seat licensing, shipment sharing and loading-step reports"
       ],
       "theyHaveZh": [
         "貨車與卡板類型齊全",
         "老牌產品,客戶基礎成熟",
-        "團隊/企業授權(企業級 $2,400+ 起)"
+        "按席位授權、出貨分享及裝載步驟報告"
       ],
-      "pricingEn": "Paid per-seat licenses (day tickets, monthly, yearly; prices shown in their store). Free trial is 10 days.",
-      "pricingZh": "按席位收費(日票/月費/年費,價錢喺佢哋商店顯示),試用期 10 日。",
+      "pricingEn": "US$79 per user/month or US$799/year. 24-hour tickets cost US$9.70 each, minimum purchase 10; VAT excluded.",
+      "pricingZh": "USD 79／人／月；USD 799／年；24 小時票 USD 9.70，至少買 10 張；未含 VAT。",
       "pricingSource": {
-        "url": "https://containermath.com/blog/best-container-loading-software",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.easycargo3d.com/en/pricing/",
+        "checkedAt": "2026-10-17"
       }
     },
     {
       "slug": "cargo-planner-alternative",
       "name": "Cargo-Planner",
       "url": "https://cargo-planner.com",
-      "summaryEn": "Cargo-Planner is a polished commercial load planning platform for sea, road and air with an embeddable SDK/API, used by large forwarders and airlines. Pricing is subscription-based via custom tiers.",
-      "summaryZh": "Cargo-Planner 係精緻嘅商用裝載規劃平台,覆蓋海運、陸運、空運,提供可嵌入 SDK/API,大型貨代同航空公司都有採用。訂閱制,價錢按方案報價。",
+      "summaryEn": "Cargo-Planner provides browser-based sea, road and air load planning, cargo import mapping and SDK/API integrations.",
+      "summaryZh": "Cargo-Planner 提供瀏覽器海陸空裝載規劃、貨物匯入映射及 SDK／API 整合。",
       "theyHaveEn": [
         "Air cargo (ULD) support",
         "SDK/API for embedding into your own systems",
@@ -39,19 +39,19 @@
         "SDK/API 可嵌入自家系統",
         "企業客戶群(航空公司、全球貨代)"
       ],
-      "pricingEn": "Subscription plans (quote-based tiers); free trial available.",
-      "pricingZh": "訂閱制(按方案報價),有免費試用。",
+      "pricingEn": "Lite US$59/month (1 user) and Standard US$99/month (5 users, 1 branch), billed annually; Enterprise by quote.",
+      "pricingZh": "Lite USD 59／月、Standard USD 99／月，均按年付款；Lite 1 人，Standard 5 人／1 分部；Enterprise 報價。",
       "pricingSource": {
-        "url": "https://containermath.com/blog/best-container-loading-software",
-        "checkedAt": "2026-09-10"
+        "url": "https://cargo-planner.com/pricing/",
+        "checkedAt": "2026-10-17"
       }
     },
     {
       "slug": "cube-iq-alternative",
       "name": "Cube-IQ",
       "url": "https://www.magiclogic.com",
-      "summaryEn": "Cube-IQ (MagicLogic) is enterprise desktop load-optimization software with deep constraint support, frequently cited among the most advanced packers. Third-party listings report pricing from roughly $5,000/year per user.",
-      "summaryZh": "Cube-IQ(MagicLogic)係企業級桌面裝載優化軟件,約束支援極深,常被評為最強算法之一。第三方目錄顯示價格約每用戶每年 $5,000 起。",
+      "summaryEn": "Cube-IQ from MagicLogic is enterprise load-optimization software with constraint support and integration options.",
+      "summaryZh": "MagicLogic 嘅 Cube-IQ 係企業裝載優化軟件，支援裝載限制及系統整合。",
       "theyHaveEn": [
         "Very deep constraint engine (mixed vehicles, complex rules)",
         "Desktop + database integrations for enterprise ops",
@@ -62,11 +62,11 @@
         "桌面 + 數據庫整合,面向企業營運",
         "數十年企業部署經驗"
       ],
-      "pricingEn": "Enterprise licensing; third-party listings report from ~$5,000/yr per user (verify with vendor).",
-      "pricingZh": "企業授權;第三方目錄顯示約每用戶每年 $5,000 起(以官方報價為準)。",
+      "pricingEn": "No numeric price verified from the reviewed official product pages; request a current quote.",
+      "pricingZh": "本次核讀頁面未取得數字價；現價未確認，舊文 USD 5,000／年不作基準。",
       "pricingSource": {
-        "url": "https://sourceforge.net/software/load-planning/",
-        "checkedAt": "2026-09-10"
+        "url": "https://magiclogic.com/products/",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -85,11 +85,11 @@
         "多點裝卸,每個卸貨點分開擺放",
         "分享項目同 PDF 內置裝載動畫"
       ],
-      "pricingEn": "Free registration with an always-free demo version; a paid professional version adds advanced customisation (prices on their site).",
-      "pricingZh": "免費註冊,demo 版一直免費;付費專業版提供進階自訂功能(價錢見官網)。",
+      "pricingEn": "Current prices were not verified in this review. Confirm terms in the vendor’s subscription area.",
+      "pricingZh": "未核實現價；搜尋結果指詳細價格在登入後 My Subscription，僅作待核實線索。",
       "pricingSource": {
-        "url": "https://containermath.com/blog/best-container-loading-software",
-        "checkedAt": "2026-09-10"
+        "url": "https://goodloading.com",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -108,11 +108,11 @@
         "卡板堆疊同最大裝載檢查獨立工具",
         "成熟商用 API,有正式文檔"
       ],
-      "pricingEn": "Subscription plans (all tools included in each plan); 14-day trial, no credit card required. Current prices on their site.",
-      "pricingZh": "訂閱制(每個方案都包晒所有工具);14 日試用、唔使信用卡。價錢以官網為準。",
+      "pricingEn": "Monthly API plans start at US$39 for 1,000 calculations (3.83 cents per extra calculation). Higher-volume tiers are available; calculations are not seats or shipments.",
+      "pricingZh": "USD 39／月含 1,000 次，超額 3.83¢／次；119／5,000；289／20,000；579／100,000；999／500,000；2,999／2M。所有工具每方案都有。",
       "pricingSource": {
-        "url": "https://containermath.com/blog/best-container-loading-software",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.3dbinpacking.com/en/pricing",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -131,11 +131,11 @@
         "Excel 匯入 + 拖放式貨物編輯器",
         "30 日全功能試用;首年免費支援"
       ],
-      "pricingEn": "Paid Windows licence after a 30-day fully-featured trial; the vendor does not publish a price on the product page (verify with vendor).",
-      "pricingZh": "30 日全功能試用後需購買 Windows 授權;官網產品頁未有公開價錢(以官方報價為準)。",
+      "pricingEn": "User-based annual or multi-year subscriptions. The page gives a two-user annual example of US$315; this is not a verified single-user starting price.",
+      "pricingZh": "按使用者授權，有年度／多年訂閱。頁面文字舉例 2 人年度 USD 315；完整價格圖表未核讀，不能視作單人起價。",
       "pricingSource": {
-        "url": "https://containermath.com/blog/best-container-loading-software",
-        "checkedAt": "2026-09-10"
+        "url": "https://softtruck.com/how-to-buy/",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -154,19 +154,19 @@
         "桌面版、網上版同 API 版齊備,企業客戶歷史可追溯至 1990 年代",
         "砌板圖案同包裝設計係核心功能"
       ],
-      "pricingEn": "CubeMaster Online subscriptions are listed from about US$49/month (Standard), with Premium and Collaboration tiers above; desktop perpetual licences are listed from roughly US$995 to US$2,495 per seat. Verify current prices on their pricing page.",
-      "pricingZh": "CubeMaster Online 訂閱由約 US$49/月(Standard)起,另有 Premium 同 Collaboration 級別;桌面永久授權每席約 US$995 至 US$2,495。請以佢哋官方價目頁為準。",
+      "pricingEn": "Current prices were not verified in this review. Ask the vendor for the edition and licensing terms you need.",
+      "pricingZh": "本次未核實現價；不重用網站舊文的 USD 49 或桌面 USD 995–2,495。",
       "pricingSource": {
-        "url": "https://www.cubemaster.net/subscription/pricing.asp",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.logensol.com/load-plan-optimization-software",
+        "checkedAt": "2026-10-17"
       }
     },
     {
       "slug": "searates-load-calculator-alternative",
       "name": "SeaRates Load Calculator",
       "url": "https://www.searates.com/load-calculator/",
-      "summaryEn": "SeaRates Load Calculator is the container and truck stuffing tool inside the SeaRates (DP World) freight-rate platform. It is free to try with a daily quota, and paid subscriptions unlock more calculations plus the wider SeaRates logistics toolkit.",
-      "summaryZh": "SeaRates Load Calculator 係 SeaRates(DP World)運價平台入面嘅貨櫃同貨車裝載工具。有每日免費配額,付費訂閱解鎖更多計算次數同整套 SeaRates 物流工具。",
+      "summaryEn": "SeaRates has offered container and truck loading tools alongside its logistics platform. Current access and quotas need direct confirmation.",
+      "summaryZh": "SeaRates 曾提供配合物流平台嘅貨櫃及貨車裝載工具，現時入口及配額需直接核實。",
       "theyHaveEn": [
         "Sits next to live freight rates, tracking and booking in one platform",
         "Cylindrical cargo and palletization options",
@@ -177,11 +177,11 @@
         "支援圓柱形貨物同砌板選項",
         "由 DP World 支持,提供物流整合 API"
       ],
-      "pricingEn": "Per SeaRates' own pricing page: unregistered users get 1 free calculation per day; registered users get 20 per month (max 3 per day). Higher volumes need a paid SeaRates subscription (quote-based; 15% discount on annual plans).",
-      "pricingZh": "按 SeaRates 官方價目頁:未登入每日 1 次免費計算;已註冊每月 20 次(每日最多 3 次)。更高用量需要付費訂閱(報價制,年繳有 15% 折扣)。",
+      "pricingEn": "Current product access, free quotas and prices were not verified: the reviewed URLs redirected to DP World. Confirm directly before comparing costs.",
+      "pricingZh": "本次未確認現行免費配額、價格或產品入口；舊 quota 不沿用。",
       "pricingSource": {
-        "url": "https://www.searates.com/pricing/load-calculator",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.dpworld.com/en",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -200,11 +200,11 @@
         "針對紙箱設計嘅堆疊強度同抗壓分析",
         "消費品包裝部門幾十年嘅採用歷史"
       ],
-      "pricingEn": "The vendor does not publish prices; third-party software directories list TOPS Pro as quote-based licensing with a free trial on request. Contact TOPS Engineering for a quote.",
-      "pricingZh": "廠商唔公開價錢;第三方軟件目錄列為報價制授權,可申請試用。請直接向 TOPS Engineering 索取報價。",
+      "pricingEn": "No numeric price verified in this review; confirm the product edition and quote with the vendor.",
+      "pricingZh": "本次未取得公開數字價；需向供應商確認方案。",
       "pricingSource": {
-        "url": "https://sourceforge.net/software/load-planning/",
-        "checkedAt": "2026-09-10"
+        "url": "https://topseng.com/maxload-cargo-load-planning-optimization/",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -223,11 +223,11 @@
         "同 Picador CAD 套件整合,可出包裝設計圖",
         "桌面離線流程,冇計算次數限制"
       ],
-      "pricingEn": "treeDiM publishes StackBuilder as a free Windows download; the wider PLMPack/Picador CAD suite is commercial and quote-based per third-party listings. Verify current terms with treeDiM.",
-      "pricingZh": "treeDiM 以免費 Windows 下載形式發佈 StackBuilder;整套 PLMPack/Picador CAD 套件為商業報價制(據第三方目錄)。請向 treeDiM 核實最新條款。",
+      "pricingEn": "The basic version is free. Current premium prices and the allocation of features between editions were not verified.",
+      "pricingZh": "基本版免費；premium 現價及各功能歸屬未核實。",
       "pricingSource": {
-        "url": "https://sourceforge.net/software/load-planning/",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.treedim.com/stackbuilder/en/features",
+        "checkedAt": "2026-10-17"
       }
     },
     {
@@ -246,11 +246,11 @@
         "自動揀最細合用貨櫃,只喺必要時建議高櫃、開頂或平板櫃",
         "REST API 自動連接 ERP/TMS"
       ],
-      "pricingEn": "The vendor does not publish prices publicly; third-party listings describe subscription licensing on request. Contact PackApp for a quote.",
-      "pricingZh": "廠商未公開價錢;第三方目錄描述為按需訂閱授權。請向 PackApp 索取報價。",
+      "pricingEn": "Annual plans: EUR20/month for 50 calculations or EUR50/month for 200. One-off packs: EUR100 for 100 calculations or EUR160 for 200, excluding VAT.",
+      "pricingZh": "年付：EUR 20／月含 50 次、50／月含 200 次；一次性 100 次 EUR 100 或 200 次 EUR 160，未含 VAT。",
       "pricingSource": {
-        "url": "https://sourceforge.net/software/load-planning/",
-        "checkedAt": "2026-09-10"
+        "url": "https://www.packapp.io/en/Pricing",
+        "checkedAt": "2026-10-17"
       }
     }
   ]

@@ -69,10 +69,11 @@ export default function ComparePage() {
       <h1 className="text-3xl font-black text-slate-900 mb-4">{title}</h1>
       <p className="text-slate-600 mb-2">{summary}</p>
       <p className="text-slate-600 mb-8">{T(
-        `DimPack3D covers the core workflow ${c.name} charges for — automatic 3D bin-packing, hand fine-tuning, and professional load-plan export — free, in the browser. Below is an honest comparison, including what ${c.name} does better.`,
-        `DimPack3D 免費喺瀏覽器提供 ${c.name} 收費嘅核心流程 — 自動 3D 裝箱、手動微調、專業裝載方案導出。下面係誠實對比,包括 ${c.name} 做得更好嘅地方。`,
+        `Compare the workflow you need: import a carton list, plan a load, prepare a pallet quote or hand instructions to the warehouse. The tools differ in scope; this is not a ranking or a claim that every feature is equivalent.`,
+        `按實際任務比較：匯入貨單、裝櫃、卡板報價或倉務交接。各工具範圍不同，以下不是排名，亦不表示每項功能相同。`,
       )}</p>
 
+      <nav aria-label={T('Choose your task','選擇任務')} className="flex flex-wrap gap-3 rounded-xl bg-slate-50 p-4 mb-6">{[['/planner','Load a carton list','貨單裝櫃'],['/order-quote','Quote a pallet order','卡板訂單報價'],['/build-sheet','Warehouse build sheet','倉務砌板單'],['/box-catalog','Compare box sizes','比較紙箱尺寸']].map(([path,en,zh])=><Link key={path} className="underline text-blue-700" to={path} onClick={()=>track('comparison_task',path.slice(1))}>{T(en,zh)}</Link>)}</nav>
       <div className="grid md:grid-cols-2 gap-5 mb-8">
         <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-5">
           <h2 className="font-black text-slate-900 mb-3">DimPack3D <span className="text-emerald-600 text-sm font-bold">({T('free', '免費')})</span></h2>

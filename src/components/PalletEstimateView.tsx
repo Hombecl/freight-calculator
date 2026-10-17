@@ -13,9 +13,17 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  const t=VIEW_COPY[lang ?? (zh?'zh':'en')];
  const [yaw,setYaw]=useState(-Math.PI/4), [pitch,setPitch]=useState(.55), [zoom,setZoom]=useState(1);
  const [selected,setSelected]=useState<string|null>(null), [step,setStep]=useState(result.boxes.length), [playing,setPlaying]=useState(false);
+ const surface=useRef<HTMLDivElement>(null);
  const drag=useRef<{x:number;y:number;moved:boolean}|null>(null);
  const pressedBox=useRef<string|null>(null);
  const steps=buildSteps(result), p=result.pallet;
+ useEffect(()=>{
+   const pause=()=>{if(document.hidden)setPlaying(false);};
+   const observer=new IntersectionObserver(entries=>{if(!entries[0]?.isIntersecting)setPlaying(false);});
+   if(surface.current)observer.observe(surface.current);
+   document.addEventListener('visibilitychange',pause);
+   return()=>{observer.disconnect();document.removeEventListener('visibilitychange',pause);};
+ },[]);
  useEffect(()=>{
    if(!playing) return;
    const timer=window.setInterval(()=>setStep(n=>Math.min(n+1,steps.length)),900);
@@ -40,7 +48,7 @@ export default function PalletEstimateView({ result, zh = false, lang, copy, len
  const chosen=steps.slice(0,step).find(b=>b.id===selected);
  const button='rounded-lg border px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-40';
  const go=(n:number)=>{setPlaying(false);setStep(n);setSelected(steps[n-1]?.id??null);};
- return <div>
+ return <div ref={surface}>
   <output data-testid={countTestId} className="sr-only">{boxes.length - 1}</output>
   <div className="px-5 pt-4 print:hidden">
    <p className="text-sm font-semibold text-slate-600">{copy?.diagram??t.orbit}</p>

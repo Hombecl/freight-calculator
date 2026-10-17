@@ -308,7 +308,7 @@ await test('compare: conversion path lands on the import step', async () => {
 
 await test('compare: ?import=1 actually opens the import modal', async () => {
   await page.goto(`${BASE}/planner?import=1`, { waitUntil: 'domcontentloaded' });
-  await page.getByPlaceholder(/copy your rows/i).waitFor();
+  await page.getByLabel('Paste carton list', { exact: true }).waitFor();
 }, page);
 
 await test('compare: the three switching questions link to real evidence', async () => {
@@ -329,8 +329,10 @@ await test('planner: loads with stats and 3D', async () => {
 
 await test('planner: import modal paste flow', async () => {
   await page.getByRole('button', { name: /import excel\/csv/i }).click();
-  await page.getByPlaceholder(/copy your rows/i).fill('name\tlength\twidth\theight\tweight\tqty\nTest Box\t50\t40\t30\t10\t25\n');
-  await page.getByRole('button', { name: /import 1 carton type/i }).click();
+  await page.getByLabel('Paste carton list', { exact: true }).fill('name\tlength\twidth\theight\tweight\tqty\nTest Box\t50\t40\t30\t10\t25\n');
+  await page.getByRole('button', { name: 'Review pasted rows', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'I checked units, accepted quantities and excluded rows.', exact: true }).check();
+  await page.getByRole('button', { name: 'Use this list and calculate', exact: true }).click();
   await page.locator('input[value="Test Box"]').waitFor();
   if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('import did not calculate the imported specs');
 }, page);
@@ -340,7 +342,8 @@ await test('planner: draft edits block stale exports and keep totals consistent'
   await qty.fill('3');
   await page.getByTestId('planner-pending-changes').waitFor();
   if (await page.getByTestId('planner-packed').textContent() !== '25 / 25') throw new Error('draft quantity leaked into calculated stats');
-  for (const name of [/^csv$/i, /^pdf plan$/i, /share this plan/i]) {
+  await page.getByText('Share a snapshot / manage links', { exact: true }).click();
+  for (const name of [/^csv$/i, /^pdf plan$/i, /create share link/i]) {
     if (!await page.getByRole('button', { name }).isDisabled()) throw new Error('stale action is enabled');
   }
   await qty.fill('25');
@@ -679,12 +682,14 @@ await test('box-catalog: coverage warning and Advanced analysis toggle', async (
   const toggle = page.getByTestId('box-coverage-first');
   if (!await toggle.isChecked()) throw new Error('Coverage must default on');
   await toggle.uncheck();
-  await page.locator('label', { hasText: 'Candidate boxes (JSON, optional)' }).locator('textarea').fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
+  await page.getByRole('group', { name: 'Candidate boxes (cm-kg)', exact: true }).getByText('Advanced JSON', { exact: true }).click();
+  await page.getByLabel('Candidate boxes JSON', { exact: true }).fill('[{"id":"tiny","l":1,"w":1,"h":1}]');
   await page.getByTestId('box-optimize').click();
   await page.getByTestId('box-unfit-share').waitFor();
   if (!await page.getByTestId('box-unfit-share').textContent().then(t => t.includes('100.0% of orders would need a box outside this catalog'))) throw new Error('Missing unfit share');
   if (!await page.getByText('Partial comparison', { exact: false }).count()) throw new Error('Missing partial savings basis');
-  await page.locator('label', { hasText: 'Current boxes (JSON, optional)' }).locator('textarea').fill('');
+  await page.getByRole('group', { name: 'Current boxes (cm-kg)', exact: true }).getByText('Advanced JSON', { exact: true }).click();
+  await page.getByLabel('Current boxes JSON', { exact: true }).fill('');
   await toggle.check();
   await page.getByTestId('box-optimize').click();
   await page.getByTestId('box-unfit-share').waitFor();
@@ -802,8 +807,8 @@ await test('audit A: zero storage bookmark, door fit, fee and rate disclosures',
     if (!(await page.getByTestId('air-unit-cost').textContent()).includes('0.00') || !(await page.getByTestId('sea-unit-cost').textContent()).includes('0.00')) throw new Error('Rate change did not update cost');
   }
   await page.goto(`${BASE}/compare/cube-iq-alternative`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('link', { name:'sourceforge.net', exact:true }).waitFor();
-  await page.getByText(/Reported by sourceforge.net/).waitFor();
+  await page.getByRole('link', { name:'magiclogic.com', exact:true }).waitFor();
+  await page.getByText(/No numeric price verified/).waitFor();
 }, page);
 
 await fixAuditBTests({test,page,BASE});

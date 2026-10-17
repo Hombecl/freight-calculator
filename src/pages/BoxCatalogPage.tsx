@@ -1,3 +1,4 @@
+import BoxTableEditor from '../components/BoxTableEditor';
 import { checkAssumption, checkName } from '../lib/auditPageLocale';
 import { Link } from 'react-router-dom';
 import { importHistory } from '../lib/boxCatalogImport';
@@ -6,7 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { useApp } from '../context/AppContext';
 import InteractiveLoadPlanner from '../components/InteractiveLoadPlanner';
 import { BOX_EXAMPLE, chooseBox, optimizeBoxCatalog, type BoxCatalogRequest, type BoxCatalogResult, type Units } from '../lib/boxCatalog';
-import { parseDelimited, parseFile, parseText, type ImportResult } from '../lib/importCartons';
+import { parseDelimited, parseFile, parseText, specsInUnits, type ImportResult } from '../lib/importCartons';
 import { DIM_PRESETS } from '../lib/dimPresets';
 import { track } from '../lib/track';
 const csv = (rows: unknown[][]) => rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -24,7 +25,7 @@ export default function BoxCatalogPage() {
     const [candidates, setCandidates] = useState(JSON.stringify(BOX_EXAMPLE.candidateBoxes));
     const [unit, setUnit] = useState<Units>('cm-kg');
     const [billingUnit, setBillingUnit] = useState<Units>('cm-kg');
-    const [size, setSize] = useState(2), [divisor, setDivisor] = useState(5000), [rate, setRate] = useState('2'), [minimum, setMinimum] = useState('0'), [voidCost, setVoidCost] = useState('0');
+    const [size, setSize] = useState(2), [divisor, setDivisor] = useState(5000), [rate, setRate] = useState(''), [minimum, setMinimum] = useState('0'), [voidCost, setVoidCost] = useState('0');
     const [coverageFirst, setCoverageFirst] = useState(true);
     const [result, setResult] = useState<BoxCatalogResult>();
     const [request, setRequest] = useState<BoxCatalogRequest>();
@@ -34,10 +35,11 @@ export default function BoxCatalogPage() {
     const [single, setSingle] = useState('A,2');
     const [picked, setPicked] = useState<Awaited<ReturnType<typeof chooseBox>>>();
     useEffect(() => { track('tool_box_catalog'); }, []);
-    function imported(r: ImportResult) { if (r.warnings.some(w => /skipped|No usable|No rows/.test(w)))
-        throw new Error(r.warnings.join('; ')); return r.specs.map(s => ({ sku: s.label, l: s.l, w: s.w, h: s.h, weight: s.weight, fragile: s.maxStack === 0, keepUpright: s.keepUpright ?? false })); }
+    useEffect(()=>{setResult(undefined);setRequest(undefined);setPicked(undefined);},[skuText,history,current,candidates,unit,billingUnit,size,divisor,rate,minimum,voidCost,coverageFirst]);
+    function imported(r: ImportResult) { if (r.warnings.some(w => /skipped|No usable|No rows|weight not provided|Duplicate/.test(w)))
+        throw new Error(r.warnings.join('; ')); return specsInUnits(r, unit).map(s => ({ sku: s.label, l: s.l, w: s.w, h: s.h, weight: s.weight, fragile: s.maxStack === 0, keepUpright: s.keepUpright ?? false })); }
     async function run() { setBusy(true); setError(''); setPicked(undefined); setResult(undefined); try {
-        const req: BoxCatalogRequest = { units: unit, skus: imported(parseText(skuText)), orders: importHistory(history), ...(current.trim() ? { currentBoxes: JSON.parse(current) } : {}), ...(candidates.trim() ? { candidateBoxes: JSON.parse(candidates) } : {}), catalogSize: size, coverageFirst, billing: { unit: billingUnit, dimDivisor: divisor, minBillableWeight: Number(minimum), ...(rate.trim() ? { ratePerKgOrLb: Number(rate) } : {}) }, voidFillCostPerLitre: Number(voidCost) };
+        const req: BoxCatalogRequest = { units: unit, skus: imported(parseText(skuText, {lengthUnit: unit === 'in-lb' ? 'in' : 'cm', weightUnit: unit === 'in-lb' ? 'lb' : 'kg'})), orders: importHistory(history), ...(current.trim() ? { currentBoxes: JSON.parse(current) } : {}), ...(candidates.trim() ? { candidateBoxes: JSON.parse(candidates) } : {}), catalogSize: size, coverageFirst, billing: { unit: billingUnit, dimDivisor: divisor, minBillableWeight: Number(minimum), ...(rate.trim() ? { ratePerKgOrLb: Number(rate) } : {}) }, voidFillCostPerLitre: Number(voidCost) };
         const r = await optimizeBoxCatalog(req);
         setRequest(req);
         setResult(r);
@@ -70,7 +72,7 @@ export default function BoxCatalogPage() {
       <label>{T('SKU CSV: sku,length,width,height,weight,qty,fragile,upright', 'SKU CSV：sku,length,width,height,weight,qty,fragile,upright')}<textarea className={input} rows={4} value={skuText} onChange={e => setSkuText(e.target.value)}/></label>
       <input aria-label={T('Upload SKUs', '上載貨品')} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={async (e) => { const f = e.target.files?.[0]; if (!f)
         return; try {
-        const s = imported(await parseFile(f));
+        const s = imported(await parseFile(f, {lengthUnit: unit === 'in-lb' ? 'in' : 'cm', weightUnit: unit === 'in-lb' ? 'lb' : 'kg'}));
         setSkuText(csv([['sku', 'length', 'width', 'height', 'weight', 'qty', 'fragile', 'upright'], ...s.map(s => [s.sku, s.l, s.w, s.h, s.weight, 1, s.fragile, s.keepUpright])]));
     }
     catch (e) {
@@ -80,8 +82,9 @@ export default function BoxCatalogPage() {
     <section className="min-w-0 rounded-2xl border border-slate-200 p-5 space-y-3"><h2 className="font-black text-slate-900">{T('2. Order history', '2. 訂單記錄')}</h2><p>{T('Rows: orderId,sku,qty. Identical order shapes are compressed with counts; the first order ID labels each shape.', '每行：orderId,sku,qty。相同貨品組合會合併計次數，並用第一張訂單編號標示。')}</p><textarea aria-label={T('Order history', '訂單記錄')} className={input} rows={4} value={history} onChange={e => setHistory(e.target.value)}/></section>
     </div>
     <section className="min-w-0 rounded-2xl border border-slate-200 p-5 space-y-3"><h2 className="font-black text-slate-900">{T('3. Boxes and billing', '3. 紙箱同收費')}</h2><p>{T('Optional box arrays: id,l,w,h,maxWeight?,cost?. Blank candidates generate a grid. Dimensions are usable internal dimensions; billing uses those same dimensions.', '可選紙箱陣列：id,l,w,h,maxWeight?,cost?。候選留空會自動產生。尺寸係可用內徑；收費估算亦用同一尺寸。')}</p>
-      <label>{T('Current boxes (JSON, optional)', '現有紙箱（JSON，可選）')}<textarea className={input} value={current} onChange={e => setCurrent(e.target.value)}/></label>
-      <label>{T('Candidate boxes (JSON, optional)', '候選紙箱（JSON，可選）')}<textarea className={input} value={candidates} onChange={e => setCandidates(e.target.value)}/></label>
+      <BoxTableEditor title={T('Current boxes','現有紙箱')} value={current} onChange={setCurrent} units={unit}/>
+      <BoxTableEditor title={T('Candidate boxes','候選紙箱')} value={candidates} onChange={setCandidates} units={unit}/>
+
       <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2"><label>{T('Catalog size', '目錄箱型數')}<input className={input} type="number" min={1} max={12} value={size} onChange={e => setSize(Number(e.target.value))}/></label>
       <label>{T('Divisor templates — verify with your buyer / carrier', '除數範本 — 請向買家／承運商核實')}<select className={input} defaultValue="express" onChange={e => { const p = DIM_PRESETS.find(p => p.key === e.target.value)!; setDivisor(p.divisor); setBillingUnit(p.system === 'metric' ? 'cm-kg' : 'in-lb'); }}>{DIM_PRESETS.map(p => <option key={p.key} value={p.key}>{p.label} · {p.divisor}</option>)}</select></label>
       <label>{T('Billing unit', '收費單位')}<select className={input} value={billingUnit} onChange={e => setBillingUnit(e.target.value as Units)}><option>cm-kg</option><option>in-lb</option></select></label>
