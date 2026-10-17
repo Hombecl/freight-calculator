@@ -7,7 +7,7 @@ SELECT
   toDate(timestamp) AS day,
   SUM(_sample_interval) AS events
 FROM dimpack3d_events
-WHERE timestamp >= NOW() - INTERVAL 30 DAY
+WHERE timestamp >= NOW() - INTERVAL '30' DAY
 GROUP BY day
 ORDER BY day DESC;
 
@@ -16,7 +16,7 @@ SELECT
   index1 AS event,
   SUM(_sample_interval) AS events
 FROM dimpack3d_events
-WHERE timestamp >= NOW() - INTERVAL 30 DAY
+WHERE timestamp >= NOW() - INTERVAL '30' DAY
 GROUP BY event
 ORDER BY events DESC;
 
@@ -25,7 +25,7 @@ SELECT
   blob1 AS path,
   SUM(_sample_interval) AS pageviews
 FROM dimpack3d_events
-WHERE timestamp >= NOW() - INTERVAL 30 DAY
+WHERE timestamp >= NOW() - INTERVAL '30' DAY
   AND index1 = 'pageview'
 GROUP BY path
 ORDER BY pageviews DESC
@@ -33,3 +33,11 @@ LIMIT 50;
 
 -- Referrers, countries, and metadata can be queried by grouping blob2, blob4,
 -- and concat(index1, ':', blob3), respectively.
+
+-- Deployment smoke check: these are event counts, not unique customers.
+-- Exclude the recorded release-verification window when assessing demand.
+SELECT index1 AS event, SUM(_sample_interval) AS events
+FROM dimpack3d_events
+WHERE timestamp >= NOW() - INTERVAL '30' MINUTE
+GROUP BY event
+ORDER BY events DESC;
