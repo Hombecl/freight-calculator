@@ -1231,6 +1231,24 @@ await test('workspace: bilingual sign-in and private noindex route', async () =>
   await page.getByRole('link',{name:'Open team workspace',exact:true}).waitFor();
 },page);
 
+await test('export feedback: optional, validates blocker, suppresses repeat prompt', async () => {
+  const feedbackPage=await ctx.newPage();
+  try {
+    await feedbackPage.goto(`${BASE}/zh/warehouse`,{waitUntil:'domcontentloaded'});
+    await feedbackPage.getByRole('button',{name:'PDF plan',exact:true}).click();
+    const panel=feedbackPage.getByRole('region',{name:'報告意見'});
+    await panel.waitFor();
+    if(!await panel.getByRole('button',{name:'提交意見'}).isDisabled())throw Error('Empty feedback accepted');
+    await panel.getByRole('combobox',{name:'使用情況',exact:true}).selectOption('edit');
+    if(!await panel.getByRole('button',{name:'提交意見'}).isDisabled())throw Error('Missing blocker accepted');
+    await panel.getByRole('combobox',{name:'最需要改善嘅地方'}).selectOption('fields');
+    await panel.getByRole('button',{name:'提交意見'}).click();
+    if(await panel.count())throw Error('Feedback stays open after submit');
+    await feedbackPage.getByRole('button',{name:'PDF plan',exact:true}).click();
+    if(await panel.count())throw Error('Repeated prompt in same tab');
+  } finally { await feedbackPage.close(); }
+},page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

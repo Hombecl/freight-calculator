@@ -32,7 +32,7 @@ function parseHit(value: unknown): Hit | null {
     e,
     p: clean(record.p, 100),
     r: clean(record.r, 60),
-    m: clean(record.m, 40),
+    m: clean(record.m, 160),
   };
 }
 

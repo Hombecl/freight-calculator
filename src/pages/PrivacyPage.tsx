@@ -15,6 +15,7 @@ export default function PrivacyPage() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   const sections: { h: string; body: string[] }[] = [
+    {h:T('Optional report feedback','自願提供報告意見'),body:[T('After a planner or warehouse export, you may send selected answers about usefulness, purpose and improvements. No shipment details are included. A sessionStorage flag remembers dismissal in this tab. Local job identifiers and revision hashes stay on your device; only categories such as repeat export, revised plan and return interval are sent to analytics. These observations do not prove completed shipments or satisfaction.','規劃器或倉庫匯出後，你可以自願提交使用情況、用途及改善選項，不包括貨物內容。sessionStorage 會記住本分頁已略過問卷。本地工作編號及版本雜湊留喺裝置；分析只接收重複匯出、修改方案及回訪間隔等分類，並不代表已完成出貨或滿意度。')]},
     {
       h: T('The short version', '重點'),
       body: [
