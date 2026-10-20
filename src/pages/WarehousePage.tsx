@@ -337,7 +337,7 @@ export default function WarehousePage() {
       imageDataUrl: snapshotFn.current?.() ?? null,
       date: new Date().toLocaleDateString(),
     }));
-    if(outcome.ok) setFeedbackFormat('pdf');
+    if(outcome.ok) setFeedbackFormat(previous=>previous??'pdf');
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? 'Allow pop-ups for this site, then select PDF plan again.'
       : 'Export did not open. Your layout is still here; please try again.');

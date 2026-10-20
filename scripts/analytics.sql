@@ -41,3 +41,22 @@ FROM dimpack3d_events
 WHERE timestamp >= NOW() - INTERVAL '30' MINUTE
 GROUP BY event
 ORDER BY events DESC;
+
+-- Post-export feedback. Event totals, not unique respondents or satisfaction.
+-- meta: p|w : pdf|csv : usable|edit|explore : purpose : blocker.
+-- Compare responses with shown events by matching tool/format. Report sample
+-- size and response rate; unanswered prompts are not negative responses.
+SELECT index1 AS event, blob3 AS answer, SUM(_sample_interval) AS events
+FROM dimpack3d_events
+WHERE timestamp >= NOW() - INTERVAL '7' DAY
+  AND index1 IN ('export_feedback_shown', 'export_feedback_skipped', 'export_feedback')
+GROUP BY event, answer
+ORDER BY event, events DESC;
+
+-- Same-device own-job categories, never cohort retention or paid customers.
+SELECT index1 AS event, blob3 AS category, SUM(_sample_interval) AS events
+FROM dimpack3d_events
+WHERE timestamp >= NOW() - INTERVAL '7' DAY
+  AND index1 IN ('workflow_output', 'workflow_repeat')
+GROUP BY event, category
+ORDER BY event, events DESC;

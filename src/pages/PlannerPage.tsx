@@ -314,7 +314,7 @@ export default function PlannerPage() {
       });
     });
     if(outcome.ok){if(currentBoxes.length===totalQty)void recordToolOutput(workflowJob,format==='pdf'?'planner_pdf':'planner_csv',{containerKey,specs:appliedSpecs,boxes:currentBoxes});else track('workflow_result','planner_partial');}
-    if(outcome.ok) setFeedbackFormat(format);
+    if(outcome.ok) setFeedbackFormat(previous=>previous??format);
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? T('Allow pop-ups for this site, then select PDF plan again.', '請允許此網站開啟彈出視窗，再按 PDF plan。')
       : T('Export did not open. Your plan is still here; please try again.', '匯出未能開啟。方案仍然保留，請再試一次。'));
