@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {loweredBox,shouldCalculate} from '../src/lib/plannerInteractions.ts';
+import {packWithConstraints} from '../src/lib/binPacking.ts';
+const box={id:'a',label:'a',l:20,w:20,h:20,px:0,py:0,pz:0,color:1};
+const overhead={...box,id:'b',py:20};
+assert.equal(loweredBox(box,[box,overhead]).py,0,'drop must not lift a lower box above an overhead box');
+const floating={...box,id:'floating',py:80};
+assert.equal(loweredBox(floating,[floating,box,{...overhead,py:100}]).py,20,'drop rests on support below, ignoring cargo overhead');
+assert.equal(loweredBox(floating,[floating,{...box,px:50}]).py,0,'no support beneath means floor');
+assert.equal(loweredBox(floating,[floating,{...box,kind:'zone'}]).py,0,'floor zones are not physical supports');
+assert.equal(shouldCalculate('manual',false),false);
+assert.equal(shouldCalculate('manual',true),true);
+for(const source of ['container','overhang','import'])assert.equal(shouldCalculate(source,false),true);
+const container={l:100,w:100,h:100,maxWeight:1000};
+const specs=[{id:'cargo',label:'Cargo',l:40,w:30,h:20,weight:5,qty:12,color:1}];
+assert.deepEqual(packWithConstraints(container,specs),packWithConstraints(container,specs),'unchanged inputs do not explore a new alternative');
+console.log('Planner friction regressions: deterministic re-pack, no-op guard, and lower-only support placement passed');

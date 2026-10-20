@@ -1,3 +1,4 @@
+import {shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
 import ExportFeedback from '../components/ExportFeedback';
 import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
 import {recordToolOutput} from '../lib/workflowUsage';
@@ -127,7 +128,7 @@ export default function PlannerPage() {
     if (hasPendingChanges) track('planner_inputs_changed');
   }, [hasPendingChanges]);
   const [seed, setSeed] = useState(0); // bump to re-run the packer
-  const optimizationIntent = useRef<'manual' | 'import' | null>(null);
+  const optimizationIntent = useRef<CalculationSource | null>(null);
 
   const container = CONTAINERS[containerKey];
   // pallets may allow a small overhang per side — standard practice, but it
@@ -151,6 +152,7 @@ export default function PlannerPage() {
     if (!source) return;
     optimizationIntent.current = null;
     track('planner_optimized', source);
+    track('planner_calc_result', `${source}:${result.unplaced?'partial':'full'}`);
   }, [result]);
 
   // live stats reflect manual edits (falls back to the packer's own stats)
@@ -188,8 +190,12 @@ export default function PlannerPage() {
     [appliedSpecs, containerKey],
   );
 
-  const updateSpec = (id: string, patch: Partial<Spec>) =>
+  const editKinds = useRef(new Set<string>());
+  const updateSpec = (id: string, patch: Partial<Spec>) => {
+    const kind = Object.keys(patch)[0];
+    if(!editKinds.current.has(kind)){editKinds.current.add(kind);track('planner_input_kind',kind);}
     setSpecs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch, ...(patch.weight === undefined ? {} : {weightKnown:true}) } : s)));
+  };
 
   const addSpec = () =>
     setSpecs((prev) => [
@@ -204,7 +210,9 @@ export default function PlannerPage() {
 
   const removeSpec = (id: string) => setSpecs((prev) => prev.filter((s) => s.id !== id));
 
-  const regen = (source: 'manual' | 'import' = 'manual', nextSpecs = specs) => {
+  const regen = (source: CalculationSource = 'manual', nextSpecs = specs) => {
+    if(!shouldCalculate(source, JSON.stringify(nextSpecs)!==JSON.stringify(appliedSpecs)))return;
+    editKinds.current.clear();
     optimizationIntent.current = source;
     setAppliedSpecs(nextSpecs);
     setLiveBoxes(null); setSharedBoxes(null); setSeed((n) => n + 1);
@@ -385,7 +393,7 @@ export default function PlannerPage() {
                 {(Object.keys(CONTAINERS) as ContainerKey[]).filter((k) => CONTAINERS[k].group === g).map((k) => (
                   <button
                     key={k}
-                    onClick={() => { setContainerKey(k); regen(); }}
+                    onClick={() => { if(k===containerKey)return; setContainerKey(k); regen('container'); }}
                     className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                       containerKey === k ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'
                     }`}
@@ -407,7 +415,7 @@ export default function PlannerPage() {
                 {[0, 2.5, 5].map((ov) => (
                   <button
                     key={ov}
-                    onClick={() => { setOverhangCm(ov); regen(); }}
+                    onClick={() => { if(ov===overhangCm)return; setOverhangCm(ov); regen('overhang'); }}
                     className={`px-2 py-0.5 rounded ${overhangCm === ov ? 'bg-teal-600 text-white' : 'bg-slate-100'}`}
                   >
                     {ov === 0 ? 'none' : `${ov} cm/side`}
@@ -516,11 +524,13 @@ export default function PlannerPage() {
 
           <button
             onClick={() => regen()}
-            className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold"
+            disabled={!hasPendingChanges}
+            className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-40"
           >
             Optimise pack
           </button>
 
+          {!hasPendingChanges && <p role="status" className="text-xs text-slate-600">{T('Plan is up to date. Export your current layout, or change inputs to recalculate. Use Reset to auto below the 3D view to undo manual placement; Undo can restore it.','方案已更新，可以匯出目前擺位；修改輸入後才需重新計算。要取消手動擺位，請用 3D 下方「重設自動擺位」；亦可按「復原」還原。')}</p>}
           {hasPendingChanges && (
             <p role="status" data-testid="planner-pending-changes" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               {T('Inputs changed. The view and totals still show your last calculated plan. Select Optimise pack to update it before exporting, sharing or saving.', '輸入已修改。畫面與總數仍顯示上次計算嘅方案。請按 Optimise pack 更新後，再匯出、分享或保存。')}
@@ -664,7 +674,7 @@ export default function PlannerPage() {
               </div>
             )}
             {totalQty > currentBoxes.length && (
-              <p className="text-xs text-amber-600">{totalQty - currentBoxes.length} carton(s) not placed — check capacity or optimise again after manual edits.</p>
+              <p className="text-xs text-amber-600">{totalQty - currentBoxes.length} carton(s) not placed — check dimensions, payload and stacking rules, or choose a larger container. Recalculating unchanged inputs gives the same result.</p>
             )}
             {stats.weightUtil != null && stats.weightUtil > 100 && (
               <p className="text-xs text-red-600">Over the container payload limit.</p>
@@ -681,6 +691,7 @@ export default function PlannerPage() {
             grid={1}
             unitLabel="cm"
             onChange={setLiveBoxes}
+            onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
             registerSnapshot={(fn) => { snapshotFn.current = fn; }}
           />
         </div>

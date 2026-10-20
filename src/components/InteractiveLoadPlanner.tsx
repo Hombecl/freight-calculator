@@ -1,3 +1,4 @@
+import {loweredBox} from '../lib/plannerInteractions';
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { IS_ZH } from '../lib/locale';
 import type { PlannerBox } from '../lib/plannerBox';
@@ -53,6 +54,7 @@ interface Props {
   selectId?: string | null; // externally-driven selection (page placed an item and wants buttons live)
   onSelect?: (id: string | null) => void; // selection change (click a box)
   onChange?: (boxes: PlannerBox[]) => void;
+  onAction?: (action: 'drag'|'nudge'|'rotate'|'drop'|'delete'|'undo'|'reset', outcome: 'ok'|'collision'|'boundary'|'unchanged') => void;
   registerSnapshot?: (fn: (() => string | null) | null) => void; // capture 3D view as PNG data URL
 }
 
@@ -126,8 +128,15 @@ export default function InteractiveLoadPlanner({
   selectId,
   onSelect,
   onChange,
+  onAction,
   registerSnapshot,
 }: Props) {
+  const actionRef=useRef(onAction); actionRef.current=onAction;
+  const [actionMessage,setActionMessage]=useState('');
+  const reportAction=(action:Parameters<NonNullable<Props['onAction']>>[0],outcome:Parameters<NonNullable<Props['onAction']>>[1])=>{
+    setActionMessage(outcome==='collision'?(IS_ZH?'移動或旋轉會撞到其他貨物。請先騰出空間，再試一次。':'This move or rotation overlaps another item. Make space first, then try again.'):outcome==='boundary'?(IS_ZH?'已到空間邊界，這個方向放不下。':'This item cannot fit further in that direction.'):outcome==='unchanged'?(IS_ZH?'位置沒有改變，可能已經放在支承面。':'Position unchanged; the item may already be supported.'):'');
+    actionRef.current?.(action,outcome);
+  };
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   const autoSpinRef = useRef(autoSpin);
@@ -424,6 +433,7 @@ export default function InteractiveLoadPlanner({
     let mode: 'idle' | 'orbit' | 'drag' = 'idle';
     let dragId: string | null = null;
     let dragMoved = false;
+    let dragBlocked = false;
     let hoveredId: string | null = null;
     let dragPlane: any = null;
     let dragGrab = new THREE.Vector3(); // offset between hit point and box min-corner
@@ -455,7 +465,7 @@ export default function InteractiveLoadPlanner({
         applyHighlight();
         mode = 'drag';
         dragId = id;
-        dragMoved = false;
+        dragMoved = false; dragBlocked = false;
         syncShadow(b);
         shadow.visible = true;
         // horizontal drag plane at the box base height
@@ -502,7 +512,8 @@ export default function InteractiveLoadPlanner({
           b.px = nx; b.pz = nz;
           syncMesh(b);
           syncShadow(b);
-        }
+          setActionMessage('');
+        } else {dragBlocked=true;setActionMessage(IS_ZH?'拖動位置會撞到其他貨物，請先騰出空間。':'That position overlaps another item. Make space before dragging there.');}
         return;
       }
       // idle: hover affordance — glow + grab cursor so boxes read as movable
@@ -520,7 +531,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const onUp = (e: PointerEvent) => {
-      if (mode === 'drag') commit();
+      if (mode === 'drag') {if(dragMoved)reportAction('drag','ok');if(dragBlocked)reportAction('drag','collision');commit();}
       mode = 'idle';
       dragId = null;
       shadow.visible = false;
@@ -746,6 +757,7 @@ export default function InteractiveLoadPlanner({
   const undo = () => {
     const prev = historyRef.current.pop();
     if (!prev) return;
+    reportAction('undo','ok');
     setHistLen(historyRef.current.length);
     boxesRef.current = prev;
     setSelectedId(null);
@@ -764,9 +776,10 @@ export default function InteractiveLoadPlanner({
     const step = Math.max(1, grid);
     const nx = clamp(b.px + dx * step, 0, container.l - b.l);
     const nz = clamp(b.pz + dz * step, 0, container.w - b.w);
-    if (nx === b.px && nz === b.pz) return;
+    if (nx === b.px && nz === b.pz) {reportAction('nudge','boundary');return;}
     const trial: PlannerBox = { ...b, px: nx, pz: nz };
-    if (collidesAny(trial, boxesRef.current)) return;
+    if (collidesAny(trial, boxesRef.current)) {reportAction('nudge','collision');return;}
+    reportAction('nudge','ok');
     pushHistory();
     b.px = nx; b.pz = nz;
     sceneApi.current?.refresh();
@@ -806,8 +819,9 @@ export default function InteractiveLoadPlanner({
     const trial: PlannerBox = { ...b, l: b.w, w: b.l };
     trial.px = clamp(trial.px, 0, container.l - trial.l);
     trial.pz = clamp(trial.pz, 0, container.w - trial.w);
-    if (trial.l > container.l || trial.w > container.w) return;
-    if (collidesAny(trial, boxesRef.current)) return;
+    if (trial.l > container.l || trial.w > container.w) {reportAction('rotate','boundary');return;}
+    if (collidesAny(trial, boxesRef.current)) {reportAction('rotate','collision');return;}
+    reportAction('rotate','ok');
     pushHistory();
     Object.assign(b, trial);
     sceneApi.current?.refresh();
@@ -819,16 +833,12 @@ export default function InteractiveLoadPlanner({
     if (!id) return;
     const b = boxesRef.current.find((x) => x.id === id);
     if (!b) return;
-    // lower until it rests on the floor or on top of another box
-    let restY = 0;
-    for (const o of boxesRef.current) {
-      if (o.id === b.id) continue;
-      const xOverlap = b.px < o.px + o.l - EPS && b.px + b.l > o.px + EPS;
-      const zOverlap = b.pz < o.pz + o.w - EPS && b.pz + b.w > o.pz + EPS;
-      if (xOverlap && zOverlap) restY = Math.max(restY, o.py + o.h);
-    }
+    const trial=loweredBox(b,boxesRef.current);
+    if(trial.py===b.py){reportAction('drop','unchanged');return;}
+    if(collidesAny(trial,boxesRef.current)){reportAction('drop','collision');return;}
+    reportAction('drop','ok');
     pushHistory();
-    b.py = clamp(restY, 0, container.h - b.h);
+    b.py=trial.py;
     sceneApi.current?.refresh();
     commit();
   };
@@ -836,6 +846,7 @@ export default function InteractiveLoadPlanner({
   const deleteSelected = () => {
     const id = selectedIdRef.current;
     if (!id) return;
+    reportAction('delete','ok');
     pushHistory();
     boxesRef.current = boxesRef.current.filter((b) => b.id !== id);
     setSelectedId(null);
@@ -846,6 +857,7 @@ export default function InteractiveLoadPlanner({
   };
 
   const resetPlan = () => {
+    reportAction('reset','ok');
     pushHistory();
     boxesRef.current = boxes.map((b) => ({ ...b }));
     setSelectedId(null);
@@ -949,6 +961,7 @@ export default function InteractiveLoadPlanner({
           </span>
         )}
       </div>
+      {!readOnly && actionMessage && <p role="status" className="text-sm text-amber-700">{actionMessage}</p>}
       {readOnly ? <p className="text-xs text-slate-400">{IS_ZH ? "唯讀 · 拖動旋轉視角 · 滾動縮放" : "Read-only · drag to orbit · scroll to zoom"}</p> : <p className="text-xs text-slate-400">
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
