@@ -145,3 +145,26 @@ verified. These events do not provide a cohort retention denominator. Use GA4
 eligible cohorts separately for 7/30-day retention; no invented retention rate.
 First-party metadata cap is 160 characters to preserve existing workflow
 categories that exceeded the previous 40-character cap.
+
+## Planner friction audit (2026-10-20)
+
+Historical `planner_optimized=manual` included vessel and overhang changes as
+well as button clicks. It was never an export count. It does not show which
+inputs changed, whether the same user's operations crossed sessions, or why.
+Do not infer satisfaction or a specific customer bug from high counts.
+
+New source values: manual/import/container/overhang. Unchanged manual requests
+and selection of the current vessel/overhang are ignored, preserving hand edits.
+`planner_input_kind` records only the field name once per calculation cycle;
+`planner_calc_result` records source:full|partial (heuristic placement outcome).
+`planner_edit` records action:outcome for drag/nudge/rotate/drop/delete/undo/reset.
+Drag collision is emitted once at pointer-up, not per mouse movement. A gesture
+can both move and encounter an obstruction. These are categorical events, no
+cargo labels, dimensions, coordinates, file contents, or job identifiers.
+The initial demo calculation is excluded. Local and automated QA remain excluded.
+
+Unchanged inputs deterministically reproduce the same auto plan, not an improved
+candidate. Users are directed to capacity/constraint changes or manual editing.
+The existing Reset to auto retains its Undo history. Lowering a selected item
+now considers only supports below its current bottom, preventing upward jumps.
+None of these verified code defects establishes what the October 20 users did.

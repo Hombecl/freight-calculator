@@ -327,6 +327,15 @@ await test('planner: loads with stats and 3D', async () => {
   await page.locator('canvas').first().waitFor();
 }, page);
 
+await test('planner: unchanged calculations and current vessel cannot reset the editor',async()=>{
+  const optimize=page.getByRole('button',{name:'Optimise pack',exact:true});
+  if(!await optimize.isDisabled())throw Error('Unchanged deterministic calculation is enabled');
+  const canvas=page.locator('canvas').first();
+  await canvas.evaluate(node=>node.dataset.regressionMarker='retained');
+  await page.getByRole('button',{name:"20' GP",exact:true}).click();
+  if(await canvas.getAttribute('data-regression-marker')!=='retained')throw Error('Current vessel remounted editor and lost undo history');
+},page);
+
 await test('planner: import modal paste flow', async () => {
   await page.getByRole('button', { name: /import excel\/csv/i }).click();
   await page.getByLabel('Paste carton list', { exact: true }).fill('name\tlength\twidth\theight\tweight\tqty\nTest Box\t50\t40\t30\t10\t25\n');
