@@ -118,3 +118,30 @@ Before production deployment preserve the existing Supabase build configuration,
 run release validation, and verify auth/save/share plus printable output on the
 deployed URL. Supply the existing public Supabase URL and anon key in a
 gitignored `.env.production.local` for the production build.
+
+## Post-export feedback (2026-10-20)
+
+Planner CSV/PDF and warehouse PDF show a dismissible, non-modal question after
+successful artifact opening/download triggering. No delay, email, free text or
+shipment contents. At most one dismissed/submitted prompt per tool per tab
+session; sessionStorage failure falls back to mounted-component state.
+
+`export_feedback_shown` / `export_feedback_skipped` metadata: tool:format.
+`export_feedback` metadata: p|w:pdf|csv:usable|edit|explore:purpose:blocker.
+Purpose: unknown/load/pallet/quote/crew/other. Blocker:
+layout/fields/math/placement/download/other; none unless edit.
+These are respondent self-reports, not verified file saves or shipment completion.
+Report response rate (responses / shown), counts by answer and unknown purpose;
+never present usable / all exporters as satisfaction. Responses are a voluntary,
+non-random sample. No answer is not a negative answer.
+
+Existing own-job classification remains explicit. Repeating an identical own-job
+output emits `workflow_repeat`; unique/revised outputs retain `workflow_output`.
+The interval is since the last locally recorded own output, not acquisition.
+Job IDs and revision hashes never leave the browser. The bounded local history
+(200 entries, 90 days), storage clearing and device changes limit repeat coverage.
+Same-job repeats may be retries; next-job is user-declared, not independently
+verified. These events do not provide a cohort retention denominator. Use GA4
+eligible cohorts separately for 7/30-day retention; no invented retention rate.
+First-party metadata cap is 160 characters to preserve existing workflow
+categories that exceeded the previous 40-character cap.

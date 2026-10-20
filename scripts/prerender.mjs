@@ -129,8 +129,15 @@ try {
     // a snapshot that contains it ships a 603 KB script to pages that never use
     // it. Stripping is safe because any page that needs three.js re-injects it
     // on mount.
-    const cleaned = stripInjected(fixMeta(html, route));
-    validateSnapshot(cleaned, route);
+    let cleaned;
+    try {
+      cleaned = stripInjected(fixMeta(html, route));
+      validateSnapshot(cleaned, route);
+    } catch (error) {
+      console.warn(`[prerender] FAILED ${route}: ${error.message}`);
+      failed.push(route);
+      return;
+    }
     writeFileSync(outPath, '<!DOCTYPE html>\n' + cleaned);
     ok++;
     console.log(`[prerender] ${route} → ${outPath} (${(html.length / 1024).toFixed(0)} KB)`);

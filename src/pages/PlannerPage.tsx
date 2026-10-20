@@ -1,3 +1,4 @@
+import ExportFeedback from '../components/ExportFeedback';
 import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
 import {recordToolOutput} from '../lib/workflowUsage';
 import {CARGO_TRANSFER} from '../lib/workflowTransfer';
@@ -297,6 +298,7 @@ export default function PlannerPage() {
     date: new Date().toLocaleDateString(),
   });
   const [exportError, setExportError] = useState<string | null>(null);
+  const [feedbackFormat, setFeedbackFormat] = useState<'pdf'|'csv'|null>(null);
   const runExport = (format: ExportFormat) => {
     if (hasPendingChanges) {
       trackExport('export_failed', 'planner', format, 'stale_plan');
@@ -312,6 +314,7 @@ export default function PlannerPage() {
       });
     });
     if(outcome.ok){if(currentBoxes.length===totalQty)void recordToolOutput(workflowJob,format==='pdf'?'planner_pdf':'planner_csv',{containerKey,specs:appliedSpecs,boxes:currentBoxes});else track('workflow_result','planner_partial');}
+    if(outcome.ok) setFeedbackFormat(format);
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? T('Allow pop-ups for this site, then select PDF plan again.', '請允許此網站開啟彈出視窗，再按 PDF plan。')
       : T('Export did not open. Your plan is still here; please try again.', '匯出未能開啟。方案仍然保留，請再試一次。'));
@@ -723,6 +726,7 @@ export default function PlannerPage() {
           onSignOut: auth.signOut,
         } : undefined}
       />
+      <ExportFeedback tool="planner" format={feedbackFormat} onClose={()=>setFeedbackFormat(null)}/>
     </div>
   );
 }

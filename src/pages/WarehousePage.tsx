@@ -1,3 +1,4 @@
+import ExportFeedback from '../components/ExportFeedback';
 import { removedPalletCount } from '../lib/warehouseInventory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -327,6 +328,7 @@ export default function WarehousePage() {
   };
 
   const [exportError, setExportError] = useState<string | null>(null);
+  const [feedbackFormat, setFeedbackFormat] = useState<'pdf'|'csv'|null>(null);
   const exportPdf = () => {
     trackExport('export_requested', 'warehouse', 'pdf');
     const outcome = performExport('warehouse', 'pdf', () => openWarehousePrintable({
@@ -335,6 +337,7 @@ export default function WarehousePage() {
       imageDataUrl: snapshotFn.current?.() ?? null,
       date: new Date().toLocaleDateString(),
     }));
+    if(outcome.ok) setFeedbackFormat('pdf');
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? 'Allow pop-ups for this site, then select PDF plan again.'
       : 'Export did not open. Your layout is still here; please try again.');
@@ -672,6 +675,7 @@ export default function WarehousePage() {
           <p className="text-xs text-slate-400 mt-1">Green face = dock. Grid snap: 10 cm.</p>
         </div>
       </div>
+      <ExportFeedback tool="warehouse" format={feedbackFormat} onClose={()=>setFeedbackFormat(null)}/>
     </div>
   );
 }
