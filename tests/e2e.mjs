@@ -1284,6 +1284,7 @@ await test('international tools: localized calculation, stale export guard and r
 
 await test('planner review: shared draft flags missing support and reconciles same-name cargo in PDF', async()=>{
  const p=await ctx.newPage();
+ await p.route('**/api/lead',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
  const specs=[{id:'review-a',label:'Same label',l:60,w:40,h:40,weight:10,qty:2,color:123456,keepUpright:true},{id:'review-b',label:'Same label',l:60,w:40,h:40,weight:10,qty:1,color:123456}];
  await p.route('**/api/share?id=review-fixture',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({containerKey:'20gp',container:{l:589,w:235,h:239},specs,boxes:[{id:'review-a-1',specId:'review-a',label:'Same label',l:60,w:40,h:40,weight:10,px:0,py:40,pz:0,color:123456}],reportName:'Review fixture',jobId:'synthetic-job'})}));
  try{
@@ -1294,7 +1295,9 @@ await test('planner review: shared draft flags missing support and reconciles sa
   await panel.locator('summary').click();
   await panel.getByRole('row',{name:'Same label review-b Not placed in this layout. Compare equipment or review rules; this is not proof that it cannot fit. 1 0 1'}).waitFor();
   await p.getByRole('combobox',{name:'Report for',exact:true}).selectOption('summary');
-  const opened=p.waitForEvent('popup');await p.getByRole('button',{name:'PDF plan',exact:true}).click();const report=await opened;
+  await p.getByRole('button',{name:'PDF plan',exact:true}).click();
+  await p.getByPlaceholder('you@company.com',{exact:true}).fill('review-test@example.test');
+  const opened=p.waitForEvent('popup');await p.getByRole('button',{name:/unlock & download/i}).click();const report=await opened;
   try{await report.getByText('DRAFT · remaining cargo or issues need review',{exact:true}).waitFor();await report.getByText('review-b',{exact:true}).waitFor();if(await report.locator('svg').count())throw Error('Summary includes crew steps');}finally{await report.close();}
  }finally{await p.close();}
 },page);
