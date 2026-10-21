@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { marketResult, MARKET_EXAMPLE, marketNumber, marketCsv, ALL_MARKET_LANGS } from '../src/lib/internationalTools.ts';
+import { MARKET_COPY } from '../src/lib/marketCopy.ts';
+import { languageAlternates, ROUTES, MARKET_ROUTES } from '../scripts/release-routes.mjs';
+const run = changes => marketResult({...MARKET_EXAMPLE,...changes},'pallet-calculator');
+assert.equal(run({}).capacity,40);
+assert.equal(run({}).layer,8);
+assert.equal(run({}).pallets,3);
+assert.equal(run({payload:75}).capacity,7);
+assert.equal(run({payload:75}).layers,1);
+assert.equal(run({payload:5}).capacity,0);
+assert.equal(run({l:130,w:130}).capacity,0);
+assert.equal(run({h:151}).capacity,0);
+assert.equal(run({l:40.64,w:25.4,pl:121.92,pw:101.6}).layer,12);
+assert.equal(run({qty:1.5}),null);
+assert.equal(run({l:0}),null);
+assert.equal(run({weight:NaN}),null);
+assert.equal(run({payload:Infinity}),null);
+assert.equal(marketResult(MARKET_EXAMPLE,'cbm-calculator').volume,3.6);
+assert.equal(marketNumber('40,64'),40.64);
+assert.ok(Number.isNaN(marketNumber('1,000.5')));
+assert.ok(Number.isNaN(marketNumber('')));
+assert.equal(marketCsv([['é,表','"x"']]),'\uFEFF"é,表","""x"""');
+for(const l of ALL_MARKET_LANGS) assert.deepEqual(Object.keys(MARKET_COPY[l]).sort(),Object.keys(MARKET_COPY.en).sort());
+assert.equal(languageAlternates('/guides/pallet-calculator'),null);
+assert.equal(languageAlternates('/zh/guides/pallet-calculator'),null);
+assert.equal(MARKET_ROUTES.length,15);
+assert.equal(new Set(ROUTES).size,ROUTES.length);
+for(const route of MARKET_ROUTES) {
+ const alts=languageAlternates(route);
+ assert.equal(alts.length,7);
+ assert.ok(alts.every(a=>ROUTES.includes(a.route)));
+ assert.ok(alts.some(a=>a.route===route));
+}
+console.log('International tools: physical limits, decimal input, CSV and reciprocal routes passed');

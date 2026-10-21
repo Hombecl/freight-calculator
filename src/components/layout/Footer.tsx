@@ -7,6 +7,7 @@ export default function Footer() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   const product = [
+    { to: '/shipping-tools', label: T('Shipping tools in your language', '多語言運輸計算工具') },
     { to: '/workspace', label: T('Team workspace', '團隊工作區') },
     { to: '/planner', label: T('3D Load Planner', '3D 裝載規劃器') },
     { to: '/packing', label: T('Carton Packing Calculator', '產品裝箱計算器') },

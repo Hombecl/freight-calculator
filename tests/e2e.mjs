@@ -1258,6 +1258,30 @@ await test('export feedback: optional, validates blocker, suppresses repeat prom
   } finally { await feedbackPage.close(); }
 },page);
 
+await test('international tools: localized calculation, stale export guard and reciprocal languages', async () => {
+  await page.goto(`${BASE}/es/pallet-calculator`);
+  await page.getByRole('button',{name:'Calcular',exact:true}).click();
+  const results=page.locator('dl');
+  if(!(await results.first().innerText()).includes('40'))throw Error('Wrong pallet capacity');
+  await page.getByTestId('intl-payload').fill('75');
+  if(!await page.getByRole('button',{name:'Descargar CSV',exact:true}).isDisabled())throw Error('Stale export enabled');
+  await page.getByRole('button',{name:'Calcular',exact:true}).click();
+  if(!(await results.first().innerText()).includes('15'))throw Error('Weight limit not applied');
+  if(await page.locator('link[rel="alternate"]').count()!==8)throw Error('Incomplete language alternatives');
+  await page.goto(`${BASE}/de/cbm-calculator`);
+  await page.getByTestId('intl-l').fill('40,5');
+  await page.getByRole('button',{name:'Berechnen',exact:true}).click();
+  if(!(await page.locator('dl').first().innerText()).includes('3,645'))throw Error('Decimal comma not accepted');
+  await page.getByTestId('intl-l').fill('');
+  await page.getByRole('button',{name:'Berechnen',exact:true}).click();
+  await page.getByRole('alert').waitFor();
+  if(!await page.getByRole('button',{name:'CSV herunterladen',exact:true}).isDisabled())throw Error('Invalid input exports');
+  await page.goto(`${BASE}/zh-hans/shipping-tools`);
+  await page.getByRole('heading',{name:'运输计算工具：体积、托盘与装柜规划',exact:true}).waitFor();
+  await page.locator('html[lang="zh-Hans"]').waitFor();
+  if(await page.locator('html').getAttribute('lang')!=='zh-Hans')throw Error('Wrong Simplified Chinese language');
+}, page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

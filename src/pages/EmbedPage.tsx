@@ -43,6 +43,7 @@ export default function EmbedPage() {
       <Helmet>
         <title>Packing Calculator Widget | DimPack3D</title>
         <meta name="robots" content="noindex" />
+        <meta name="description" content="Embedded carton packing calculator by DimPack3D." />
       </Helmet>
       {/* Calculator's own root already carries bg-slate-50 + p-4 */}
       <Calculator fixedMode="packing" hideHeader={true} embed={true} />
