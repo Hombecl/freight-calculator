@@ -9,7 +9,7 @@ export const CONSOLIDATION_LIMITS = { pos: 30, types: 60, cartons: 3000, bodyByt
 export interface ConsolidationRequest {
   units?: 'cm-kg' | 'in-lb';
   pos: Array<{ poId: string; supplier?: string; readyDate?: string; priority?: number;
-    items: Array<{ sku?: string; label?: string; l: number; w: number; h: number; qty: number; weight: number; keepUpright?: boolean; maxStack?: number; fragile?: boolean }> }>;
+    items: Array<{ sku?: string; label?: string; l: number; w: number; h: number; qty: number; weight: number; keepUpright?: boolean; allowRotate?: boolean; unloadOrder?: number; maxStack?: number; fragile?: boolean }> }>;
   window?: { from?: string; to?: string };
   containers: Array<{ preset: '20gp' | '40gp' | '40hq'; maxCount?: number; ratePerContainer?: number }>;
   lcl?: { ratePerCbm?: number; minCbm?: number };
@@ -76,7 +76,7 @@ export function parseConsolidationRequest(input: unknown) {
       return { id: `po${i}-sku${j}`, sku, label: str(it.label, `${k}.label`) ?? sku,
         l: num(it.l, `${k}.l`, 0.1, 10000) * L, w: num(it.w, `${k}.w`, 0.1, 10000) * L, h: num(it.h, `${k}.h`, 0.1, 10000) * L,
         weight: num(it.weight, `${k}.weight`, 0, 100000) * W, qty, color: palette[i % palette.length], group: poId,
-        keepUpright: bool(it.keepUpright, `${k}.keepUpright`, true), maxStack: fragile ? 0 : maxStack };
+        keepUpright: bool(it.keepUpright, `${k}.keepUpright`, true), allowRotate: bool(it.allowRotate, `${k}.allowRotate`, true), ...(it.unloadOrder===undefined?{}:{unloadOrder:num(it.unloadOrder, `${k}.unloadOrder`, 1, 1000, 1, true)}), maxStack: fragile ? 0 : maxStack };
     });
     return { poId, supplier: str(p.supplier, `${f}.supplier`), readyDate: date(p.readyDate, `${f}.readyDate`), priority: num(p.priority, `${f}.priority`, 1, 100000, 2, true), items };
   });

@@ -16,7 +16,7 @@ export const onRequestPost:PagesFunction<Env>=async ctx=>{
    payload={type:'build-sheet',feedbackEnabled:plan.allowFeedback===true,quote:{...clean,pallets:clean.pallets.map(({variance,...p}:any)=>p),...(request?{request:{...request,actuals:undefined}}:{})}};
   }catch{return new Response('bad build sheet',{status:400});}
  }else if(plan?.container&&Array.isArray(plan.specs)){
-  payload={containerKey:plan.containerKey,container:plan.container,specs:plan.specs,boxes:plan.boxes};
+  payload={containerKey:plan.containerKey,container:plan.container,specs:plan.specs,boxes:plan.boxes,overhangCm:[0,2.5,5].includes(plan.overhangCm)?plan.overhangCm:0,reportName:typeof plan.reportName==='string'?plan.reportName.slice(0,120):undefined,jobId:typeof plan.jobId==='string'?plan.jobId.slice(0,100):undefined};
  }else if(plan?.type==='warehouse'&&plan.floor&&Array.isArray(plan.items)){
   payload={...plan};delete payload.shareDays;
  }else return new Response('bad plan',{status:400});

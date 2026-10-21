@@ -1,3 +1,7 @@
+import PlannerReviewPanel from '../components/PlannerReviewPanel';
+import {reviewPlanner} from '../lib/plannerReview';
+import {plannerManifestCSV,type PlannerReportView} from '../lib/plannerReport';
+import {readPlannerHistory,savePlannerSnapshot,snapshotRevision,snapshotChanges,type PlannerSnapshot} from '../lib/plannerHistory';
 import {shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
 import ExportFeedback from '../components/ExportFeedback';
 import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
@@ -16,7 +20,7 @@ import { TEMPLATE_CSV } from '../lib/importCartons';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
 import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
 import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, loadVoids, type AxleConfig } from '../lib/realism';
-import { toPackingCSV, downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
+import { downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
 import { useAuth } from '../hooks/useAuth';
 import PaywallModal from '../components/PaywallModal';
@@ -58,6 +62,7 @@ const CONTAINERS = {
  */
 function fitsDoor(s: Spec, door: { w: number; h: number } | null): boolean {
   if (!door) return true; // pallets are open — no aperture
+  if (s.allowRotate === false) return s.w <= door.w && s.h <= door.h;
   const dims = [s.l, s.w, s.h];
   if (s.keepUpright) return Math.min(s.l, s.w) <= door.w && s.h <= door.h;
   for (let vert = 0; vert < 3; vert++) {
@@ -122,6 +127,10 @@ export default function PlannerPage() {
   const [specs, setSpecs] = useState<Spec[]>(preset?.specs ?? DEFAULT_SPECS);
   // Draft edits must never be combined with the last calculated boxes/stats.
   const [workflowJob,setWorkflowJob]=useWorkflowJob('planner');
+  const [reportName,setReportName]=useState('');
+  const [reportView,setReportView]=useState<PlannerReportView>('crew');
+  const [history,setHistory]=useState(readPlannerHistory);
+  const [historyMessage,setHistoryMessage]=useState('');
   const [appliedSpecs, setAppliedSpecs] = useState<Spec[]>(specs);
   const hasPendingChanges = JSON.stringify(specs) !== JSON.stringify(appliedSpecs);
   useEffect(() => {
@@ -244,6 +253,9 @@ export default function PlannerPage() {
         const plan = await res.json();
         if (plan.containerKey && CONTAINERS[plan.containerKey as ContainerKey]) setContainerKey(plan.containerKey);
         if (Array.isArray(plan.specs)) { setSpecs(plan.specs); setAppliedSpecs(plan.specs); }
+        if([0,2.5,5].includes(plan.overhangCm))setOverhangCm(plan.overhangCm);
+        if(typeof plan.reportName==='string')setReportName(plan.reportName.slice(0,120));
+        if(typeof plan.jobId==='string')setWorkflowJob({id:plan.jobId,own:false});
         setLiveBoxes(null);
         setSharedBoxes(Array.isArray(plan.boxes) ? plan.boxes : null);
         setSeed((n) => n + 1);
@@ -298,13 +310,30 @@ export default function PlannerPage() {
   const snapshotFn = useRef<(() => string | null) | null>(null);
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const meta = (): PlanMeta => ({
-    title: 'Container Load Plan',
+    title: T('Container Load Plan','貨櫃裝載計劃'),
     containerLabel: container.label,
     container,
     unit: 'cm',
     weightUnit: 'kg',
-    date: new Date().toLocaleDateString(),
+    date: new Date().toISOString(),
   });
+  const review=useMemo(()=>reviewPlanner(currentBoxes,packSpace,appliedSpecs,container.door),[currentBoxes,packSpace,appliedSpecs,container]);
+  const revision=snapshotRevision({containerKey,overhangCm,specs:appliedSpecs,boxes:currentBoxes});
+  const currentSnapshot=():PlannerSnapshot=>({jobId:workflowJob.id,name:reportName,containerKey,overhangCm,specs:appliedSpecs,boxes:currentBoxes,revision,savedAt:new Date().toISOString()});
+  const preserve=()=>{try{setHistory(savePlannerSnapshot(currentSnapshot()));setHistoryMessage(T('Version saved on this device.','版本已儲存在本機。'));return true;}catch{setHistoryMessage(T('Could not save this version. Check device storage before leaving.','未能保存版本。離開前請檢查本機儲存空間。'));return false;}};
+  const restore=(v:PlannerSnapshot)=>{
+    if(!CONTAINERS[v.containerKey as ContainerKey])return;
+    setContainerKey(v.containerKey as ContainerKey);setOverhangCm(v.overhangCm);
+    setSpecs(v.specs);setAppliedSpecs(v.specs);setLiveBoxes(null);setSharedBoxes(v.boxes);setSeed(n=>n+1);
+    setReportName(v.name);setWorkflowJob({id:v.jobId,own:false});
+    setHistoryMessage(T('Saved version reopened. Confirm own-job again; edits make a new revision.','已重開保存版本。請重新確認自己的工作；修改會產生新版本。'));
+  };
+  const reportInput=()=>({meta:meta(),boxes:currentBoxes,requestedSpecs:appliedSpecs,reviewContainer:packSpace,door:container.door,reportView,reportReference:reportName||workflowJob.id.slice(0,8),revision,zh:IS_ZH});
+  const transferCargo=(e:React.MouseEvent<HTMLAnchorElement>,target:'quote'|'compare')=>{
+    if(hasPendingChanges||appliedSpecs.some(s=>s.weightKnown===false)){e.preventDefault();setExportError(T('Update this plan and supply missing weights first.','請先更新方案並填寫缺少嘅重量。'));return;}
+    if(!preserve()){e.preventDefault();return;}
+    try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify({model:'loose-cartons',orderId:workflowJob.id,revision,specs:appliedSpecs,ownJob:workflowJob.own}));track('workflow_transfer',target==='compare'?'planner_compare':'planner_cartons');}catch{e.preventDefault();setExportError(T('Device storage is full.','本機儲存已滿。'));}
+  };
   const [exportError, setExportError] = useState<string | null>(null);
   const [feedbackFormat, setFeedbackFormat] = useState<'pdf'|'csv'|null>(null);
   const runExport = (format: ExportFormat) => {
@@ -315,13 +344,13 @@ export default function PlannerPage() {
     }
     if(appliedSpecs.some(s=>s.weightKnown===false)) { setExportError(T('Supply each missing carton weight and optimise again before exporting a weight estimate.','請填寫缺少嘅箱重並重新計算，再匯出重量估算。'));return; }
     const outcome = performExport('planner', format, () => {
-      if (format === 'csv') return downloadText('load-plan.csv', toPackingCSV(currentBoxes, result.zones, meta()));
+      if (format === 'csv') return downloadText(`load-plan-${revision}.csv`, plannerManifestCSV(reportInput()));
       return openPrintablePlan({
-        meta: meta(), stats, zones: result.zones, boxes: currentBoxes,
+        ...reportInput(), stats, zones: result.zones, boxes: currentBoxes,
         totalRequested: totalQty, imageDataUrl: snapshotFn.current?.() ?? null,
       });
     });
-    if(outcome.ok){if(currentBoxes.length===totalQty)void recordToolOutput(workflowJob,format==='pdf'?'planner_pdf':'planner_csv',{containerKey,specs:appliedSpecs,boxes:currentBoxes});else track('workflow_result','planner_partial');}
+    if(outcome.ok){if(review.complete)void recordToolOutput(workflowJob,format==='pdf'?'planner_pdf':'planner_csv',{containerKey,specs:appliedSpecs,boxes:currentBoxes});else track('workflow_result','planner_draft');}
     if(outcome.ok) setFeedbackFormat(previous=>previous??format);
     setExportError(outcome.ok ? null : outcome.reason === 'popup_blocked'
       ? T('Allow pop-ups for this site, then select PDF plan again.', '請允許此網站開啟彈出視窗，再按 PDF plan。')
@@ -538,6 +567,7 @@ export default function PlannerPage() {
           )}
           {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
+          <section className="rounded border p-3 space-y-2 text-sm"><label className="block">{T('Report reference (optional)','報告參考編號（可略過）')}<input className="border rounded p-2 w-full" maxLength={120} value={reportName} onChange={e=>setReportName(e.target.value)}/></label><label className="block">{T('Report for','報告對象')}<select className="border rounded p-2 w-full" value={reportView} onChange={e=>setReportView(e.target.value as PlannerReportView)}><option value="summary">{T('Customer — summary','客戶 — 摘要')}</option><option value="crew">{T('Warehouse — loading steps','倉庫 — 裝載步驟')}</option><option value="manifest">{T('Forwarder — reconciliation and positions','貨代 — 對數及位置')}</option></select></label><p className="text-xs break-all">{T('Revision','版本')}: {revision}</p></section>
           <div className="flex gap-2">
             <button
               onClick={exportCsv}
@@ -556,10 +586,13 @@ export default function PlannerPage() {
           </div>
 
           <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
-          <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>{if(hasPendingChanges||appliedSpecs.some(s=>s.weightKnown===false)){e.preventDefault();setExportError(T('Update this plan and supply missing weights first.','請先更新方案並填寫缺少嘅重量。'));return;}try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify({model:'loose-cartons',orderId:`order-${crypto.randomUUID().slice(0,8)}`,revision:'planner',specs:appliedSpecs}));track('workflow_transfer','planner_cartons');}catch{e.preventDefault();setExportError(T('Device storage is full.','本機儲存已滿。'));}}}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
+          <Link to={IS_ZH?'/zh/order-quote':'/order-quote'} className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'quote')}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
+          <Link to={IS_ZH?'/zh/consolidation':'/consolidation'} className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
+          <p className="text-xs text-slate-600">{T('Your current layout is saved locally before comparison. Compare the same quantities and rules; costs need your own quotes.','比較前會在本機保存目前擺位。沿用相同數量及限制；成本需提供自己的報價。')}</p>
           {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
-          <WorkflowJob job={workflowJob} onChange={setWorkflowJob}/>
-          <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes})}/>
+          <WorkflowJob job={workflowJob} onChange={next=>{if(next.id!==workflowJob.id){if(hasPendingChanges){setHistoryMessage(T('Calculate pending edits before starting another job.','開始新工作前，請先計算待處理修改。'));return;}if(!preserve())return;setReportName('');setLiveBoxes(null);setSharedBoxes(null);setSeed(n=>n+1);}setWorkflowJob(next);}}/>
+          <details className="rounded border p-3 text-sm"><summary className="cursor-pointer font-semibold">{T('Saved versions on this device','本機保存版本')}</summary><p className="text-xs my-2">{T('Keeps the latest 20 snapshots in this browser. Reopen a version to revise the same job; use Start next job for another shipment. New jobs keep cargo rules but recalculate positions.','在此瀏覽器保留最近 20 個快照。重開版本可修訂同一工作；另一批出貨請開始新工作。新工作沿用貨物限制，但會重新計算擺位。')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={preserve}>{T('Save this version locally','在本機保存此版本')}</button>{historyMessage&&<p role="status">{historyMessage}</p>}<ul>{[...history].reverse().map(v=>{const diff=snapshotChanges(v,currentSnapshot());return <li key={v.jobId+v.revision} className="border-t py-2"><p>{v.name||v.jobId.slice(0,8)} · {v.revision.slice(0,8)} · {new Date(v.savedAt).toLocaleString()}</p><p>{T('Compared with current:','與目前比較：')} {diff.cargoRows} {T('cargo rows changed','貨物行有變')} · {diff.equipment?T('equipment changed','櫃型有變'):T('same equipment','相同櫃型')} · {diff.layout?T('layout changed','擺位有變'):T('same layout','相同擺位')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={()=>{if(preserve())restore(v);}}>{T('Reopen version','重開版本')}</button></li>})}</ul></details>
+          <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes,overhangCm,reportName,jobId:workflowJob.id})}/>
 
 
           {auth.enabled && (
@@ -604,9 +637,9 @@ export default function PlannerPage() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span>CoG balance</span>
+              <span>Horizontal CoG offset</span>
               <span className={`font-semibold ${balanceWarn ? 'text-amber-600' : 'text-green-600'}`}>
-                {balanceWarn ? 'Off-centre' : 'Balanced'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
+                {balanceWarn ? 'Outside centre band' : 'Within centre band'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
               </span>
             </div>
             {'tare' in container && container.tare != null && (
@@ -684,7 +717,9 @@ export default function PlannerPage() {
 
         {/* right: 3D editor */}
         <div>
+          <div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
           <InteractiveLoadPlanner
+            flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
             key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
             container={packSpace}
             boxes={sharedBoxes ?? result.boxes}

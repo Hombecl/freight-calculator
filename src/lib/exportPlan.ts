@@ -1,3 +1,4 @@
+import {buildPlannerReport, type PlannerReportInput} from './plannerReport';
 /**
  * exportPlan.ts — turn a load plan into shareable artifacts.
  *
@@ -65,7 +66,7 @@ export function downloadText(filename: string, text: string, mime = 'text/csv') 
   }
 }
 
-export interface PrintablePlanOpts {
+export interface PrintablePlanOpts extends Partial<Omit<PlannerReportInput, 'meta'|'boxes'>> {
   meta: PlanMeta;
   stats: PackStats;
   zones: ZoneInfo[];
@@ -96,6 +97,7 @@ export function openPrintablePlan(opts: PrintablePlanOpts): PrintResult {
 
 /** Pure HTML builder for the printable plan (also used to render previews). */
 export function buildPrintableHTML(opts: PrintablePlanOpts): string {
+  if(opts.requestedSpecs) return buildPlannerReport({...opts,requestedSpecs:opts.requestedSpecs});
   const { meta, stats, zones, boxes, totalRequested, imageDataUrl } = opts;
 
   const rows = loadingSequence(boxes).map((b, i) => `
@@ -114,7 +116,7 @@ export function buildPrintableHTML(opts: PrintablePlanOpts): string {
         `#${z.unloadOrder} (${boxes.filter((b) => zoneOf(b, zones) === z.unloadOrder).length})`).join(' · ')}</p>`
     : '';
 
-  const balance = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15 ? 'Off-centre' : 'Balanced';
+  const balance = Math.abs(stats.cogOffsetPct.x) > 15 || Math.abs(stats.cogOffsetPct.z) > 15 ? 'Outside ±15% centre band' : 'Within ±15% centre band';
 
   return `<!doctype html><html><head><meta charset="utf-8">
 <title>${escapeHtml(meta.title)}</title>
@@ -141,7 +143,7 @@ export function buildPrintableHTML(opts: PrintablePlanOpts): string {
     <div><b>Cartons packed:</b> ${stats.placedCount} / ${totalRequested}</div>
     <div><b>Volume utilisation:</b> ${stats.volumeUtil.toFixed(1)}%</div>
     <div><b>Total weight:</b> ${stats.totalWeight.toFixed(0)} ${meta.weightUnit ?? 'kg'}${stats.weightUtil != null ? ` (${stats.weightUtil.toFixed(0)}%)` : ''}</div>
-    <div><b>CoG balance:</b> ${balance} (${stats.cogOffsetPct.x >= 0 ? '+' : ''}${stats.cogOffsetPct.x.toFixed(0)}%, ${stats.cogOffsetPct.z >= 0 ? '+' : ''}${stats.cogOffsetPct.z.toFixed(0)}%)</div>
+    <div><b>Horizontal CoG offset (not a safety check):</b> ${balance} (${stats.cogOffsetPct.x >= 0 ? '+' : ''}${stats.cogOffsetPct.x.toFixed(0)}%, ${stats.cogOffsetPct.z >= 0 ? '+' : ''}${stats.cogOffsetPct.z.toFixed(0)}%)</div>
   </div>
   ${zoneStrip}
   <p style="font-size:12px;margin:4px 0"><b>Loading sequence:</b> load #1 first — place every support before the carton above it; among ready cartons, work back-to-door, then bottom-up. Tape this sheet at the door.</p>
