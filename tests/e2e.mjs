@@ -1209,6 +1209,9 @@ await test('search workflow: downloadable guide example opens the matching 20-ca
 }, searchPage);
 await test('search workflow: Traditional Chinese planner links use exactly one locale prefix', async () => {
   await searchPage.goto(`${BASE}/zh/planner`);
+  for (const [name,target] of [['用此散箱貨單計算卡板報價','/zh/order-quote'],['比較此貨單的櫃型','/zh/consolidation']]) {
+    if(await searchPage.getByRole('link',{name,exact:true}).getAttribute('href')!==target)throw Error('Broken planner handoff locale: '+name);
+  }
   const nav=searchPage.getByRole('navigation',{name:'相關裝載工具'});
   await nav.waitFor();
   const links=await nav.locator('a').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
