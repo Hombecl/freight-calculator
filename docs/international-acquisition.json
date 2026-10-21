@@ -20,7 +20,8 @@
       ],
       "evidence": "GSC 2026-09-17–2026-10-14: pallet calculator average position 40.41; free 3D query 200 impressions/1 click. These are site impressions, not market volume.",
       "priority": "Improve existing entry points and monitor the October 17 release; do not repeatedly rewrite metadata before recrawl.",
-      "competitor": "https://www.freightools.com/tools/load-calculator"
+      "competitor": "https://www.freightools.com/tools/load-calculator",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     },
     {
       "language": "es",
@@ -39,7 +40,8 @@
       ],
       "evidence": "Saved GA4 last-7-days card: Mexico 20 active users; exact date endpoints not recorded. EasyCargo has Spanish product, teaching and trial pages. Neither proves market search volume.",
       "priority": "Localized volume/pallet workflow plus local-language route to existing mixed-pallet tool.",
-      "competitor": "https://www.easycargo3d.com/es/blog/como-calcular-la-carga/"
+      "competitor": "https://www.easycargo3d.com/es/blog/como-calcular-la-carga/",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     },
     {
       "language": "pt",
@@ -56,7 +58,8 @@
       ],
       "evidence": "Competitor has Portuguese loading guides; current top-seven country card is not a complete country list. Brazil/Portugal demand remains unquantified.",
       "priority": "Test a functional Portuguese entry; distinguish Brazilian and Portuguese terminology without duplicate country pages.",
-      "competitor": "https://www.easycargo3d.com/pt-pt/blog/como-carregar-um-contentor/"
+      "competitor": "https://www.easycargo3d.com/pt-pt/blog/como-carregar-um-contentor/",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     },
     {
       "language": "de",
@@ -74,7 +77,8 @@
       ],
       "evidence": "Competitor publishes German planning and unloading guidance; no new local search-volume or rank measurement obtained.",
       "priority": "EUR footprint, editable cargo limits, decimal comma, German report.",
-      "competitor": "https://www.easycargo3d.com/de/journal/sie-muessen-mit-mehreren-entladepunkten-fuer-ihre-fracht-planen/"
+      "competitor": "https://www.easycargo3d.com/de/journal/sie-muessen-mit-mehreren-entladepunkten-fuer-ihre-fracht-planen/",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     },
     {
       "language": "fr",
@@ -93,7 +97,8 @@
       ],
       "evidence": "EasyCargo has French product, import and loading documentation. Countries are candidate markets; language is not inferred from country alone.",
       "priority": "French calculator, instructions and report; mixed-carton height tool already exists in French.",
-      "competitor": "https://www.easycargo3d.com/fr/index.php"
+      "competitor": "https://www.easycargo3d.com/fr/index.php",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     },
     {
       "language": "zh-Hans / zh-Hant",
@@ -112,7 +117,8 @@
       ],
       "evidence": "Saved last-7-days GA4 card CN179/TW35/SG27; location is not verified language or human identity. Existing /zh is Traditional Chinese.",
       "priority": "Simplified Chinese first-task tools; preserve Traditional Chinese planner and label handoff accurately.",
-      "competitor": "https://3d.skyteamlabs.com/zh/"
+      "competitor": "https://3d.skyteamlabs.com/zh/",
+      "updated_country_evidence": "See country_baseline: complete GA4 country table obtained after browser reconnection. Original 7-day observations above retained with their original scope."
     }
   ],
   "baseline": {
@@ -279,10 +285,906 @@
   },
   "unresolved": [
     "Verified monthly search volume by language/country requires a suitable data source; no invented volumes or national ranks.",
-    "No fresh complete 28-day GA4 country export in this release; prior seven-country card is incomplete.",
     "Mixed-container 3D planner and Excel walkthrough remain English/Traditional Chinese; their links disclose this.",
     "Native-speaker terminology review and post-indexing demand/retention evidence remain necessary.",
     "No automated future monitoring job was scheduled; review dates are an analysis plan.",
     "Competitor bot-adjusted users, conversions and profit are unknown."
-  ]
+  ],
+  "country_baseline": {
+    "period": [
+      "2026-09-23",
+      "2026-10-20"
+    ],
+    "report_active_users": 1787,
+    "rows": [
+      {
+        "country": "China",
+        "active_users": 462,
+        "share_percent": 25.85,
+        "new_users": 427,
+        "engaged_sessions": 273,
+        "engagement_rate": 40.93,
+        "average_engagement_time_per_active_user": "2m 06s"
+      },
+      {
+        "country": "United States",
+        "active_users": 215,
+        "share_percent": 12.03,
+        "new_users": 205,
+        "engaged_sessions": 201,
+        "engagement_rate": 62.42,
+        "average_engagement_time_per_active_user": "2m 34s"
+      },
+      {
+        "country": "Taiwan",
+        "active_users": 95,
+        "share_percent": 5.32,
+        "new_users": 85,
+        "engaged_sessions": 101,
+        "engagement_rate": 58.38,
+        "average_engagement_time_per_active_user": "2m 49s"
+      },
+      {
+        "country": "Singapore",
+        "active_users": 90,
+        "share_percent": 5.04,
+        "new_users": 90,
+        "engaged_sessions": 23,
+        "engagement_rate": 25.0,
+        "average_engagement_time_per_active_user": "24s"
+      },
+      {
+        "country": "India",
+        "active_users": 68,
+        "share_percent": 3.81,
+        "new_users": 67,
+        "engaged_sessions": 75,
+        "engagement_rate": 66.96,
+        "average_engagement_time_per_active_user": "5m 43s"
+      },
+      {
+        "country": "Mexico",
+        "active_users": 48,
+        "share_percent": 2.69,
+        "new_users": 47,
+        "engaged_sessions": 58,
+        "engagement_rate": 48.74,
+        "average_engagement_time_per_active_user": "4m 30s"
+      },
+      {
+        "country": "Vietnam",
+        "active_users": 48,
+        "share_percent": 2.69,
+        "new_users": 43,
+        "engaged_sessions": 52,
+        "engagement_rate": 78.79,
+        "average_engagement_time_per_active_user": "4m 56s"
+      },
+      {
+        "country": "Chile",
+        "active_users": 44,
+        "share_percent": 2.46,
+        "new_users": 44,
+        "engaged_sessions": 58,
+        "engagement_rate": 61.05,
+        "average_engagement_time_per_active_user": "8m 07s"
+      },
+      {
+        "country": "United Kingdom",
+        "active_users": 40,
+        "share_percent": 2.24,
+        "new_users": 40,
+        "engaged_sessions": 36,
+        "engagement_rate": 54.55,
+        "average_engagement_time_per_active_user": "1m 54s"
+      },
+      {
+        "country": "Ireland",
+        "active_users": 38,
+        "share_percent": 2.13,
+        "new_users": 41,
+        "engaged_sessions": 33,
+        "engagement_rate": 76.74,
+        "average_engagement_time_per_active_user": "1m 15s"
+      },
+      {
+        "country": "Türkiye",
+        "active_users": 35,
+        "share_percent": 1.96,
+        "new_users": 32,
+        "engaged_sessions": 29,
+        "engagement_rate": 52.73,
+        "average_engagement_time_per_active_user": "3m 07s"
+      },
+      {
+        "country": "Italy",
+        "active_users": 34,
+        "share_percent": 1.9,
+        "new_users": 33,
+        "engaged_sessions": 39,
+        "engagement_rate": 79.59,
+        "average_engagement_time_per_active_user": "4m 00s"
+      },
+      {
+        "country": "Indonesia",
+        "active_users": 33,
+        "share_percent": 1.85,
+        "new_users": 29,
+        "engaged_sessions": 45,
+        "engagement_rate": 72.58,
+        "average_engagement_time_per_active_user": "7m 07s"
+      },
+      {
+        "country": "Netherlands",
+        "active_users": 33,
+        "share_percent": 1.85,
+        "new_users": 32,
+        "engaged_sessions": 25,
+        "engagement_rate": 75.76,
+        "average_engagement_time_per_active_user": "17s"
+      },
+      {
+        "country": "Hong Kong",
+        "active_users": 31,
+        "share_percent": 1.73,
+        "new_users": 24,
+        "engaged_sessions": 30,
+        "engagement_rate": 52.63,
+        "average_engagement_time_per_active_user": "3m 21s"
+      },
+      {
+        "country": "Germany",
+        "active_users": 27,
+        "share_percent": 1.51,
+        "new_users": 27,
+        "engaged_sessions": 26,
+        "engagement_rate": 74.29,
+        "average_engagement_time_per_active_user": "3m 22s"
+      },
+      {
+        "country": "Thailand",
+        "active_users": 26,
+        "share_percent": 1.45,
+        "new_users": 25,
+        "engaged_sessions": 24,
+        "engagement_rate": 57.14,
+        "average_engagement_time_per_active_user": "3m 49s"
+      },
+      {
+        "country": "Brazil",
+        "active_users": 25,
+        "share_percent": 1.4,
+        "new_users": 24,
+        "engaged_sessions": 23,
+        "engagement_rate": 56.1,
+        "average_engagement_time_per_active_user": "2m 16s"
+      },
+      {
+        "country": "Spain",
+        "active_users": 25,
+        "share_percent": 1.4,
+        "new_users": 24,
+        "engaged_sessions": 29,
+        "engagement_rate": 67.44,
+        "average_engagement_time_per_active_user": "3m 23s"
+      },
+      {
+        "country": "France",
+        "active_users": 24,
+        "share_percent": 1.34,
+        "new_users": 24,
+        "engaged_sessions": 31,
+        "engagement_rate": 83.78,
+        "average_engagement_time_per_active_user": "7m 08s"
+      },
+      {
+        "country": "Poland",
+        "active_users": 24,
+        "share_percent": 1.34,
+        "new_users": 22,
+        "engaged_sessions": 21,
+        "engagement_rate": 63.64,
+        "average_engagement_time_per_active_user": "1m 48s"
+      },
+      {
+        "country": "Japan",
+        "active_users": 20,
+        "share_percent": 1.12,
+        "new_users": 18,
+        "engaged_sessions": 21,
+        "engagement_rate": 70.0,
+        "average_engagement_time_per_active_user": "2m 46s"
+      },
+      {
+        "country": "Canada",
+        "active_users": 19,
+        "share_percent": 1.06,
+        "new_users": 19,
+        "engaged_sessions": 16,
+        "engagement_rate": 76.19,
+        "average_engagement_time_per_active_user": "2m 38s"
+      },
+      {
+        "country": "Australia",
+        "active_users": 18,
+        "share_percent": 1.01,
+        "new_users": 17,
+        "engaged_sessions": 14,
+        "engagement_rate": 56.0,
+        "average_engagement_time_per_active_user": "2m 36s"
+      },
+      {
+        "country": "South Korea",
+        "active_users": 17,
+        "share_percent": 0.95,
+        "new_users": 16,
+        "engaged_sessions": 15,
+        "engagement_rate": 68.18,
+        "average_engagement_time_per_active_user": "2m 49s"
+      },
+      {
+        "country": "Malaysia",
+        "active_users": 15,
+        "share_percent": 0.84,
+        "new_users": 15,
+        "engaged_sessions": 14,
+        "engagement_rate": 63.64,
+        "average_engagement_time_per_active_user": "2m 45s"
+      },
+      {
+        "country": "Portugal",
+        "active_users": 13,
+        "share_percent": 0.73,
+        "new_users": 13,
+        "engaged_sessions": 9,
+        "engagement_rate": 56.25,
+        "average_engagement_time_per_active_user": "4m 03s"
+      },
+      {
+        "country": "Russia",
+        "active_users": 13,
+        "share_percent": 0.73,
+        "new_users": 12,
+        "engaged_sessions": 12,
+        "engagement_rate": 42.86,
+        "average_engagement_time_per_active_user": "3m 22s"
+      },
+      {
+        "country": "Sri Lanka",
+        "active_users": 13,
+        "share_percent": 0.73,
+        "new_users": 13,
+        "engaged_sessions": 19,
+        "engagement_rate": 61.29,
+        "average_engagement_time_per_active_user": "6m 33s"
+      },
+      {
+        "country": "Colombia",
+        "active_users": 12,
+        "share_percent": 0.67,
+        "new_users": 12,
+        "engaged_sessions": 10,
+        "engagement_rate": 52.63,
+        "average_engagement_time_per_active_user": "2m 33s"
+      },
+      {
+        "country": "Philippines",
+        "active_users": 12,
+        "share_percent": 0.67,
+        "new_users": 12,
+        "engaged_sessions": 13,
+        "engagement_rate": 76.47,
+        "average_engagement_time_per_active_user": "4m 16s"
+      },
+      {
+        "country": "Ukraine",
+        "active_users": 11,
+        "share_percent": 0.62,
+        "new_users": 11,
+        "engaged_sessions": 10,
+        "engagement_rate": 58.82,
+        "average_engagement_time_per_active_user": "1m 13s"
+      },
+      {
+        "country": "United Arab Emirates",
+        "active_users": 11,
+        "share_percent": 0.62,
+        "new_users": 9,
+        "engaged_sessions": 10,
+        "engagement_rate": 58.82,
+        "average_engagement_time_per_active_user": "2m 01s"
+      },
+      {
+        "country": "Sweden",
+        "active_users": 10,
+        "share_percent": 0.56,
+        "new_users": 10,
+        "engaged_sessions": 10,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "4m 12s"
+      },
+      {
+        "country": "Peru",
+        "active_users": 9,
+        "share_percent": 0.5,
+        "new_users": 9,
+        "engaged_sessions": 9,
+        "engagement_rate": 60.0,
+        "average_engagement_time_per_active_user": "1m 09s"
+      },
+      {
+        "country": "Denmark",
+        "active_users": 7,
+        "share_percent": 0.39,
+        "new_users": 5,
+        "engaged_sessions": 13,
+        "engagement_rate": 72.22,
+        "average_engagement_time_per_active_user": "3m 33s"
+      },
+      {
+        "country": "Egypt",
+        "active_users": 7,
+        "share_percent": 0.39,
+        "new_users": 7,
+        "engaged_sessions": 6,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "1m 13s"
+      },
+      {
+        "country": "South Africa",
+        "active_users": 7,
+        "share_percent": 0.39,
+        "new_users": 7,
+        "engaged_sessions": 7,
+        "engagement_rate": 70.0,
+        "average_engagement_time_per_active_user": "2m 16s"
+      },
+      {
+        "country": "Argentina",
+        "active_users": 6,
+        "share_percent": 0.34,
+        "new_users": 6,
+        "engaged_sessions": 6,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "1m 40s"
+      },
+      {
+        "country": "Czechia",
+        "active_users": 6,
+        "share_percent": 0.34,
+        "new_users": 5,
+        "engaged_sessions": 7,
+        "engagement_rate": 77.78,
+        "average_engagement_time_per_active_user": "3m 52s"
+      },
+      {
+        "country": "Iran",
+        "active_users": 6,
+        "share_percent": 0.34,
+        "new_users": 5,
+        "engaged_sessions": 8,
+        "engagement_rate": 80.0,
+        "average_engagement_time_per_active_user": "2m 41s"
+      },
+      {
+        "country": "Belgium",
+        "active_users": 5,
+        "share_percent": 0.28,
+        "new_users": 5,
+        "engaged_sessions": 8,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "15m 17s"
+      },
+      {
+        "country": "Hungary",
+        "active_users": 5,
+        "share_percent": 0.28,
+        "new_users": 4,
+        "engaged_sessions": 5,
+        "engagement_rate": 83.33,
+        "average_engagement_time_per_active_user": "9m 45s"
+      },
+      {
+        "country": "Israel",
+        "active_users": 5,
+        "share_percent": 0.28,
+        "new_users": 5,
+        "engaged_sessions": 4,
+        "engagement_rate": 57.14,
+        "average_engagement_time_per_active_user": "2m 00s"
+      },
+      {
+        "country": "Latvia",
+        "active_users": 5,
+        "share_percent": 0.28,
+        "new_users": 5,
+        "engaged_sessions": 5,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "3m 46s"
+      },
+      {
+        "country": "New Zealand",
+        "active_users": 5,
+        "share_percent": 0.28,
+        "new_users": 5,
+        "engaged_sessions": 5,
+        "engagement_rate": 83.33,
+        "average_engagement_time_per_active_user": "3m 23s"
+      },
+      {
+        "country": "Belarus",
+        "active_users": 4,
+        "share_percent": 0.22,
+        "new_users": 3,
+        "engaged_sessions": 3,
+        "engagement_rate": 33.33,
+        "average_engagement_time_per_active_user": "30s"
+      },
+      {
+        "country": "Lebanon",
+        "active_users": 4,
+        "share_percent": 0.22,
+        "new_users": 4,
+        "engaged_sessions": 4,
+        "engagement_rate": 80.0,
+        "average_engagement_time_per_active_user": "2m 12s"
+      },
+      {
+        "country": "Ecuador",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 4,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "13m 47s"
+      },
+      {
+        "country": "Estonia",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "1m 02s"
+      },
+      {
+        "country": "Lithuania",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 6,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "6m 47s"
+      },
+      {
+        "country": "Mauritius",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 3,
+        "engagement_rate": 75.0,
+        "average_engagement_time_per_active_user": "2m 00s"
+      },
+      {
+        "country": "Romania",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "3m 21s"
+      },
+      {
+        "country": "Saudi Arabia",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "1m 48s"
+      },
+      {
+        "country": "Serbia",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "50s"
+      },
+      {
+        "country": "Slovenia",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "21s"
+      },
+      {
+        "country": "Switzerland",
+        "active_users": 3,
+        "share_percent": 0.17,
+        "new_users": 2,
+        "engaged_sessions": 3,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "8s"
+      },
+      {
+        "country": "(not set)",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 0,
+        "engagement_rate": 0,
+        "average_engagement_time_per_active_user": "0s"
+      },
+      {
+        "country": "Bahrain",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 1,
+        "engagement_rate": 20.0,
+        "average_engagement_time_per_active_user": "11s"
+      },
+      {
+        "country": "Cambodia",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 3,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "5m 39s"
+      },
+      {
+        "country": "El Salvador",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 2,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "3m 37s"
+      },
+      {
+        "country": "Finland",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 1,
+        "engagement_rate": 33.33,
+        "average_engagement_time_per_active_user": "5s"
+      },
+      {
+        "country": "Kazakhstan",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 2,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "42s"
+      },
+      {
+        "country": "Madagascar",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 3,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "1m 03s"
+      },
+      {
+        "country": "Pakistan",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "1m 26s"
+      },
+      {
+        "country": "Slovakia",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 1,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "12s"
+      },
+      {
+        "country": "Suriname",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 2,
+        "engagement_rate": 66.67,
+        "average_engagement_time_per_active_user": "5s"
+      },
+      {
+        "country": "Tunisia",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 2,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "26s"
+      },
+      {
+        "country": "Uzbekistan",
+        "active_users": 2,
+        "share_percent": 0.11,
+        "new_users": 2,
+        "engaged_sessions": 3,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "3m 31s"
+      },
+      {
+        "country": "Albania",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "2m 44s"
+      },
+      {
+        "country": "Algeria",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 0,
+        "engaged_sessions": 13,
+        "engagement_rate": 92.86,
+        "average_engagement_time_per_active_user": "2s"
+      },
+      {
+        "country": "Armenia",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "1m 37s"
+      },
+      {
+        "country": "Austria",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 50.0,
+        "average_engagement_time_per_active_user": "20s"
+      },
+      {
+        "country": "Azerbaijan",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 0,
+        "engagement_rate": 0.0,
+        "average_engagement_time_per_active_user": "0s"
+      },
+      {
+        "country": "Bosnia & Herzegovina",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "4m 19s"
+      },
+      {
+        "country": "Bulgaria",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "18m 13s"
+      },
+      {
+        "country": "Cameroon",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 0,
+        "engagement_rate": 0.0,
+        "average_engagement_time_per_active_user": "0s"
+      },
+      {
+        "country": "Congo - Kinshasa",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "38s"
+      },
+      {
+        "country": "Dominica",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 0,
+        "engagement_rate": 0.0,
+        "average_engagement_time_per_active_user": "0s"
+      },
+      {
+        "country": "Georgia",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "4s"
+      },
+      {
+        "country": "Ghana",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "4m 20s"
+      },
+      {
+        "country": "Greece",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 0,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "2m 33s"
+      },
+      {
+        "country": "Grenada",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "19s"
+      },
+      {
+        "country": "Guyana",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "1m 35s"
+      },
+      {
+        "country": "Iraq",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "2s"
+      },
+      {
+        "country": "Jamaica",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "2m 06s"
+      },
+      {
+        "country": "Jordan",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "4s"
+      },
+      {
+        "country": "Kuwait",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "7m 30s"
+      },
+      {
+        "country": "Kyrgyzstan",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "54s"
+      },
+      {
+        "country": "Luxembourg",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "22s"
+      },
+      {
+        "country": "Morocco",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "2m 25s"
+      },
+      {
+        "country": "Norway",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "57s"
+      },
+      {
+        "country": "Palestine",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "17s"
+      },
+      {
+        "country": "Panama",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "1m 38s"
+      },
+      {
+        "country": "Réunion",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "23m 43s"
+      },
+      {
+        "country": "Syria",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 100.0,
+        "average_engagement_time_per_active_user": "21s"
+      },
+      {
+        "country": "Turkmenistan",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 1,
+        "engagement_rate": 25.0,
+        "average_engagement_time_per_active_user": "3m 03s"
+      },
+      {
+        "country": "Yemen",
+        "active_users": 1,
+        "share_percent": 0.06,
+        "new_users": 1,
+        "engaged_sessions": 0,
+        "engagement_rate": 0.0,
+        "average_engagement_time_per_active_user": "0s"
+      }
+    ],
+    "notes": [
+      "Keywords Everywhere columns ignored: they describe country-name keywords, NOT website traffic or shipping-tool demand.",
+      "GA4 demographic report total 1787 differs from earlier other-report 1788 active users / 1800 total users; retain report-specific denominator.",
+      "Country is approximate location, not confirmed language or human identity; internal QA and unknown bots may remain.",
+      "98 rows: 97 named countries/regions plus (not set)."
+    ]
+  }
 }

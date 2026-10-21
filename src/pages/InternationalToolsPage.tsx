@@ -47,7 +47,6 @@ export default function InternationalToolsPage({ lang, tool }: {lang: MarketLang
  const print = () => { if(validOutput) { emit('print_requested'); window.print(); } };
  const change = (key: keyof MarketInput, value: string) => {setDraft(d=>({...d,[key]:value}));setError(false);setOutputError(false);};
  const reset = () => {setDraft(stringInputs());setSnapshot(null);setError(false);setOutputError(false);setJob({id:crypto.randomUUID(),own:false});};
- const advancedHref = () => prefix+'/pallet-calculator'+(snapshot ? '?'+new URLSearchParams({l:String(snapshot.l),w:String(snapshot.w),h:String(snapshot.h),wt:String(snapshot.weight),q:String(snapshot.qty),u:'cm'}).toString() : '');
  return <div className="min-h-screen bg-slate-50 text-slate-900">
   <Helmet>
    <html lang={marketTag(lang)}/><title>{title} | DimPack3D</title><meta name="description" content={intro}/>
@@ -92,7 +91,6 @@ export default function InternationalToolsPage({ lang, tool }: {lang: MarketLang
     <li><a href={prefix+'/planner'} onClick={()=>track('intl_handoff',`${lang};planner`)}>{t.planner}</a></li>
     <li><a href={prefix+'/guides/excel-container-load-plan'} onClick={()=>track('intl_handoff',`${lang};excel`)}>{t.excel}</a></li>
     <li><a href={`${lang==='en'?'':lang==='zh-hans'?'/zh':'/'+lang}/pallet-height-calculator`} onClick={()=>track('intl_handoff',`${lang};height`)}>{t.heightTool}</a></li>
-    {pallet && <li><a href={advancedHref()} onClick={()=>track('intl_handoff',`${lang};pallet`)}>{t.transfer}</a></li>}
    </ul></section>
   </main>
   <footer className="max-w-5xl mx-auto px-4 pb-8 text-sm text-slate-500 print:hidden"><a href={prefix+'/privacy'}>{t.privacy}</a> · DimPack3D</footer>
