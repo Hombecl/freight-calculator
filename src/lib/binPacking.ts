@@ -223,6 +223,7 @@ export function packContainer(container: PackContainer, specs: PackItemSpec[], s
     // commit
     const box: PlannerBox & { weight: number } = {
       id: `${spec.id}-${counter++}`,
+      specId: spec.id,
       label: spec.label,
       l: best.o.l, w: best.o.w, h: best.o.h,
       px: best.x, py: best.y, pz: best.z,

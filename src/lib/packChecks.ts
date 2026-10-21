@@ -48,8 +48,9 @@ export const CONTAINER_PRESETS: Record<string, { l: number; w: number; h: number
  * along the container axis its cross-section (two of its dims) must fit the
  * aperture. keepUpright pins h vertical. (Same rule the planner uses.)
  */
-export function fitsDoor(s: Pick<PackItemSpec, 'l' | 'w' | 'h' | 'keepUpright'>, door: Door | null | undefined): boolean {
+export function fitsDoor(s: Pick<PackItemSpec, 'l' | 'w' | 'h' | 'keepUpright' | 'allowRotate'>, door: Door | null | undefined): boolean {
   if (!door) return true;
+  if (s.allowRotate === false) return s.w <= door.w && s.h <= door.h;
   const dims = [s.l, s.w, s.h];
   if (s.keepUpright) return Math.min(s.l, s.w) <= door.w && s.h <= door.h;
   for (let vert = 0; vert < 3; vert++)

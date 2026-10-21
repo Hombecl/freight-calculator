@@ -14,6 +14,7 @@
  */
 export interface PlannerBox {
   id: string;
+  specId?: string; // Stable cargo-row identity; labels are not unique.
   label: string;
   l: number; // size along X
   w: number; // size along Z

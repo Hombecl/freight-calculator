@@ -1240,18 +1240,18 @@ await test('workspace: bilingual sign-in and private noindex route', async () =>
   await page.getByRole('link',{name:'Open team workspace',exact:true}).waitFor();
 },page);
 
-await test('export feedback: optional, validates blocker, suppresses repeat prompt', async () => {
+await test('export feedback: one-click usefulness, optional details, suppresses repeat prompt', async () => {
   const feedbackPage=await ctx.newPage();
   try {
     await feedbackPage.goto(`${BASE}/zh/warehouse`,{waitUntil:'domcontentloaded'});
     await feedbackPage.getByRole('button',{name:'PDF plan',exact:true}).click();
     const panel=feedbackPage.getByRole('region',{name:'報告意見'});
     await panel.waitFor();
-    if(!await panel.getByRole('button',{name:'提交意見'}).isDisabled())throw Error('Empty feedback accepted');
-    await panel.getByRole('combobox',{name:'使用情況',exact:true}).selectOption('edit');
-    if(!await panel.getByRole('button',{name:'提交意見'}).isDisabled())throw Error('Missing blocker accepted');
+    await panel.getByRole('button',{name:'仲要修改',exact:true}).click();
+    await panel.getByRole('status').waitFor();
+    if(!await panel.getByRole('button',{name:'提交補充資料'}).isDisabled())throw Error('Missing blocker accepted');
     await panel.getByRole('combobox',{name:'最需要改善嘅地方'}).selectOption('fields');
-    await panel.getByRole('button',{name:'提交意見'}).click();
+    await panel.getByRole('button',{name:'提交補充資料'}).click();
     if(await panel.count())throw Error('Feedback stays open after submit');
     await feedbackPage.getByRole('button',{name:'PDF plan',exact:true}).click();
     if(await panel.count())throw Error('Repeated prompt in same tab');
@@ -1281,6 +1281,44 @@ await test('international tools: localized calculation, stale export guard and r
   await page.locator('html[lang="zh-Hans"]').waitFor();
   if(await page.locator('html').getAttribute('lang')!=='zh-Hans')throw Error('Wrong Simplified Chinese language');
 }, page);
+
+await test('planner review: shared draft flags missing support and reconciles same-name cargo in PDF', async()=>{
+ const p=await ctx.newPage();
+ await p.route('**/api/lead',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
+ const specs=[{id:'review-a',label:'Same label',l:60,w:40,h:40,weight:10,qty:2,color:123456,keepUpright:true},{id:'review-b',label:'Same label',l:60,w:40,h:40,weight:10,qty:1,color:123456}];
+ await p.route('**/api/share?id=review-fixture',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({containerKey:'20gp',container:{l:589,w:235,h:239},specs,boxes:[{id:'review-a-1',specId:'review-a',label:'Same label',l:60,w:40,h:40,weight:10,px:0,py:40,pz:0,color:123456}],reportName:'Review fixture',jobId:'synthetic-job'})}));
+ try{
+  await p.goto(`${BASE}/planner?share=review-fixture`);
+  const panel=p.getByRole('region',{name:'Plan review',exact:true});
+  await panel.getByText('Less than 60% of this base is supported.',{exact:false}).waitFor();
+  if(!(await p.getByTestId('planner-review-status').innerText()).startsWith('Draft'))throw Error('Invalid plan not marked draft');
+  await panel.locator('summary').click();
+  await panel.getByRole('row',{name:'Same label review-b Not placed in this layout. Compare equipment or review rules; this is not proof that it cannot fit. 1 0 1'}).waitFor();
+  await p.getByRole('combobox',{name:'Report for',exact:true}).selectOption('summary');
+  await p.getByRole('button',{name:'PDF plan',exact:true}).click();
+  await p.getByPlaceholder('you@company.com',{exact:true}).fill('review-test@example.test');
+  const opened=p.waitForEvent('popup');await p.getByRole('button',{name:/unlock & download/i}).click();const report=await opened;
+  try{await report.getByText('DRAFT · remaining cargo or issues need review',{exact:true}).waitFor();await report.getByText('review-b',{exact:true}).waitFor();if(await report.locator('svg').count())throw Error('Summary includes crew steps');}finally{await report.close();}
+ }finally{await p.close();}
+},page);
+
+await test('planner review: comparison preserves a local revision and transfers cargo',async()=>{
+ await page.goto(`${BASE}/planner?demo=excel`);
+ await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).fill('Synthetic comparison');
+ await page.getByRole('link',{name:'Compare containers for this cargo',exact:true}).click();
+ await page.getByRole('button',{name:'Replace example cargo with these items',exact:true}).click();
+ if(!await page.getByText('example-master',{exact:false}).count()) {
+  const data=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('dp_cargo_transfer_v1')));
+  if(data.specs.reduce((n,s)=>n+s.qty,0)!==20)throw Error('Transferred quantity differs');
+ }
+ await page.goto(`${BASE}/planner?demo=excel`);
+ await page.getByText('Saved versions on this device',{exact:true}).click();
+ await page.getByText(/Synthetic comparison/).first().waitFor();
+ await page.getByRole('button',{name:'Reopen version',exact:true}).first().click();
+ if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='Synthetic comparison')throw Error('Reference not restored');
+ await page.getByRole('button',{name:'Start next job (keep inputs)',exact:true}).click();
+ if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='')throw Error('Previous report reference carried to next job');
+},page);
 
 await browser.close();
 
