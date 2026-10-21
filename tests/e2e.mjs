@@ -1277,6 +1277,8 @@ await test('international tools: localized calculation, stale export guard and r
   await page.getByRole('alert').waitFor();
   if(!await page.getByRole('button',{name:'CSV herunterladen',exact:true}).isDisabled())throw Error('Invalid input exports');
   await page.goto(`${BASE}/zh-hans/shipping-tools`);
+  await page.getByRole('heading',{name:'运输计算工具：体积、托盘与装柜规划',exact:true}).waitFor();
+  await page.locator('html[lang="zh-Hans"]').waitFor();
   if(await page.locator('html').getAttribute('lang')!=='zh-Hans')throw Error('Wrong Simplified Chinese language');
 }, page);
 
