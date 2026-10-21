@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { MARKET_LANGS, marketHref, marketTag, type MarketTool } from '../../lib/internationalTools';
 import Header from './Header';
 import Footer from './Footer';
 import { IS_ZH, localeUrls } from '../../lib/locale';
@@ -18,6 +19,7 @@ export default function Layout() {
         <link rel="canonical" href={IS_ZH ? urls.zh : urls.en} />
         <link rel="alternate" hrefLang="en" href={urls.en} />
         <link rel="alternate" hrefLang="zh-Hant" href={urls.zh} />
+        {['/cbm-calculator','/pallet-calculator'].includes(location.pathname) && MARKET_LANGS.map(l => <link key={l} rel="alternate" hrefLang={marketTag(l)} href={'https://www.dimpack3d.com'+marketHref(l,location.pathname.slice(1) as MarketTool)}/>)}
         <link rel="alternate" hrefLang="x-default" href={urls.en} />
       </Helmet>
       <Header />

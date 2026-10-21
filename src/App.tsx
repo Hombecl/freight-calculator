@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import { MARKET_LANGS } from './lib/internationalTools';
 import AnalyticsRoute from './components/AnalyticsRoute';
 
 // Route-level code-splitting: each page is its own chunk, so the homepage
@@ -54,6 +55,8 @@ const FbaFeeCalculatorGuide = lazy(() => import('./pages/guides/FbaFeeCalculator
 const PalletCalculatorGuide = lazy(() => import('./pages/guides/PalletCalculatorGuide'));
 const EmbedPage = lazy(() => import('./pages/EmbedPage'));
 
+const InternationalRoute = lazy(() => import('./pages/InternationalToolsPage').then(m => ({default:m.InternationalRoute})));
+
 export default function App() {
   return (
     <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-sm">Loading…</div>}>
@@ -61,6 +64,8 @@ export default function App() {
     <Routes>
       {/* Chrome-less widget embed — outside Layout on purpose (no header/footer/canonical) */}
       <Route path="embed" element={<EmbedPage />} />
+      <Route path="shipping-tools" element={<InternationalRoute lang={location.pathname.startsWith('/zh/')?'zh':'en'} tool="shipping-tools"/>}/>
+      {MARKET_LANGS.flatMap(lang => (['shipping-tools','cbm-calculator','pallet-calculator'] as const).map(tool => <Route key={`${lang}/${tool}`} path={`${lang}/${tool}`} element={<InternationalRoute lang={lang} tool={tool}/>}/>))}
       <Route path="pallet-height-calculator" element={<PalletHeightPage />} />
       {["de", "fr", "es", "pt"].map(lang => <Route key={lang} path={`${lang}/pallet-height-calculator`} element={<PalletHeightPage />} />)}
       <Route path="/" element={<Layout />}>

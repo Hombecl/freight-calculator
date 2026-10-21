@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 const BASE_ROUTES = [
   "/",
+  "/shipping-tools",
   "/planner",
   "/warehouse",
   "/packing",
@@ -89,6 +90,15 @@ export const ORDER_ROUTES = [
   ...["de", "fr", "es", "pt"].map((l) => `/${l}/pallet-height-calculator`),
 ];
 ROUTES.push(...ORDER_ROUTES.slice(2));
+export const MARKET_LANGS = ['es', 'pt', 'de', 'fr', 'zh-hans'];
+export const MARKET_TOOLS = ['shipping-tools', 'cbm-calculator', 'pallet-calculator'];
+export const MARKET_ROUTES = MARKET_LANGS.flatMap(l => MARKET_TOOLS.map(t => `/${l}/${t}`));
+ROUTES.push(...MARKET_ROUTES);
+export function languageAlternates(route) {
+  const tool = route.split('/').pop();
+  if (!MARKET_TOOLS.includes(tool)) return null;
+  return ['', '/zh', ...MARKET_LANGS.map(l => '/'+l)].map((prefix,i) => ({route: `${prefix}/${tool}`, lang: ['en','zh-Hant','es','pt','de','fr','zh-Hans'][i]}));
+}
 export const INDEXABLE_ROUTES = ROUTES.filter((r) => !NOSITEMAP_ROUTES.includes(r.replace(/^\/zh(?=\/)/, "")));
 export const outputPath = (route, dir = "dist") =>
   join(dir, route === "/" ? "index.html" : `${route.slice(1)}.html`);
@@ -100,12 +110,13 @@ export function writeSitemap(dir = "dist") {
   const urls = INDEXABLE_ROUTES.map((route) => {
     const isOrder = ORDER_ROUTES.includes(route);
     const en = route === "/zh" ? "/" : route.replace(/^\/zh(?=\/)/, "");
-    const alternates = isOrder
+    const market = languageAlternates(route);
+    const alternates = market ? market.map(a => alt(a.route,a.lang)) : isOrder
       ? ORDER_ROUTES.map((r, i) =>
           alt(r, ["en", "zh-Hant", "de", "fr", "es", "pt"][i])
         )
       : [alt(en, "en"), alt(en === "/" ? "/zh" : `/zh${en}`, "zh-Hant")];
-    alternates.push(alt(isOrder ? ORDER_ROUTES[0] : en, "x-default"));
+    alternates.push(alt(market ? market[0].route : isOrder ? ORDER_ROUTES[0] : en, "x-default"));
     return `  <url><loc>${SITE}${route}</loc>\n${alternates.join(
       "\n"
     )}\n  </url>`;
@@ -168,6 +179,10 @@ export function validateSnapshot(html, route) {
         )
       )
         throw new Error(`${route}: missing language ${r}`);
+  }
+  const market = languageAlternates(route);
+  if (market) for (const a of market) {
+    if (!tags.some(tag => /rel="alternate"/.test(tag) && tag.includes(`hreflang="${a.lang}"`) && tag.includes(`href="${SITE}${a.route}"`))) throw new Error(`${route}: missing alternate ${a.lang}`);
   }
   for (const asset of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g))
     if (!existsSync(new URL(`../dist${asset[1]}`, import.meta.url)))

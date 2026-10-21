@@ -9,7 +9,7 @@ export function usageTransition(state:UsageState,entry:UsageRecord){
  const gap=records.length?entry.day-Math.max(...records.map(r=>r.day)):0;
  return {state:{records:[...records,entry]},event:{job:repeat?'repeat':previous.some(r=>r.revision===entry.revision)?'same_version':previous.length?'revision':records.length?'next_job':'first_job',return:gap>=30?'30d_plus':gap>=7?'7_29d':gap>=1?'1_6d':'same_day'}};
 }
-export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_csv'|'build_sheet'|'actuals'|'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders',sample:boolean){
+export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_csv'|'build_sheet'|'actuals'|'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders'|'calculator_csv',sample:boolean){
  if(sample){track('workflow_output',`sample;${kind}`);return;}
  try{const key='dp_workflow_usage_v1',saved=JSON.parse(localStorage.getItem(key)??'{"records":[]}');
  const records=Array.isArray(saved.records)?saved.records.filter((r:UsageRecord)=>typeof r.job==='string'&&typeof r.revision==='string'&&Number.isFinite(r.day)&&typeof r.kind==='string'):[];
@@ -20,7 +20,7 @@ export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_cs
 }
 
 /** Hash the output locally; only fixed categories reach analytics. */
-export async function recordToolOutput(job:{id:string;own:boolean},kind:'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders',result:unknown){
+export async function recordToolOutput(job:{id:string;own:boolean},kind:'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders'|'calculator_csv',result:unknown){
  try{const bytes=new TextEncoder().encode(JSON.stringify(result));const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(b=>b.toString(16).padStart(2,'0')).join('');recordWorkflowOutput(job.id,hash,kind,!job.own);}catch{track('workflow_output',`unknown_storage;${kind}`);}
 }
 
