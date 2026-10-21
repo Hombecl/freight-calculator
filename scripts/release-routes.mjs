@@ -96,7 +96,7 @@ export const MARKET_ROUTES = MARKET_LANGS.flatMap(l => MARKET_TOOLS.map(t => `/$
 ROUTES.push(...MARKET_ROUTES);
 export function languageAlternates(route) {
   const tool = route.split('/').pop();
-  if (!MARKET_TOOLS.includes(tool)) return null;
+  if (!MARKET_TOOLS.includes(tool) || !['', '/zh', ...MARKET_LANGS.map(l => '/'+l)].some(prefix => route === `${prefix}/${tool}`)) return null;
   return ['', '/zh', ...MARKET_LANGS.map(l => '/'+l)].map((prefix,i) => ({route: `${prefix}/${tool}`, lang: ['en','zh-Hant','es','pt','de','fr','zh-Hans'][i]}));
 }
 export const INDEXABLE_ROUTES = ROUTES.filter((r) => !NOSITEMAP_ROUTES.includes(r.replace(/^\/zh(?=\/)/, "")));

@@ -22,6 +22,8 @@ assert.ok(Number.isNaN(marketNumber('1,000.5')));
 assert.ok(Number.isNaN(marketNumber('')));
 assert.equal(marketCsv([['é,表','"x"']]),'\uFEFF"é,表","""x"""');
 for(const l of ALL_MARKET_LANGS) assert.deepEqual(Object.keys(MARKET_COPY[l]).sort(),Object.keys(MARKET_COPY.en).sort());
+assert.equal(languageAlternates('/guides/pallet-calculator'),null);
+assert.equal(languageAlternates('/zh/guides/pallet-calculator'),null);
 assert.equal(MARKET_ROUTES.length,15);
 assert.equal(new Set(ROUTES).size,ROUTES.length);
 for(const route of MARKET_ROUTES) {
