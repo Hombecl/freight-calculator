@@ -18,7 +18,7 @@ export function sourceSpec(b:PlannerBox,specs:PackItemSpec[]) {
 }
 const area=(a:PlannerBox,b:PlannerBox)=>Math.max(0,Math.min(a.px+a.l,b.px+b.l)-Math.max(a.px,b.px))*Math.max(0,Math.min(a.pz+a.w,b.pz+b.w)-Math.max(a.pz,b.pz));
 /** Same 60% support and equal-support load split as the packing engine; a screening model, not a load certification. */
-export function reviewPlanner(boxes:PlannerBox[],container:PackContainer,specs?:PackItemSpec[],door?:{w:number;h:number}|null):PlannerReview {
+export function reviewPlanner(boxes:PlannerBox[],container:PackContainer,specs?:PackItemSpec[],door?:{w:number;h:number}|null,minSupportRatio=.6):PlannerReview {
  const issues:ReviewIssue[]=[];
  const add=(code:ReviewCode,ids:string[])=>issues.push({code,ids});
  const valid=(b:PlannerBox)=>[b.px,b.py,b.pz,b.l,b.w,b.h,b.weight??NaN].every(Number.isFinite)&&b.l>0&&b.w>0&&b.h>0&&(b.weight??-1)>=0;
@@ -50,7 +50,7 @@ export function reviewPlanner(boxes:PlannerBox[],container:PackContainer,specs?:
  for(const b of good){
   const below=good.filter(a=>a!==b&&a.py<b.py&&Math.abs(a.py+a.h-b.py)<EPS&&area(a,b)>EPS);
   supports.set(b,below);
-  if(b.py>EPS&&below.reduce((n,a)=>n+area(a,b),0)/(b.l*b.w)<.6-EPS)add('support',[b.id]);
+  if(b.py>EPS&&below.reduce((n,a)=>n+area(a,b),0)/(b.l*b.w)<minSupportRatio-EPS)add('support',[b.id]);
  }
  const loads=new Map(good.map(b=>[b,0]));
  for(const b of [...good].sort((a,b)=>b.py-a.py)){
