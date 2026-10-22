@@ -35,6 +35,8 @@ interface Props {
   placedCountTestId?: string;
   className?: string;
   viewportAspectRatio?: string;
+  lightTheme?: boolean;
+  hideSummary?: boolean;
   viewportHeight?: number | string; // fixed hero or viewport-relative workspace height
   maxPixelRatio?: number; // decorative previews need fewer pixels than exported plans
   batchBoxes?: boolean; // opaque homepage cartons share two draw calls
@@ -111,6 +113,8 @@ export default function InteractiveLoadPlanner({
   className = '',
   viewportHeight,
   viewportAspectRatio,
+  lightTheme = false,
+  hideSummary = false,
   maxPixelRatio = 2,
   batchBoxes = false,
   loadingPreview,
@@ -135,6 +139,7 @@ export default function InteractiveLoadPlanner({
 }: Props) {
   const actionRef=useRef(onAction); actionRef.current=onAction;
   const [actionMessage,setActionMessage]=useState('');
+  const resetViewRef = useRef<(() => void) | null>(null);
   const reportAction=(action:Parameters<NonNullable<Props['onAction']>>[0],outcome:Parameters<NonNullable<Props['onAction']>>[1])=>{
     setActionMessage(outcome==='collision'?(IS_ZH?'移動或旋轉會撞到其他貨物。請先騰出空間，再試一次。':'This move or rotation overlaps another item. Make space first, then try again.'):outcome==='boundary'?(IS_ZH?'已到空間邊界，這個方向放不下。':'This item cannot fit further in that direction.'):outcome==='unchanged'?(IS_ZH?'位置沒有改變，可能已經放在支承面。':'Position unchanged; the item may already be supported.'):'');
     actionRef.current?.(action,outcome);
@@ -204,7 +209,7 @@ export default function InteractiveLoadPlanner({
     let height = mount.clientHeight || 420;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f172a);
+    scene.background = new THREE.Color(lightTheme ? 0xf1f5f9 : 0x0f172a);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100000);
     const target = new THREE.Vector3(0, 0, 0);
@@ -212,7 +217,7 @@ export default function InteractiveLoadPlanner({
 
     // spherical orbit state
     const maxDim = Math.max(container.l, container.w, container.h);
-    let radius = maxDim * 2.1;
+    let radius = maxDim * (lightTheme ? 1.75 : 2.1);
     let theta = Math.PI * 0.25; // azimuth
     let phi = Math.PI * 0.32;   // polar from +Y
     const applyCamera = () => {
@@ -225,6 +230,7 @@ export default function InteractiveLoadPlanner({
       needsRender = true;
     };
     applyCamera();
+    resetViewRef.current = () => { radius = maxDim * (lightTheme ? 1.75 : 2.1); theta = Math.PI * 0.25; phi = Math.PI * 0.32; applyCamera(); };
 
     // WebGL can be unavailable (headless crawlers, GPU-blacklisted or locked-down
     // machines). Never let that take down the whole React tree.
@@ -261,11 +267,11 @@ export default function InteractiveLoadPlanner({
     const cGeo = new THREE.BoxGeometry(container.l, container.h, container.w);
     scene.add(new THREE.LineSegments(
       new THREE.EdgesGeometry(cGeo),
-      new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 }),
+      new THREE.LineBasicMaterial({ color: lightTheme ? 0x0284c7 : 0x38bdf8, transparent: true, opacity: 0.6 }),
     ));
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(container.l, container.w),
-      new THREE.MeshBasicMaterial({ color: 0x1e293b, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: lightTheme ? 0xcbd5e1 : 0x1e293b, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = off.y;
@@ -632,9 +638,10 @@ export default function InteractiveLoadPlanner({
       renderer.dispose();
       mount.innerHTML = '';
       sceneApi.current = null;
+      resetViewRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes]);
+  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -882,7 +889,7 @@ export default function InteractiveLoadPlanner({
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-          style={{ cursor: selectedId ? 'grab' : 'move', height: viewportHeight, aspectRatio: viewportAspectRatio,
+          style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: viewportHeight, aspectRatio: viewportAspectRatio,
             backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
@@ -915,12 +922,15 @@ export default function InteractiveLoadPlanner({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
+        {lightTheme && <button type="button" onClick={() => resetViewRef.current?.()} className="rounded border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700">{IS_ZH ? "重設視角" : "Reset view"}</button>}
+        {!hideSummary && <>
         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 font-medium">
           Utilization: {util.toFixed(1)}%
         </span>
         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700">
           Boxes: <span data-testid={placedCountTestId}>{boxesRef.current.length}</span>
         </span>
+        </>}
         {!readOnly && <>
         <button
           onClick={rotateSelected}

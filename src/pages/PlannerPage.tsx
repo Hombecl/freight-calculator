@@ -571,7 +571,6 @@ export default function PlannerPage() {
               <button type="button" className="mt-2 underline" onClick={packing.cancel}>{T('Cancel calculation', '取消計算')}</button>
             </> : <p>{packing.status === 'cancelled' ? T('Calculation cancelled. Select Optimise pack to try again.', '已取消計算，按 Optimise pack 重新計算。') : T('Calculation could not finish. Select Optimise pack to retry.', '計算未能完成，按 Optimise pack 重試。')}</p>}
           </div>}
-          {packing.ready && !liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/>}
           {!hasPendingChanges && <p role="status" className="text-xs text-slate-600">{T('Plan is up to date. Export your current layout, or change inputs to recalculate. Use Reset to auto below the 3D view to undo manual placement; Undo can restore it.','方案已更新，可以匯出目前擺位；修改輸入後才需重新計算。要取消手動擺位，請用 3D 下方「重設自動擺位」；亦可按「復原」還原。')}</p>}
           {hasInputChanges && (
             <p role="status" data-testid="planner-pending-changes" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
@@ -580,21 +579,47 @@ export default function PlannerPage() {
           )}
           {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
-          {packing.ready && <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
+
+        </div>
+
+        {/* right: 3D editor */}
+        <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start">
+          {packing.ready && <>
+          <section aria-label={T('Load results', '裝載結果')} className="mb-3 rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+              <div><h2 className="text-lg font-bold text-slate-900">{T('Load results', '裝載結果')}</h2><p className="text-xs text-slate-500">{CONTAINERS[containerKey].label} · {packSpace.l} × {packSpace.w} × {packSpace.h} cm</p></div>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${hasInputChanges ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{hasInputChanges ? T('Previous plan · inputs changed', '上次方案 · 輸入已修改') : liveBoxes ? T('Manually adjusted layout', '手動調整擺位') : sharedBoxes ? T('Shared layout', '分享擺位') : T('Calculated layout', '已計算擺位')}</span>
+            </div>
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-2" data-testid="planner-result-cards">
+              <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs font-medium text-blue-800">{T('Cartons loaded', '已裝箱數')}</p><p data-testid="planner-packed" className="mt-1 text-xl font-bold text-blue-950 tabular-nums">{currentBoxes.length} / {totalQty}</p><p className="mt-1 text-xs text-blue-700">{T('Loaded / requested', '已裝 / 要求數量')}</p></div>
+              <div className={`rounded-lg p-3 ${totalQty > currentBoxes.length ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'}`}><p className="text-xs font-medium">{T('Cartons remaining', '未裝箱數')}</p><p className="mt-1 text-xl font-bold tabular-nums">{Math.max(0,totalQty-currentBoxes.length)}</p><p className="mt-1 text-xs">{totalQty > currentBoxes.length ? T('Review fit & loading rules', '檢查尺寸及裝載限制') : T('All requested cartons fit', '全部要求箱數已裝入')}</p></div>
+              <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-medium text-slate-600">{T('Volume utilization', '空間利用率')}</p><p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stats.volumeUtil.toFixed(1)}%</p><div className="h-1.5 rounded-full bg-slate-200 mt-2 overflow-hidden" aria-hidden="true"><div className="h-full bg-blue-600" style={{width:`${Math.min(100,Math.max(0,stats.volumeUtil))}%`}}/></div><p className="mt-1 text-xs text-slate-500">{T('Of internal volume', '佔內部容積')}</p></div>
+              <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-medium text-slate-600">{T('Loaded cargo weight', '已裝貨物重量')}</p><p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} <span className="text-sm">kg</span></p><p className={`mt-1 text-xs ${appliedSpecs.some(s=>s.weightKnown===false) || (stats.weightUtil??0)>100 ? 'text-amber-800' : 'text-slate-500'}`}>{appliedSpecs.some(s=>s.weightKnown===false) ? T('Incomplete · missing weights', '未完整 · 部分箱重欠缺') : stats.weightUtil != null ? `${stats.weightUtil.toFixed(1)}% ${T('of payload limit', '佔載重上限')}` : T('Payload limit not set', '未設定載重上限')}</p></div>
+            </div>
+            {!liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
+          </section>
+          <InteractiveLoadPlanner
+            viewportAspectRatio="16 / 10"
+            lightTheme
+            hideSummary
+            flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
+            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
+            container={packSpace}
+            boxes={sharedBoxes ?? result.boxes}
+            grid={1}
+            unitLabel="cm"
+            onChange={setLiveBoxes}
+            onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
+            registerSnapshot={(fn) => { snapshotFn.current = fn; }}
+          />
+          <div className="mt-4 space-y-3"><PlannerReviewPanel review={review} zh={IS_ZH}/>
+          {packing.ready && <div className="text-sm text-slate-600 space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+            <h3 className="font-semibold text-slate-900">{T("Load checks & distribution", "裝載檢查與分佈")}</h3>
             {doorBlocked.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
                 🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.
               </div>
             )}
-            <div className="flex justify-between"><span>Packed</span><span data-testid="planner-packed" className="font-semibold">{currentBoxes.length} / {totalQty}</span></div>
-            <div className="flex justify-between"><span>Volume utilization</span><span className="font-semibold">{stats.volumeUtil.toFixed(1)}%</span></div>
-            <div className="flex justify-between">
-              <span>Total weight</span>
-              <span className="font-semibold">
-                {stats.totalWeight.toFixed(0)} kg
-                {stats.weightUtil != null && <span className="text-slate-400"> ({stats.weightUtil.toFixed(0)}%)</span>}
-              </span>
-            </div>
             <div className="flex justify-between">
               <span>Horizontal CoG offset</span>
               <span className={`font-semibold ${balanceWarn ? 'text-amber-600' : 'text-green-600'}`}>
@@ -648,7 +673,7 @@ export default function PlannerPage() {
                 🚚 <b>Load-shift risk:</b> {voids.doorSlack > 15 ? `${voids.doorSlack.toFixed(0)} cm free run at the door` : ''}{voids.doorSlack > 15 && voids.biggestGap > 15 ? ' + ' : ''}{voids.biggestGap > 15 ? `a ${voids.biggestGap.toFixed(0)} cm gap mid-stow` : ''}. Brace the last rows or fill the gap with dunnage airbags — slack is where cargo slams during braking and sea motion.
               </div>
             )}
-            {result.zones.length > 1 && (
+            {!liveBoxes && !sharedBoxes && result.zones.length > 1 && (
               <div className="pt-1">
                 <span className="text-xs font-semibold text-slate-500">Load zones (back → door)</span>
                 <div className="flex gap-1 mt-1">
@@ -672,23 +697,7 @@ export default function PlannerPage() {
               <p className="text-xs text-red-600">Over the container payload limit.</p>
             )}
           </div>}
-        </div>
-
-        {/* right: 3D editor */}
-        <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start">
-          {packing.ready && <><div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
-          <InteractiveLoadPlanner
-            viewportAspectRatio="16 / 10"
-            flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
-            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
-            container={packSpace}
-            boxes={sharedBoxes ?? result.boxes}
-            grid={1}
-            unitLabel="cm"
-            onChange={setLiveBoxes}
-            onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
-            registerSnapshot={(fn) => { snapshotFn.current = fn; }}
-          /></>}
+          </div></>} 
           {!packing.ready && <div className="min-h-96 rounded-xl border bg-slate-50 flex items-center justify-center text-slate-600">{T('Your 3D layout will appear when calculation finishes.', '計算完成後會顯示 3D 擺位。')}</div>}
         </div>
       </div>
