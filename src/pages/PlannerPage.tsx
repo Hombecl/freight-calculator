@@ -675,7 +675,7 @@ export default function PlannerPage() {
         </div>
 
         {/* right: 3D editor */}
-        <div className="min-w-0 lg:sticky lg:top-20 self-start">
+        <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start">
           {packing.ready && <><div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
           <InteractiveLoadPlanner
             viewportAspectRatio="16 / 10"
