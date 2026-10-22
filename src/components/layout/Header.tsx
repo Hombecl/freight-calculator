@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Container, Cuboid, Move3d, Warehouse, Languages, Settings, RotateCcw, BookOpen, Calculator } from 'lucide-react';
+import { Package, Container, Move3d, Languages, Settings, RotateCcw, BookOpen, Calculator } from 'lucide-react';
 import Logo from './Logo';
 import { useApp } from '../../context/AppContext';
 import { localeSwitchHref } from '../../lib/locale';
@@ -12,8 +12,7 @@ export default function Header() {
     { path: '/planner', label: 'Load Planner', labelZh: '裝載規劃', icon: Move3d, activeColor: 'bg-indigo-600' },
     { path: '/packing', label: 'Packing', labelZh: '產品裝箱', icon: Package, activeColor: 'bg-blue-600' },
     { path: '/container', label: 'Container', labelZh: '貨櫃裝載', icon: Container, activeColor: 'bg-teal-600' },
-    { path: '/fba', label: 'FBA Size', labelZh: 'FBA 尺寸', icon: Cuboid, activeColor: 'bg-amber-500' },
-    { path: '/warehouse', label: 'Warehouse', labelZh: '倉庫', icon: Warehouse, activeColor: 'bg-purple-600' },
+    { path: '/#more-tools', label: 'More tools', labelZh: '其他工具', icon: Calculator, activeColor: 'bg-slate-600' },
     { path: '/#calculators', label: 'Calculators', labelZh: '計算器', icon: Calculator, activeColor: 'bg-blue-600' },
     { path: '/guides', label: 'Guides', labelZh: '指南', icon: BookOpen, activeColor: 'bg-slate-600' },
   ];

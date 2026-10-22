@@ -140,8 +140,8 @@ export default function HomePage() {
       <Helmet>
         <title>{T("DimPack3D — Free 3D Container Load Planner & Bin Packing Calculator", "DimPack3D — 免費 3D 貨櫃裝載規劃器同裝箱計算機")}</title>
         <meta name="description" content={T(
-          "Plan container loads in interactive 3D — auto-optimize with real bin-packing, drag cartons by hand, respect weight & stacking limits, then export a PDF load plan and packing list. Plus free CBM, carton packing and Amazon FBA calculators.",
-          "喺互動 3D 入面規劃貨櫃裝載 — 用真實裝箱演算法自動優化,可以手動拖箱,兼顧重量同堆疊上限,再匯出 PDF 裝載計劃同裝箱單。另有免費 CBM、紙箱裝箱同 Amazon FBA 計算機。")} />
+          "Plan container loads in interactive 3D — auto-optimize with real bin-packing, drag cartons by hand, respect weight & stacking limits, then export a PDF load plan and packing list. Import a packing list, compare container options, and hand off a reviewed plan.",
+          "喺互動 3D 入面規劃貨櫃裝載 — 用真實裝箱演算法自動優化,可以手動拖箱,兼顧重量同堆疊上限,再匯出 PDF 裝載計劃同裝箱單。由貨單匯入、比較櫃型到交付核對後的方案。")} />
         <script type="application/ld+json">{`
           {
             "@context": "https://schema.org",
@@ -406,7 +406,7 @@ export default function HomePage() {
       {/* ============ TASK NAV — the whole chain, every tool ============ */}
       <section className="max-w-6xl mx-auto px-4 py-14 md:py-20">
         <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-3">
-          {T('One tool for every level of the load', '一件工具,覆蓋成條裝載鏈')}
+          {T('From carton list to load plan', '由紙箱貨單到裝載方案')}
         </h2>
         {/* the chain: makes the levels + what exists at each one explicit */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-8 text-sm font-semibold">
@@ -414,7 +414,7 @@ export default function HomePage() {
             { label: T('Products', '產品'), to: '/packing' },
             { label: T('Cartons', '紙箱'), to: '/planner' },
             { label: T('Containers · pallets · trucks', '貨櫃 · 卡板 · 貨車'), to: '/answers' },
-            { label: T('Warehouse floor', '倉庫地面'), to: '/warehouse', beta: true },
+            { label: T('Review & report', '核對與報告'), to: '/planner', beta: false },
           ].map((step, i, arr) => (
             <span key={i} className="flex items-center gap-3">
               <Link to={step.to} className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
@@ -425,8 +425,8 @@ export default function HomePage() {
             </span>
           ))}
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {tasks.map((t, i) => (
+        <div className="grid sm:grid-cols-3 gap-4">
+          {tasks.slice(0, 3).map((t, i) => (
             <Link key={i} to={t.to} className={`group relative rounded-2xl border-2 ${t.accent} p-5 transition-all hover:shadow-lg`}>
               {t.badge && (
                 <span className="absolute top-4 right-4 text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-full">{t.badge}</span>
@@ -442,7 +442,15 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
-
+        <details id="more-tools" className="mt-6 rounded-xl border border-slate-200 p-5 scroll-mt-24">
+          <summary className="cursor-pointer font-semibold text-slate-700">{T('Other tools: warehouse layout & FBA estimates', '其他工具：倉庫規劃及 FBA 估算')}</summary>
+          <p className="mt-3 text-sm text-slate-600">{T('For warehouse layout or marketplace fee questions, open a separate tool below.', '倉庫地面規劃或平台費用問題，可使用以下獨立工具。')}</p>
+          <div className="mt-4 grid sm:grid-cols-2 gap-4">
+            {tasks.slice(3).map(t => <Link key={t.to} to={t.to} onClick={() => track('secondary_tool_open', t.to)} className="rounded-lg border p-4 hover:border-indigo-400">
+              <h3 className="font-semibold">{t.title}</h3><p className="mt-1 text-sm text-slate-600">{t.body}</p>
+            </Link>)}
+          </div>
+        </details>
       </section>
 
       {/* ============ FREE CALCULATORS SUITE — homepage links to every standalone tool ============ */}
