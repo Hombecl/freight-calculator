@@ -1344,6 +1344,7 @@ await test('planner: improved single-SKU layout and cancellable background calcu
   };
   await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
   await p.getByText('878 / 1000',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'More detail',exact:true}).click();
   await p.getByTestId('packing-improvement').getByText(/58 cartons/).waitFor();
   await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
