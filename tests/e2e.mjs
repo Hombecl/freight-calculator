@@ -1370,6 +1370,12 @@ await test('planner: workspace settings persist and responsive navigation preser
     await p.goto(`${BASE}/planner`);
     await p.getByTestId('planner-packed').waitFor();
     const packed = await p.getByTestId('planner-packed').innerText();
+    const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
+    if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
+    await resultsPanel.getByText('Cartons remaining',{exact:true}).waitFor();
+    await resultsPanel.getByText('Loaded cargo weight',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Reset view',exact:true}).click();
+    if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Reset view changed cargo');
     await p.getByRole('button',{name:'Expand menu',exact:true}).waitFor();
     await p.getByRole('navigation', {name:'Tool navigation',exact:true}).waitFor();
     await p.getByRole('button',{name:'Settings',exact:true}).click();
@@ -1396,6 +1402,8 @@ await test('planner: workspace settings persist and responsive navigation preser
       await mkdir('test-artifacts',{recursive:true});
       await p.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
       await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
+      await p.getByRole('heading',{name:'Load results',exact:true}).scrollIntoViewIfNeeded();
+      await p.screenshot({path:`test-artifacts/planner-${width}-results.png`});
       await p.getByRole('heading',{name:'Save & share this job',exact:true}).scrollIntoViewIfNeeded();
       await p.getByText('Share a snapshot / manage links',{exact:true}).click();
       if(await p.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error(`Share panel overflow at ${width}`);
