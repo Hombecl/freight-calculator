@@ -324,7 +324,7 @@ await test('compare: the three switching questions link to real evidence', async
 // ---------- planner ----------
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   await page.locator('canvas').first().waitFor();
 }, page);
 
@@ -841,7 +841,7 @@ await test('plans: sign-in gate renders', async () => {
 // ---------- physical realism (turn model + door aperture) ----------
 await test('planner: door-aperture warning flags a too-tall carton', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   // make the first carton 235cm in every axis: fits the 20GP interior (239h)
   // but NOT the 234x228 door in any orientation
   const dims = page.locator('input[type="number"]');
@@ -863,7 +863,7 @@ await test('warehouse: route readout reports 90° turns vs the turn box', async 
 
 await test('planner: truck vessel shows live axle loads; est. fills crush limit', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   await page.getByRole('button', { name: /53' trailer/i }).click();
   await page.getByText(/front axle group/i).waitFor();
   await page.getByText(/rear axle group/i).waitFor();
@@ -876,7 +876,7 @@ await test('planner: pallet vessel offers overhang allowance', async () => {
   await page.getByRole('button', { name: /eur pallet/i }).click();
   await page.getByText(/overhang allowance/i).waitFor();
   await page.getByRole('button', { name: /2\.5 cm\/side/i }).click();
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
 }, page);
 
 await test('warehouse: chilled pallet without a chilled zone is flagged', async () => {
@@ -1145,7 +1145,7 @@ await test('embed: widget.js loader is served and builds an iframe', async () =>
 if (IS_LIVE) {
   await test('LIVE share: create link and reopen it', async () => {
     await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Volume utilization/i).waitFor();
+    await page.getByTestId('planner-packed').waitFor();
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/share') && r.request().method() === 'POST'),
       page.getByRole('button', { name: /share this plan/i }).click(),
@@ -1153,7 +1153,7 @@ if (IS_LIVE) {
     const { id } = await resp.json();
     if (!id) throw new Error('no share id');
     await page.goto(`${BASE}/planner?share=${id}`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Volume utilization/i).waitFor();
+    await page.getByTestId('planner-packed').waitFor();
   }, page);
 
   await test('LIVE warehouse share: create and reopen', async () => {
@@ -1344,6 +1344,7 @@ await test('planner: improved single-SKU layout and cancellable background calcu
   };
   await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
   await p.getByText('878 / 1000',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'More detail',exact:true}).click();
   await p.getByTestId('packing-improvement').getByText(/58 cartons/).waitFor();
   await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
@@ -1372,8 +1373,15 @@ await test('planner: workspace settings persist and responsive navigation preser
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
+    await p.getByRole('button',{name:'More detail',exact:true}).click();
     await resultsPanel.getByText('Cartons remaining',{exact:true}).waitFor();
     await resultsPanel.getByText('Loaded cargo weight',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Less detail',exact:true}).click();
+    if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Collapse changed cargo');
+    const rotation=p.getByRole('button',{name:/^(Auto rotate|Pause rotation)$/});
+    const before=await rotation.getAttribute('aria-pressed'); await rotation.click();
+    if(await rotation.getAttribute('aria-pressed')===before) throw Error('Rotation toggle failed');
+    await rotation.click();
     await p.getByRole('button',{name:'Reset view',exact:true}).click();
     if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Reset view changed cargo');
     await p.getByRole('button',{name:'Expand menu',exact:true}).waitFor();
@@ -1398,7 +1406,7 @@ await test('planner: workspace settings persist and responsive navigation preser
       if(width>=1280 && !await p.getByRole('navigation',{name:'Tool navigation',exact:true}).isVisible()) throw Error('Desktop sidebar missing');
       const geometry=await p.evaluate(()=>{const g=document.querySelector('main .grid');const c=document.querySelector('canvas');return {columns:getComputedStyle(g).gridTemplateColumns,canvas:c?{w:c.clientWidth,h:c.clientHeight}:null};});
       if(width>=1024 && parseFloat(geometry.columns)<380) throw Error('Cargo column too narrow');
-      if(geometry.canvas && Math.abs(geometry.canvas.w/geometry.canvas.h-1.6)>0.03) throw Error('3D aspect ratio distorted');
+      if(geometry.canvas && (geometry.canvas.h>520 || geometry.canvas.h<180)) throw Error('3D height exceeds workspace bounds');
       await mkdir('test-artifacts',{recursive:true});
       await p.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
       await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
@@ -1410,6 +1418,11 @@ await test('planner: workspace settings persist and responsive navigation preser
       await p.screenshot({path:`test-artifacts/planner-${width}-actions.png`});
       await p.getByText('Share a snapshot / manage links',{exact:true}).click();
     }
+    await p.setViewportSize({width:1440,height:900});
+    for(let i=0;i<4;i++) await p.getByRole('button',{name:'+ Add',exact:true}).click();
+    await p.evaluate(()=>window.scrollTo({top:400,behavior:'instant'}));
+    const sticky=await p.getByTestId('planner-sticky-view').evaluate(el=>({top:el.getBoundingClientRect().top,position:getComputedStyle(el).position}));
+    if(sticky.position!=='sticky'||sticky.top<60||sticky.top>120)throw Error('3D workspace did not remain visible while editing long cargo lists');
     await p.getByRole('button',{name:'Settings',exact:true}).click();
     await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).uncheck();
     await dialog.getByRole('checkbox',{name:'Show calculation updates in Planner',exact:true}).check();

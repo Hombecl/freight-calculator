@@ -66,7 +66,7 @@ export async function listPlans(): Promise<SavedPlan[]> {
     .select(PLAN_COLS)
     .order('updated_at', { ascending: false })
     .limit(200);
-  if (error) return [];
+  if (error) throw error;
   return (data ?? []) as unknown as SavedPlan[];
 }
 
