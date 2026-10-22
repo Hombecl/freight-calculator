@@ -1366,6 +1366,39 @@ await test('planner: improved single-SKU layout and cancellable background calcu
  }finally{await p.close();}
 },page);
 
+await test('planner: distinct options switch layout, preserve original and export selected positions',async()=>{
+ const isolated=await browser.newContext({viewport:{width:1440,height:900}});
+ const p=await isolated.newPage();
+ try{
+  await p.route('**/api/lead',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
+  await p.goto(`${BASE}/planner`);
+  await p.getByTestId('planner-packed').waitFor();
+  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('planner-layout-2').waitFor();
+  await p.getByText('215 / 240',{exact:true}).waitFor();
+  if(await p.getByTestId('planner-layout-2').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
+  const history=await p.evaluate(()=>JSON.parse(localStorage.getItem('dp_planner_history_v1')??'[]'));
+  if(!history.some(s=>s.boxes.length===188))throw Error('Original plan not preserved');
+  await p.getByTestId('planner-layout-0').click();
+  await p.getByText('188 / 240',{exact:true}).waitFor();
+  await p.getByTestId('planner-layout-2').click();
+  await p.getByText('215 / 240',{exact:true}).waitFor();
+  const download=p.waitForEvent('download');
+  await p.getByRole('button',{name:'CSV',exact:true}).click();
+  await p.getByPlaceholder('you@company.com',{exact:true}).fill('options-test@example.test');
+  await p.getByRole('button',{name:/unlock & download/i}).click();
+  const file=await download, stream=await file.createReadStream(), chunks=[];
+  for await(const chunk of stream)chunks.push(chunk);
+  const csv=Buffer.concat(chunks).toString();
+  if(csv.split('\n').filter(line=>line.startsWith('"placement",')).length!==215)throw Error('CSV does not match selected layout');
+  await p.locator('input[type="number"]').nth(4).fill('141');
+  if(!await p.getByTestId('planner-layout-0').isDisabled())throw Error('Option switch allowed with pending inputs');
+  await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
+  await p.getByTestId('planner-packed').waitFor();
+  if(await p.getByTestId('planner-layout-options').count())throw Error('Old alternatives survived new inputs');
+ }finally{await isolated.close();}
+},page);
+
 await test('planner: workspace settings persist and responsive navigation preserves inputs', async () => {
   const p = await ctx.newPage();
   try {
