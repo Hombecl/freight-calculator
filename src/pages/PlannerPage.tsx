@@ -394,7 +394,7 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="w-full px-3 md:px-5 py-4">
+    <div className="w-full max-w-[1520px] mx-auto px-3 md:px-5 py-4">
       <Helmet>
         {/* Intent split (2026-08-23): the homepage owned "3d packing simulator" at
             pos 1-2 until this page's title was exact-matched to the same query in
@@ -417,7 +417,7 @@ export default function PlannerPage() {
 
       {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
 
-      <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] gap-4 xl:gap-5">
+      <div className="grid lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)] 2xl:grid-cols-[480px_minmax(0,1fr)] gap-4 xl:gap-5">
         {/* left: inputs */}
         <div className="space-y-4">
           <div>
@@ -580,60 +580,6 @@ export default function PlannerPage() {
           )}
           {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
-          <section className="rounded border p-3 space-y-2 text-sm"><label className="block">{T('Report reference (optional)','報告參考編號（可略過）')}<input className="border rounded p-2 w-full" maxLength={120} value={reportName} onChange={e=>setReportName(e.target.value)}/></label><label className="block">{T('Report for','報告對象')}<select className="border rounded p-2 w-full" value={reportView} onChange={e=>setReportView(e.target.value as PlannerReportView)}><option value="summary">{T('Customer — summary','客戶 — 摘要')}</option><option value="crew">{T('Warehouse — loading steps','倉庫 — 裝載步驟')}</option><option value="manifest">{T('Forwarder — reconciliation and positions','貨代 — 對數及位置')}</option></select></label><p className="text-xs break-all">{T('Revision','版本')}: {revision}</p></section>
-          <div className="flex gap-2">
-            <button
-              onClick={exportCsv}
-              disabled={hasPendingChanges}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Download size={15} /> CSV
-            </button>
-            <button
-              onClick={exportPdf}
-              disabled={hasPendingChanges}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <FileText size={15} /> PDF plan
-            </button>
-          </div>
-
-          <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
-          <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'quote')}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
-          <Link to="/consolidation" className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
-          <p className="text-xs text-slate-600">{T('Your current layout is saved locally before comparison. Compare the same quantities and rules; costs need your own quotes.','比較前會在本機保存目前擺位。沿用相同數量及限制；成本需提供自己的報價。')}</p>
-          {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
-          <WorkflowJob job={workflowJob} onChange={next=>{if(next.id!==workflowJob.id){if(hasPendingChanges){setHistoryMessage(T('Calculate pending edits before starting another job.','開始新工作前，請先計算待處理修改。'));return;}if(!preserve())return;setReportName('');setLiveBoxes(null);setSharedBoxes(null);setSeed(n=>n+1);}setWorkflowJob(next);}}/>
-          <details className="rounded border p-3 text-sm"><summary className="cursor-pointer font-semibold">{T('Saved versions on this device','本機保存版本')}</summary><p className="text-xs my-2">{T('Keeps the latest 20 snapshots in this browser. Reopen a version to revise the same job; use Start next job for another shipment. New jobs keep cargo rules but recalculate positions.','在此瀏覽器保留最近 20 個快照。重開版本可修訂同一工作；另一批出貨請開始新工作。新工作沿用貨物限制，但會重新計算擺位。')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={preserve}>{T('Save this version locally','在本機保存此版本')}</button>{historyMessage&&<p role="status">{historyMessage}</p>}<ul>{[...history].reverse().map(v=>{const diff=snapshotChanges(v,currentSnapshot());return <li key={v.jobId+v.revision} className="border-t py-2"><p>{v.name||v.jobId.slice(0,8)} · {v.revision.slice(0,8)} · {new Date(v.savedAt).toLocaleString()}</p><p>{T('Compared with current:','與目前比較：')} {diff.cargoRows} {T('cargo rows changed','貨物行有變')} · {diff.equipment?T('equipment changed','櫃型有變'):T('same equipment','相同櫃型')} · {diff.layout?T('layout changed','擺位有變'):T('same layout','相同擺位')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={()=>{if(preserve())restore(v);}}>{T('Reopen version','重開版本')}</button></li>})}</ul></details>
-          <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes,overhangCm,reportName,jobId:workflowJob.id})}/>
-
-
-          {auth.enabled && (
-            auth.userId ? (
-              <button
-                onClick={saveToAccount}
-                disabled={hasPendingChanges || saveState === 'busy'}
-                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  saveState === 'saved'
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                    : saveState === 'error'
-                      ? 'border-red-300 bg-red-50 text-red-600'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                {saveState === 'saved'
-                  ? (<><Check size={15} /> Saved — see My Plans</>)
-                  : saveState === 'error'
-                    ? 'Save failed — try again'
-                    : (<><Save size={15} /> {saveState === 'busy' ? 'Saving…' : 'Save to my plans'}</>)}
-              </button>
-            ) : (
-              <p className="text-xs text-slate-400 text-center">
-                <Link to="/plans" className="text-blue-600 font-medium">Sign in</Link> to save plans &amp; track utilization over time
-              </p>
-            )
-          )}
-
           {packing.ready && <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
             {doorBlocked.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
@@ -729,10 +675,10 @@ export default function PlannerPage() {
         </div>
 
         {/* right: 3D editor */}
-        <div>
+        <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start">
           {packing.ready && <><div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
           <InteractiveLoadPlanner
-            viewportHeight="clamp(360px, 56vh, 680px)"
+            viewportAspectRatio="16 / 10"
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
             key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
             container={packSpace}
@@ -747,7 +693,72 @@ export default function PlannerPage() {
         </div>
       </div>
 
-      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" aria-labelledby="load-plan-guide">
+      <div className="mt-6 grid gap-4 lg:grid-cols-2 items-start" aria-label={T('Export and manage your plan', '匯出及管理方案')}>
+        <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+          <h2 className="font-bold text-slate-900">{T('Export & compare', '匯出與比較')}</h2>
+          <section className="rounded border p-3 space-y-2 text-sm"><label className="block">{T('Report reference (optional)','報告參考編號（可略過）')}<input className="border rounded p-2 w-full" maxLength={120} value={reportName} onChange={e=>setReportName(e.target.value)}/></label><label className="block">{T('Report for','報告對象')}<select className="border rounded p-2 w-full" value={reportView} onChange={e=>setReportView(e.target.value as PlannerReportView)}><option value="summary">{T('Customer — summary','客戶 — 摘要')}</option><option value="crew">{T('Warehouse — loading steps','倉庫 — 裝載步驟')}</option><option value="manifest">{T('Forwarder — reconciliation and positions','貨代 — 對數及位置')}</option></select></label><p className="text-xs break-all">{T('Revision','版本')}: {revision}</p></section>
+          <div className="flex gap-2">
+            <button
+              onClick={exportCsv}
+              disabled={hasPendingChanges}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download size={15} /> CSV
+            </button>
+            <button
+              onClick={exportPdf}
+              disabled={hasPendingChanges}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileText size={15} /> PDF plan
+            </button>
+          </div>
+
+          <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
+          <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'quote')}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
+          <Link to="/consolidation" className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
+          <p className="text-xs text-slate-600">{T('Your current layout is saved locally before comparison. Compare the same quantities and rules; costs need your own quotes.','比較前會在本機保存目前擺位。沿用相同數量及限制；成本需提供自己的報價。')}</p>
+          {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
+        </section>
+        <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+          <h2 className="font-bold text-slate-900">{T('Save & share this job', '保存與分享工作')}</h2>
+          <WorkflowJob job={workflowJob} onChange={next=>{if(next.id!==workflowJob.id){if(hasPendingChanges){setHistoryMessage(T('Calculate pending edits before starting another job.','開始新工作前，請先計算待處理修改。'));return;}if(!preserve())return;setReportName('');setLiveBoxes(null);setSharedBoxes(null);setSeed(n=>n+1);}setWorkflowJob(next);}}/>
+          <details className="rounded border p-3 text-sm"><summary className="cursor-pointer font-semibold">{T('Saved versions on this device','本機保存版本')}</summary><p className="text-xs my-2">{T('Keeps the latest 20 snapshots in this browser. Reopen a version to revise the same job; use Start next job for another shipment. New jobs keep cargo rules but recalculate positions.','在此瀏覽器保留最近 20 個快照。重開版本可修訂同一工作；另一批出貨請開始新工作。新工作沿用貨物限制，但會重新計算擺位。')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={preserve}>{T('Save this version locally','在本機保存此版本')}</button>{historyMessage&&<p role="status">{historyMessage}</p>}<ul>{[...history].reverse().map(v=>{const diff=snapshotChanges(v,currentSnapshot());return <li key={v.jobId+v.revision} className="border-t py-2"><p>{v.name||v.jobId.slice(0,8)} · {v.revision.slice(0,8)} · {new Date(v.savedAt).toLocaleString()}</p><p>{T('Compared with current:','與目前比較：')} {diff.cargoRows} {T('cargo rows changed','貨物行有變')} · {diff.equipment?T('equipment changed','櫃型有變'):T('same equipment','相同櫃型')} · {diff.layout?T('layout changed','擺位有變'):T('same layout','相同擺位')}</p><button className="border rounded p-2" disabled={hasPendingChanges} onClick={()=>{if(preserve())restore(v);}}>{T('Reopen version','重開版本')}</button></li>})}</ul></details>
+          <ShareSnapshot disabled={hasPendingChanges} path={IS_ZH?'/zh/planner':'/planner'} payload={()=>({containerKey,container,specs:appliedSpecs,boxes:currentBoxes,overhangCm,reportName,jobId:workflowJob.id})}/>
+
+
+          {auth.enabled && (
+            auth.userId ? (
+              <button
+                onClick={saveToAccount}
+                disabled={hasPendingChanges || saveState === 'busy'}
+                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  saveState === 'saved'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : saveState === 'error'
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                {saveState === 'saved'
+                  ? (<><Check size={15} /> Saved — see My Plans</>)
+                  : saveState === 'error'
+                    ? 'Save failed — try again'
+                    : (<><Save size={15} /> {saveState === 'busy' ? 'Saving…' : 'Save to my plans'}</>)}
+              </button>
+            ) : (
+              <p className="text-xs text-slate-400 text-center">
+                <Link to="/plans" className="text-blue-600 font-medium">Sign in</Link> to save plans &amp; track utilization over time
+              </p>
+            )
+          )}
+
+        </section>
+      </div>
+
+      <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <summary className="cursor-pointer font-bold text-slate-900">{T('Planner guide & frequently asked questions', '使用指南與常見問題')}</summary>
+        <section className="pt-4" aria-labelledby="load-plan-guide">
         <h2 id="load-plan-guide" className="text-xl font-bold text-slate-900">{T('From Excel packing list to a 3D load plan', '由 Excel 貨單到 3D 裝櫃計劃')}</h2>
         <p className="mt-2 text-sm text-slate-600">{T('For exporters, freight forwarders and warehouse teams checking a shipment before loading. Planning needs no account; free PDF and CSV export asks for an email. Product updates are optional.', '適合出口商、貨運代理及倉庫團隊裝貨前核對。規劃毋須帳戶；免費 PDF 與 CSV 匯出需填電郵，產品消息可自行選擇。')}</p>
         <ol className="mt-5 grid gap-5 sm:grid-cols-3 text-sm text-slate-600">
@@ -769,7 +780,7 @@ export default function PlannerPage() {
           <Link to="/ti-hi-calculator">{T('Cases per pallet: TI / HI →', '每板箱數：TI／HI →')}</Link>
           <Link to="/container">{T('Quick container capacity check →', '快速核對貨櫃容量 →')}</Link>
         </nav>
-      </section>
+      </section></details>
 
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={onImport} />
 

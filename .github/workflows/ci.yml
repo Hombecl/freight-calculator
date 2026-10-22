@@ -32,3 +32,10 @@ jobs:
           npx vite preview --port 4174 --strictPort &
           sleep 3
           PW_BROWSER=chromium node tests/e2e.mjs http://localhost:4174
+      - name: Upload responsive Planner screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: planner-responsive
+          path: test-artifacts/
+          if-no-files-found: ignore

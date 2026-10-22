@@ -16,10 +16,10 @@ export default function ToolNavigation() {
   const { lang } = useApp();
   const { pathname } = useLocation();
   const { compactNav, setCompactNav } = useWorkspace();
-  return <aside className={`hidden xl:block shrink-0 border-r border-slate-200 bg-white print:hidden ${compactNav ? 'w-16' : 'w-44'}`}>
+  return <aside className={`hidden xl:block shrink-0 border-r border-slate-200 bg-white print:hidden ${compactNav ? 'w-20' : 'w-44'}`}>
     <nav aria-label={lang === 'zh' ? '工具導覽' : 'Tool navigation'} className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto p-2">
-      <button type="button" onClick={() => setCompactNav(!compactNav)} aria-expanded={!compactNav} aria-label={lang === 'zh' ? '切換導覽標籤' : 'Toggle navigation labels'} title={lang === 'zh' ? '切換導覽標籤' : 'Toggle navigation labels'} className="mb-3 flex w-full items-center gap-2 rounded-lg p-3 text-xs text-slate-500 hover:bg-slate-100">
-        {compactNav ? <PanelLeftOpen size={18} className="shrink-0" /> : <><PanelLeftClose size={18} className="shrink-0" /><span>{lang === 'zh' ? '收起選單' : 'Collapse menu'}</span></>}
+      <button type="button" onClick={() => setCompactNav(!compactNav)} aria-expanded={!compactNav} aria-label={compactNav ? (lang === 'zh' ? '展開選單' : 'Expand menu') : (lang === 'zh' ? '收起選單' : 'Collapse menu')} title={compactNav ? (lang === 'zh' ? '展開選單' : 'Expand menu') : (lang === 'zh' ? '收起選單' : 'Collapse menu')} className={`mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-3 text-xs font-bold text-indigo-800 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 ${compactNav ? 'flex-col' : ''}`}>
+        {compactNav ? <><PanelLeftOpen size={20} className="shrink-0" /><span>{lang === 'zh' ? '展開' : 'Menu'}</span></> : <><PanelLeftClose size={18} className="shrink-0" /><span>{lang === 'zh' ? '收起選單' : 'Collapse menu'}</span></>}
       </button>
       {navItems.map(item => {
         const active = item.path === '/guides' ? pathname.startsWith('/guides') : pathname === item.path;

@@ -34,6 +34,7 @@ interface Props {
   readOnly?: boolean;
   placedCountTestId?: string;
   className?: string;
+  viewportAspectRatio?: string;
   viewportHeight?: number | string; // fixed hero or viewport-relative workspace height
   maxPixelRatio?: number; // decorative previews need fewer pixels than exported plans
   batchBoxes?: boolean; // opaque homepage cartons share two draw calls
@@ -109,6 +110,7 @@ export default function InteractiveLoadPlanner({
   placedCountTestId,
   className = '',
   viewportHeight,
+  viewportAspectRatio,
   maxPixelRatio = 2,
   batchBoxes = false,
   loadingPreview,
@@ -880,7 +882,7 @@ export default function InteractiveLoadPlanner({
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-          style={{ cursor: selectedId ? 'grab' : 'move', height: viewportHeight,
+          style={{ cursor: selectedId ? 'grab' : 'move', height: viewportHeight, aspectRatio: viewportAspectRatio,
             backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
