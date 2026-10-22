@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Package, Container, Move3d, Languages, Settings, RotateCcw, BookOpen, Calculator } from 'lucide-react';
+import { Languages, Settings, RotateCcw } from 'lucide-react';
 import Logo from './Logo';
+import { navItems } from './ToolNavigation';
 import { useApp } from '../../context/AppContext';
 import { localeSwitchHref } from '../../lib/locale';
 
@@ -8,50 +9,15 @@ export default function Header() {
   const location = useLocation();
   const { lang, units, toggleLengthUnit, toggleWeightUnit, toggleCurrency, setIsSettingsOpen, handleClearData, t } = useApp();
 
-  const navItems = [
-    { path: '/planner', label: 'Load Planner', labelZh: '裝載規劃', icon: Move3d, activeColor: 'bg-indigo-600' },
-    { path: '/packing', label: 'Packing', labelZh: '產品裝箱', icon: Package, activeColor: 'bg-blue-600' },
-    { path: '/container', label: 'Container', labelZh: '貨櫃裝載', icon: Container, activeColor: 'bg-teal-600' },
-    { path: '/#more-tools', label: 'More tools', labelZh: '其他工具', icon: Calculator, activeColor: 'bg-slate-600' },
-    { path: '/#calculators', label: 'Calculators', labelZh: '計算器', icon: Calculator, activeColor: 'bg-blue-600' },
-    { path: '/guides', label: 'Guides', labelZh: '指南', icon: BookOpen, activeColor: 'bg-slate-600' },
-  ];
-
   const isHomePage = location.pathname === '/';
 
   // homepage: absolute over the dark hero, scrolls away with the page —
   // sticky+transparent followed the scroll and overlapped content
   return (
     <header className={`print:hidden ${isHomePage ? 'absolute top-0 z-40 w-full bg-transparent' : 'sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm'}`}>
-      <div className="max-w-6xl mx-auto px-4">
+      <div className={isHomePage ? "max-w-6xl mx-auto px-4" : "px-4"}>
         <div className="flex items-center justify-between h-14 md:h-16">
           <Logo size="md" showText={!isHomePage || window.innerWidth >= 768} />
-
-          {/* Desktop Navigation - Only show on tool pages */}
-          {!isHomePage && (
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const isActive = item.path === '/guides'
-                  ? location.pathname.startsWith('/guides')
-                  : location.pathname === item.path;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-                      ${isActive
-                        ? `${item.activeColor} text-white shadow-md`
-                        : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                  >
-                    <Icon size={16} />
-                    {lang === 'zh' ? item.labelZh : item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
 
           {/* Controls */}
           <div className="flex items-center gap-1.5 md:gap-2">
@@ -69,7 +35,7 @@ export default function Header() {
 
             {!isHomePage && (
               <>
-                <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg">
+                <div className={`hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg ${location.pathname === '/planner' ? '!hidden' : ''}`}>
                   <button onClick={toggleLengthUnit} className="px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition-colors">
                     {units.length.toUpperCase()}
                   </button>
@@ -95,6 +61,8 @@ export default function Header() {
                   onClick={() => setIsSettingsOpen(true)}
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors group"
                   title={t('settings')}
+                  aria-label={t('settings')}
+                  aria-haspopup="dialog"
                 >
                   <Settings size={16} className="group-hover:rotate-45 transition-transform duration-300" />
                 </button>
@@ -105,7 +73,7 @@ export default function Header() {
 
         {/* Mobile Navigation - Only show on tool pages */}
         {!isHomePage && (
-          <nav className="md:hidden flex gap-1 pb-2 overflow-x-auto -mx-4 px-4">
+          <nav className="xl:hidden flex gap-1 pb-2 overflow-x-auto -mx-4 px-4">
             {navItems.map((item) => {
               const isActive = item.path === '/guides'
                 ? location.pathname.startsWith('/guides')

@@ -2,6 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { MARKET_LANGS, marketHref, marketTag, type MarketTool } from '../../lib/internationalTools';
 import Header from './Header';
+import ToolNavigation from './ToolNavigation';
+import { WorkspacePreferences, WorkspaceSettings } from './WorkspacePreferences';
 import Footer from './Footer';
 import { IS_ZH, localeUrls } from '../../lib/locale';
 
@@ -11,7 +13,7 @@ export default function Layout() {
   const urls = localeUrls(location.pathname);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <WorkspacePreferences><div className="min-h-screen bg-slate-50 flex flex-col">
       {/* locale-aware canonical + hreflang for every page (pages must NOT set
           their own <link rel="canonical"> or these would be overridden) */}
       <Helmet>
@@ -23,10 +25,14 @@ export default function Layout() {
         <link rel="alternate" hrefLang="x-default" href={urls.en} />
       </Helmet>
       <Header />
-      <main data-tool-page={location.pathname} className={`min-w-0 flex-1 ${isHomePage ? '' : 'p-3 md:p-4'}`}>
+      <div className="flex flex-1 min-w-0">
+      {!isHomePage && <ToolNavigation />}
+      <main data-tool-page={location.pathname} className={`min-w-0 flex-1 ${isHomePage || location.pathname === '/planner' ? '' : 'p-3 md:p-4'}`}>
         <Outlet />
       </main>
+      </div>
+      <WorkspaceSettings />
       <Footer />
-    </div>
+    </div></WorkspacePreferences>
   );
 }
