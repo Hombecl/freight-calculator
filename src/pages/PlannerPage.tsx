@@ -1,4 +1,5 @@
 import PackingGain from '../components/PackingGain';
+import ProductUpdate from '../components/ProductUpdate';
 import {usePackingWorker} from '../hooks/usePackingWorker';
 import PlannerReviewPanel from '../components/PlannerReviewPanel';
 import {reviewPlanner} from '../lib/plannerReview';
@@ -411,6 +412,8 @@ export default function PlannerPage() {
           {T("Turn your carton list into a container load plan. Choose a 20ft, 40ft or high-cube container, check what fits, then adjust the 3D layout by hand.", "將紙箱貨單變成裝櫃計劃。選擇 20 呎、40 呎或高櫃，檢查可裝數量，再手動微調 3D 擺位。")}
         </p>
       </div>
+
+      <div className="mb-5"><ProductUpdate planner /></div>
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-6">
         {/* left: inputs */}
