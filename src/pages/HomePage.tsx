@@ -8,6 +8,7 @@ import {
 import { useApp } from '../context/AppContext';
 import heroSummary from '../data/hero-summary.json';
 import VisibleVideo from '../components/VisibleVideo';
+import ProductUpdate from '../components/ProductUpdate';
 import { useVisibleMotion } from '../components/useVisibleMotion';
 const HeroInteractive = lazy(() => import('../components/HeroInteractive'));
 const HeroMotionPreview = lazy(() => import('../components/HeroMotionPreview'));
@@ -302,6 +303,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <div className="max-w-6xl mx-auto px-4 py-6"><ProductUpdate /></div>
 
       {/* ============ THE EXPENSIVE SURPRISES — pain first ============ */}
       <section className="bg-red-50/60 border-b border-red-100">
