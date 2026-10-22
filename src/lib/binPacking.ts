@@ -380,11 +380,11 @@ export interface ConstrainedResult extends PackResult {
  * With no unloadOrder anywhere, this is exactly packContainer (single zone).
  */
 export function packWithConstraints(
-  container: PackContainer, specs: PackItemSpec[],
+  container: PackContainer, specs: PackItemSpec[], options: PackingOptions = {},
 ): ConstrainedResult {
   const hasOrder = specs.some((s) => s.unloadOrder != null);
   if (!hasOrder) {
-    const r = packContainer(container, specs);
+    const r = packContainer(container, specs, options.strategy, options.ordering);
     return { ...r, zones: [{ unloadOrder: 1, xStart: 0, xEnd: container.l, count: r.boxes.length }] };
   }
 
@@ -424,7 +424,7 @@ export function packWithConstraints(
         l: zoneLen, w: container.w, h: container.h,
         maxWeight: container.maxWeight != null ? container.maxWeight * (volOf(list) / totalVol) : undefined,
       },
-      list,
+      list, options.strategy, options.ordering,
     );
     sub.boxes.forEach((b) => boxes.push({ ...b, px: b.px + cumX }));
     unplaced += sub.unplaced;

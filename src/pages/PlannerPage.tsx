@@ -1,3 +1,5 @@
+import {usePlannerAlternatives} from '../hooks/usePlannerAlternatives';
+import PlannerLayoutOptions,{layoutName} from '../components/PlannerLayoutOptions';
 import PackingGain from '../components/PackingGain';
 import { useWorkspace } from '../components/layout/WorkspacePreferences';
 import ProductUpdate from '../components/ProductUpdate';
@@ -156,7 +158,11 @@ export default function PlannerPage() {
   }, [container, overhangCm, containerKey]);
 
   const packing = usePackingWorker(packSpace, appliedSpecs, seed);
-  const result = packing.result;
+  const alternatives = usePlannerAlternatives(packSpace,appliedSpecs,packing.result);
+  const [layoutChoice,setLayoutChoice]=useState<{base:typeof packing.result;index:number}|null>(null);
+  const selectedLayout=layoutChoice?.base===packing.result ? layoutChoice.index : 0;
+  const result = (selectedLayout>0 ? alternatives.items[selectedLayout-1]?.result : null) ?? packing.result;
+  const selectedMethod=selectedLayout>0 ? alternatives.items[selectedLayout-1]?.id??'recommended' : 'recommended';
   const hasPendingChanges = hasInputChanges || !packing.ready;
   useEffect(() => {
     // Count an intentional, completed calculation, not the automatic demo on entry.
@@ -327,7 +333,7 @@ export default function PlannerPage() {
   const snapshotFn = useRef<(() => string | null) | null>(null);
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const meta = (): PlanMeta => ({
-    title: T('Container Load Plan','貨櫃裝載計劃'),
+    title: T('Container Load Plan','貨櫃裝載計劃') + (selectedLayout>0 && !liveBoxes && !sharedBoxes ? ` — ${layoutName(selectedMethod,IS_ZH)}` : ''),
     containerLabel: container.label,
     container,
     unit: 'cm',
@@ -345,6 +351,18 @@ export default function PlannerPage() {
     setReportName(v.name);setWorkflowJob({id:v.jobId,own:false});
     setHistoryMessage(T('Saved version reopened. Confirm own-job again; edits make a new revision.','已重開保存版本。請重新確認自己的工作；修改會產生新版本。'));
   };
+  const comparedBase=useRef<typeof packing.result|null>(null);
+  useEffect(()=>{
+    if(alternatives.status!=='done' || comparedBase.current===packing.result)return;
+    comparedBase.current=packing.result;
+    if(hasPendingChanges || liveBoxes || sharedBoxes)return;
+    const options=[packing.result,...alternatives.items.map(a=>a.result)];
+    let best=0;
+    for(let i=1;i<options.length;i++)if(options[i].stats.volumeUtil>options[best].stats.volumeUtil+1e-6 || (Math.abs(options[i].stats.volumeUtil-options[best].stats.volumeUtil)<1e-6 && options[i].boxes.length>options[best].boxes.length))best=i;
+    if(best>0 && preserve())setLayoutChoice({base:packing.result,index:best});
+    // Candidate completion runs once; do not replace subsequent user choices.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[alternatives.status,alternatives.items,packing.result,hasPendingChanges,liveBoxes,sharedBoxes]);
   const reportInput=()=>({meta:meta(),boxes:currentBoxes,requestedSpecs:appliedSpecs,reviewContainer:packSpace,door:container.door,reportView,reportReference:reportName||workflowJob.id.slice(0,8),revision,zh:IS_ZH});
   const transferCargo=(e:React.MouseEvent<HTMLAnchorElement>,target:'quote'|'compare')=>{
     if(hasPendingChanges||appliedSpecs.some(s=>s.weightKnown===false)){e.preventDefault();setExportError(T('Update this plan and supply missing weights first.','請先更新方案並填寫缺少嘅重量。'));return;}
@@ -363,7 +381,7 @@ export default function PlannerPage() {
     const outcome = performExport('planner', format, () => {
       if (format === 'csv') return downloadText(`load-plan-${revision}.csv`, plannerManifestCSV(reportInput()));
       return openPrintablePlan({
-        ...reportInput(), stats, zones: result.zones, boxes: currentBoxes,
+        ...reportInput(), stats, zones: liveBoxes || sharedBoxes ? [] : result.zones, boxes: currentBoxes,
         totalRequested: totalQty, imageDataUrl: snapshotFn.current?.() ?? null,
       });
     });
@@ -428,6 +446,12 @@ export default function PlannerPage() {
       </div>
 
       {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
+      {packing.ready && <PlannerLayoutOptions base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
+        if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
+        if(!preserve())return;
+        setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});
+        track('planner_layout_select',index===0?'recommended':alternatives.items[index-1]?.id??'recommended');
+      }}/> }
 
       <div className="grid lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)] 2xl:grid-cols-[480px_minmax(0,1fr)] gap-4 xl:gap-5">
         {/* left: inputs */}
@@ -627,7 +651,7 @@ export default function PlannerPage() {
             viewportHeight={resultDetails ? "min(62.5vw, clamp(180px, calc(100dvh - 540px), 360px))" : "min(62.5vw, clamp(220px, calc(100dvh - 350px), 520px))"}
             hideSummary
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
-            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
+            key={`${containerKey}-${seed}-${selectedLayout}-${sharedBoxes ? shareId : ''}`}
             container={packSpace}
             boxes={sharedBoxes ?? result.boxes}
             grid={1}
