@@ -1,3 +1,5 @@
+import PackingGain from '../components/PackingGain';
+import {usePackingWorker} from '../hooks/usePackingWorker';
 import PlannerReviewPanel from '../components/PlannerReviewPanel';
 import {reviewPlanner} from '../lib/plannerReview';
 import {plannerManifestCSV,type PlannerReportView} from '../lib/plannerReport';
@@ -18,7 +20,7 @@ import ImportModal from '../components/ImportModal';
 import { PACKING_LIST_EXAMPLE } from '../lib/packingListExample';
 import { TEMPLATE_CSV } from '../lib/importCartons';
 import InteractiveLoadPlanner, { PlannerBox } from '../components/InteractiveLoadPlanner';
-import { packWithConstraints, computeStats, type PackItemSpec } from '../lib/binPacking';
+import { computeStats, type PackItemSpec } from '../lib/binPacking';
 import { axleLoads, mckeeSafeLoad, palletOverhang, heavyOverLight, cogHeight, loadVoids, type AxleConfig } from '../lib/realism';
 import { downloadText, openPrintablePlan, type PlanMeta } from '../lib/exportPlan';
 import { useEntitlement } from '../hooks/useEntitlement';
@@ -132,10 +134,10 @@ export default function PlannerPage() {
   const [history,setHistory]=useState(readPlannerHistory);
   const [historyMessage,setHistoryMessage]=useState('');
   const [appliedSpecs, setAppliedSpecs] = useState<Spec[]>(specs);
-  const hasPendingChanges = JSON.stringify(specs) !== JSON.stringify(appliedSpecs);
+  const hasInputChanges = JSON.stringify(specs) !== JSON.stringify(appliedSpecs);
   useEffect(() => {
-    if (hasPendingChanges) track('planner_inputs_changed');
-  }, [hasPendingChanges]);
+    if (hasInputChanges) track('planner_inputs_changed');
+  }, [hasInputChanges]);
   const [seed, setSeed] = useState(0); // bump to re-run the packer
   const optimizationIntent = useRef<CalculationSource | null>(null);
 
@@ -150,19 +152,18 @@ export default function PlannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container, overhangCm, containerKey]);
 
-  const result = useMemo(
-    () => packWithConstraints(packSpace, appliedSpecs),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seed, packSpace, appliedSpecs],
-  );
+  const packing = usePackingWorker(packSpace, appliedSpecs, seed);
+  const result = packing.result;
+  const hasPendingChanges = hasInputChanges || !packing.ready;
   useEffect(() => {
     // Count an intentional, completed calculation, not the automatic demo on entry.
+    if (!packing.ready) return;
     const source = optimizationIntent.current;
     if (!source) return;
     optimizationIntent.current = null;
     track('planner_optimized', source);
     track('planner_calc_result', `${source}:${result.unplaced?'partial':'full'}`);
-  }, [result]);
+  }, [result, packing.ready]);
 
   // live stats reflect manual edits (falls back to the packer's own stats)
   const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
@@ -320,7 +321,7 @@ export default function PlannerPage() {
   const review=useMemo(()=>reviewPlanner(currentBoxes,packSpace,appliedSpecs,container.door),[currentBoxes,packSpace,appliedSpecs,container]);
   const revision=snapshotRevision({containerKey,overhangCm,specs:appliedSpecs,boxes:currentBoxes});
   const currentSnapshot=():PlannerSnapshot=>({jobId:workflowJob.id,name:reportName,containerKey,overhangCm,specs:appliedSpecs,boxes:currentBoxes,revision,savedAt:new Date().toISOString()});
-  const preserve=()=>{try{setHistory(savePlannerSnapshot(currentSnapshot()));setHistoryMessage(T('Version saved on this device.','版本已儲存在本機。'));return true;}catch{setHistoryMessage(T('Could not save this version. Check device storage before leaving.','未能保存版本。離開前請檢查本機儲存空間。'));return false;}};
+  const preserve=()=>{if(hasPendingChanges)return false;try{setHistory(savePlannerSnapshot(currentSnapshot()));setHistoryMessage(T('Version saved on this device.','版本已儲存在本機。'));return true;}catch{setHistoryMessage(T('Could not save this version. Check device storage before leaving.','未能保存版本。離開前請檢查本機儲存空間。'));return false;}};
   const restore=(v:PlannerSnapshot)=>{
     if(!CONTAINERS[v.containerKey as ContainerKey])return;
     setContainerKey(v.containerKey as ContainerKey);setOverhangCm(v.overhangCm);
@@ -552,15 +553,22 @@ export default function PlannerPage() {
           </div>
 
           <button
-            onClick={() => regen()}
-            disabled={!hasPendingChanges}
+            onClick={() => hasInputChanges ? regen() : packing.retry()}
+            disabled={packing.status === 'running' || !hasPendingChanges}
             className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-40"
           >
             Optimise pack
           </button>
 
+          {!packing.ready && <div role="status" aria-live="polite" className="rounded border border-blue-200 bg-blue-50 p-3 text-sm">
+            {packing.status === 'running' ? <>
+              <p>{packing.phase === 'packing' ? T('Calculating your load… You can keep editing inputs.', '正在計算裝載方案…你可以繼續修改輸入。') : packing.phase === 'improving' ? T('Comparing carton arrangements…', '正在比較紙箱排列組合…') : T('Checking the improved layout…', '正在檢查改善後嘅擺位…')}</p>
+              <button type="button" className="mt-2 underline" onClick={packing.cancel}>{T('Cancel calculation', '取消計算')}</button>
+            </> : <p>{packing.status === 'cancelled' ? T('Calculation cancelled. Select Optimise pack to try again.', '已取消計算，按 Optimise pack 重新計算。') : T('Calculation could not finish. Select Optimise pack to retry.', '計算未能完成，按 Optimise pack 重試。')}</p>}
+          </div>}
+          {packing.ready && !liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/>}
           {!hasPendingChanges && <p role="status" className="text-xs text-slate-600">{T('Plan is up to date. Export your current layout, or change inputs to recalculate. Use Reset to auto below the 3D view to undo manual placement; Undo can restore it.','方案已更新，可以匯出目前擺位；修改輸入後才需重新計算。要取消手動擺位，請用 3D 下方「重設自動擺位」；亦可按「復原」還原。')}</p>}
-          {hasPendingChanges && (
+          {hasInputChanges && (
             <p role="status" data-testid="planner-pending-changes" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               {T('Inputs changed. The view and totals still show your last calculated plan. Select Optimise pack to update it before exporting, sharing or saving.', '輸入已修改。畫面與總數仍顯示上次計算嘅方案。請按 Optimise pack 更新後，再匯出、分享或保存。')}
             </p>
@@ -621,7 +629,7 @@ export default function PlannerPage() {
             )
           )}
 
-          <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
+          {packing.ready && <div className="text-sm text-slate-600 space-y-1 pt-2 border-t border-slate-100">
             {doorBlocked.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
                 🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.
@@ -712,12 +720,12 @@ export default function PlannerPage() {
             {stats.weightUtil != null && stats.weightUtil > 100 && (
               <p className="text-xs text-red-600">Over the container payload limit.</p>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* right: 3D editor */}
         <div>
-          <div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
+          {packing.ready && <><div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
           <InteractiveLoadPlanner
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
             key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
@@ -728,7 +736,8 @@ export default function PlannerPage() {
             onChange={setLiveBoxes}
             onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
             registerSnapshot={(fn) => { snapshotFn.current = fn; }}
-          />
+          /></>}
+          {!packing.ready && <div className="min-h-96 rounded-xl border bg-slate-50 flex items-center justify-center text-slate-600">{T('Your 3D layout will appear when calculation finishes.', '計算完成後會顯示 3D 擺位。')}</div>}
         </div>
       </div>
 

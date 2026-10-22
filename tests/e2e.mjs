@@ -287,11 +287,11 @@ await test('pallet chain: marks current step and does not self-link', async () =
   await chain.locator('a[href^="/pallets-per-container"]').waitFor();
 }, page);
 
-await test('home: chain nav links all five tools', async () => {
-  for (const href of ['/planner', '/packing', '/container', '/fba', '/warehouse']) {
-    const n = await page.locator(`a[href="${href}"], a[href="/zh${href}"]`).count();
-    if (n === 0) throw new Error(`no link to ${href}`);
-  }
+await test('home: primary planning tools stay visible and secondary tools remain accessible', async () => {
+  await page.goto(`${BASE}/`, {waitUntil:'domcontentloaded'});
+  for (const href of ['/planner', '/packing', '/container']) await page.locator(`a[href="${href}"]`).first().waitFor();
+  await page.locator('#more-tools summary').click();
+  for (const href of ['/fba', '/warehouse']) await page.locator(`#more-tools a[href="${href}"]`).first().waitFor();
 }, page);
 
 // ---------- compare pages (highest-CTR surface) ----------
@@ -1308,6 +1308,7 @@ await test('planner review: shared draft flags missing support and reconciles sa
 await test('planner review: comparison preserves a local revision and transfers cargo',async()=>{
  await page.goto(`${BASE}/planner?demo=excel`);
  await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).fill('Synthetic comparison');
+ await page.getByTestId('planner-packed').waitFor();
  await page.getByRole('link',{name:'Compare containers for this cargo',exact:true}).click();
  await page.getByRole('button',{name:'Replace example cargo with these items',exact:true}).click();
  if(!await page.getByText('example-master',{exact:false}).count()) {
@@ -1317,10 +1318,48 @@ await test('planner review: comparison preserves a local revision and transfers 
  await page.goto(`${BASE}/planner?demo=excel`);
  await page.getByText('Saved versions on this device',{exact:true}).click();
  await page.getByText(/Synthetic comparison/).first().waitFor();
+ await page.getByTestId('planner-packed').waitFor();
  await page.getByRole('button',{name:'Reopen version',exact:true}).first().click();
  if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='Synthetic comparison')throw Error('Reference not restored');
+ await page.getByTestId('planner-packed').waitFor();
  await page.getByRole('button',{name:'Start next job (keep inputs)',exact:true}).click();
  if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='')throw Error('Previous report reference carried to next job');
+},page);
+
+await test('planner: improved single-SKU layout and cancellable background calculation',async()=>{
+ const p=await ctx.newPage();
+ try{
+  await p.goto(`${BASE}/planner`);
+  await p.getByTestId('planner-packed').waitFor();
+  await p.getByRole('button',{name:"40' HQ",exact:true}).click();
+  await p.getByTestId('planner-packed').waitFor();
+  const load=async(csv)=>{
+   await p.getByRole('button',{name:/Import Excel/}).click();
+   await p.getByLabel('Paste carton list',{exact:true}).fill(csv);
+   await p.getByRole('button',{name:'Review pasted rows',exact:true}).click();
+   await p.getByRole('checkbox',{name:'I checked units, accepted quantities and excluded rows.',exact:true}).check();
+   await p.getByRole('button',{name:'Use this list and calculate',exact:true}).click();
+  };
+  await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
+  await p.getByText('878 / 1000',{exact:true}).waitFor();
+  await p.getByTestId('packing-improvement').getByText(/58 cartons/).waitFor();
+  await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
+  await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
+  await p.getByText(/10.00 →/).waitFor();
+  await p.getByText('9.34',{exact:true}).waitFor();
+  await load('name,length,width,height,weight,qty\nSlow case,44,32.5,30,1,1782');
+  await p.getByRole('button',{name:'Cancel calculation',exact:true}).waitFor();
+  await p.getByLabel('Report reference (optional)',{exact:true}).fill('Still responsive');
+  if(!await p.getByRole('button',{name:'CSV',exact:true}).isDisabled())throw Error('Export enabled while calculating');
+  await p.getByRole('button',{name:'Cancel calculation',exact:true}).click();
+  await p.getByText('Calculation cancelled. Select Optimise pack to try again.',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
+  await p.getByRole('button',{name:'Cancel calculation',exact:true}).click();
+  await p.locator('input[type="number"]').nth(4).fill('100');
+  await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
+  await p.getByText('100 / 100',{exact:true}).waitFor();
+  if(await p.getByRole('button',{name:'CSV',exact:true}).isDisabled())throw Error('Export did not recover after retry');
+ }finally{await p.close();}
 },page);
 
 await browser.close();
