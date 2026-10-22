@@ -576,7 +576,7 @@ export default function InteractiveLoadPlanner({
       lastFrame = now;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
-      if (autoSpinRef.current && !reducedMotion.matches && mode === 'idle') {
+      if (autoSpinRef.current && !reducedMotion.matches && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
@@ -622,11 +622,14 @@ export default function InteractiveLoadPlanner({
       needsRender = true;
     };
     window.addEventListener('resize', onResize);
+    const sizeObserver = new ResizeObserver(onResize);
+    sizeObserver.observe(mount);
 
     return () => {
       cancelAnimationFrame(raf);
       visibility.disconnect();
       window.removeEventListener('resize', onResize);
+      sizeObserver.disconnect();
       dom.removeEventListener('pointerdown', onDown);
       dom.removeEventListener('pointermove', onMove);
       dom.removeEventListener('pointerup', onUp);
@@ -921,6 +924,7 @@ export default function InteractiveLoadPlanner({
         )}
       </div>
 
+      {!readOnly && !selected && <p className="text-xs text-slate-500">{IS_ZH ? "先點選 3D 紙箱，才可旋轉、放低或刪除。" : "Select a carton in 3D to enable Rotate, Drop and Delete."}</p>}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {lightTheme && <button type="button" onClick={() => resetViewRef.current?.()} className="rounded border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700">{IS_ZH ? "重設視角" : "Reset view"}</button>}
         {!hideSummary && <>

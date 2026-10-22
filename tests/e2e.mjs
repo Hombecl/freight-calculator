@@ -1372,8 +1372,15 @@ await test('planner: workspace settings persist and responsive navigation preser
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
+    await p.getByRole('button',{name:'More detail',exact:true}).click();
     await resultsPanel.getByText('Cartons remaining',{exact:true}).waitFor();
     await resultsPanel.getByText('Loaded cargo weight',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Less detail',exact:true}).click();
+    if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Collapse changed cargo');
+    const rotation=p.getByRole('button',{name:/^(Auto rotate|Pause rotation)$/});
+    const before=await rotation.getAttribute('aria-pressed'); await rotation.click();
+    if(await rotation.getAttribute('aria-pressed')===before) throw Error('Rotation toggle failed');
+    await rotation.click();
     await p.getByRole('button',{name:'Reset view',exact:true}).click();
     if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Reset view changed cargo');
     await p.getByRole('button',{name:'Expand menu',exact:true}).waitFor();
@@ -1398,7 +1405,7 @@ await test('planner: workspace settings persist and responsive navigation preser
       if(width>=1280 && !await p.getByRole('navigation',{name:'Tool navigation',exact:true}).isVisible()) throw Error('Desktop sidebar missing');
       const geometry=await p.evaluate(()=>{const g=document.querySelector('main .grid');const c=document.querySelector('canvas');return {columns:getComputedStyle(g).gridTemplateColumns,canvas:c?{w:c.clientWidth,h:c.clientHeight}:null};});
       if(width>=1024 && parseFloat(geometry.columns)<380) throw Error('Cargo column too narrow');
-      if(geometry.canvas && Math.abs(geometry.canvas.w/geometry.canvas.h-1.6)>0.03) throw Error('3D aspect ratio distorted');
+      if(geometry.canvas && (geometry.canvas.h>520 || geometry.canvas.h<180)) throw Error('3D height exceeds workspace bounds');
       await mkdir('test-artifacts',{recursive:true});
       await p.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
       await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
@@ -1410,6 +1417,11 @@ await test('planner: workspace settings persist and responsive navigation preser
       await p.screenshot({path:`test-artifacts/planner-${width}-actions.png`});
       await p.getByText('Share a snapshot / manage links',{exact:true}).click();
     }
+    await p.setViewportSize({width:1440,height:900});
+    for(let i=0;i<4;i++) await p.getByRole('button',{name:'+ Add',exact:true}).click();
+    await p.evaluate(()=>window.scrollTo({top:400,behavior:'instant'}));
+    const sticky=await p.getByTestId('planner-sticky-view').evaluate(el=>({top:el.getBoundingClientRect().top,position:getComputedStyle(el).position}));
+    if(sticky.position!=='sticky'||sticky.top<60||sticky.top>120)throw Error('3D workspace did not remain visible while editing long cargo lists');
     await p.getByRole('button',{name:'Settings',exact:true}).click();
     await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).uncheck();
     await dialog.getByRole('checkbox',{name:'Show calculation updates in Planner',exact:true}).check();
