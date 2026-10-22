@@ -1,14 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../context/AppContext';
 
-const WorkspaceContext = createContext({ compactNav: false, showUpdates: true, setCompactNav: (_v: boolean) => {}, setShowUpdates: (_v: boolean) => {} });
+const WorkspaceContext = createContext({ compactNav: true, showUpdates: true, setCompactNav: (_v: boolean) => {}, setShowUpdates: (_v: boolean) => {} });
 export const useWorkspace = () => useContext(WorkspaceContext);
 export function WorkspacePreferences({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState(() => {
-    try { const saved = JSON.parse(localStorage.getItem('dimpack3d-workspace') || '{}'); return { compactNav: saved.compactNav === true, showUpdates: saved.showUpdates !== false }; }
-    catch { return { compactNav: false, showUpdates: true }; }
+    try { const saved = JSON.parse(localStorage.getItem('dimpack3d-workspace') || '{}'); return { compactNav: saved.version === 2 ? saved.compactNav !== false : true, showUpdates: saved.showUpdates !== false }; }
+    catch { return { compactNav: true, showUpdates: true }; }
   });
-  useEffect(() => { try { localStorage.setItem('dimpack3d-workspace', JSON.stringify(preferences)); } catch { /* preferences still work for this visit */ } }, [preferences]);
+  useEffect(() => { try { localStorage.setItem('dimpack3d-workspace', JSON.stringify({ ...preferences, version: 2 })); } catch { /* preferences still work for this visit */ } }, [preferences]);
   return <WorkspaceContext.Provider value={{ ...preferences, setCompactNav: compactNav => setPreferences(p => ({ ...p, compactNav })), setShowUpdates: showUpdates => setPreferences(p => ({ ...p, showUpdates })) }}>{children}</WorkspaceContext.Provider>;
 }
 

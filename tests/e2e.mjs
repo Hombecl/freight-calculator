@@ -11,6 +11,7 @@
  */
 
 import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
 import { fixAuditBTests } from './fix-audit-b-e2e.mjs';
 
 const BASE = process.argv[2] ?? 'http://localhost:4174';
@@ -1368,6 +1369,7 @@ await test('planner: workspace settings persist and responsive navigation preser
     await p.goto(`${BASE}/planner`);
     await p.getByTestId('planner-packed').waitFor();
     const packed = await p.getByTestId('planner-packed').innerText();
+    await p.getByRole('button',{name:'Expand menu',exact:true}).waitFor();
     await p.getByRole('navigation', {name:'Tool navigation',exact:true}).waitFor();
     await p.getByRole('button',{name:'Settings',exact:true}).click();
     const dialog = p.getByRole('dialog',{name:'Workspace settings'});
@@ -1387,6 +1389,17 @@ await test('planner: workspace settings persist and responsive navigation preser
       await p.setViewportSize({width,height:900});
       if(await p.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error(`Horizontal overflow at ${width}`);
       if(width>=1280 && !await p.getByRole('navigation',{name:'Tool navigation',exact:true}).isVisible()) throw Error('Desktop sidebar missing');
+      const geometry=await p.evaluate(()=>{const g=document.querySelector('main .grid');const c=document.querySelector('canvas');return {columns:getComputedStyle(g).gridTemplateColumns,canvas:c?{w:c.clientWidth,h:c.clientHeight}:null};});
+      if(width>=1024 && parseFloat(geometry.columns)<380) throw Error('Cargo column too narrow');
+      if(geometry.canvas && Math.abs(geometry.canvas.w/geometry.canvas.h-1.6)>0.03) throw Error('3D aspect ratio distorted');
+      await mkdir('test-artifacts',{recursive:true});
+      await p.evaluate(()=>window.scrollTo(0,0));
+      await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
+      await p.getByRole('heading',{name:'Save & share this job',exact:true}).scrollIntoViewIfNeeded();
+      await p.getByText('Share a snapshot / manage links',{exact:true}).click();
+      if(await p.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error(`Share panel overflow at ${width}`);
+      await p.screenshot({path:`test-artifacts/planner-${width}-actions.png`});
+      await p.getByText('Share a snapshot / manage links',{exact:true}).click();
     }
     await p.getByRole('button',{name:'Settings',exact:true}).click();
     await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).uncheck();
