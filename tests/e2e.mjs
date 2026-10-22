@@ -900,7 +900,8 @@ await test('home: reality-checks showcase renders all nine cards', async () => {
 
 await test('planner: container vessel shows SOLAS VGM line', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/VGM \(cargo \+ 2,?300 kg tare\)/i).waitFor();
+  await page.getByText('VGM estimate · cargo + tare',{exact:true}).waitFor();
+  await page.getByText('Includes 2,300 kg container tare',{exact:true}).waitFor();
 }, page);
 
 await test('home: pain-first sections render (surprises + system story)', async () => {
@@ -1412,6 +1413,12 @@ await test('planner: workspace settings persist and responsive navigation preser
       await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
       await p.getByRole('heading',{name:'Load results',exact:true}).scrollIntoViewIfNeeded();
       await p.screenshot({path:`test-artifacts/planner-${width}-results.png`});
+      await p.getByTestId('planner-load-checks').scrollIntoViewIfNeeded();
+      const zoneLabels=p.getByTestId('planner-zone-labels');
+      await zoneLabels.getByText('Unload #1',{exact:true}).waitFor();
+      await zoneLabels.getByText('5 cartons',{exact:true}).waitFor();
+      if(await zoneLabels.evaluate(el=>el.scrollWidth>el.clientWidth))throw Error(`Load-zone labels overflow at ${width}`);
+      await p.screenshot({path:`test-artifacts/planner-${width}-checks.png`});
       await p.getByRole('heading',{name:'Save & share this job',exact:true}).scrollIntoViewIfNeeded();
       await p.getByText('Share a snapshot / manage links',{exact:true}).click();
       if(await p.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error(`Share panel overflow at ${width}`);
