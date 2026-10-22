@@ -1367,7 +1367,8 @@ await test('planner: improved single-SKU layout and cancellable background calcu
 },page);
 
 await test('planner: distinct options switch layout, preserve original and export selected positions',async()=>{
- const p=await ctx.newPage();
+ const isolated=await browser.newContext({viewport:{width:1440,height:900}});
+ const p=await isolated.newPage();
  try{
   await p.route('**/api/lead',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
   await p.goto(`${BASE}/planner`);
@@ -1395,7 +1396,7 @@ await test('planner: distinct options switch layout, preserve original and expor
   await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
   await p.getByTestId('planner-packed').waitFor();
   if(await p.getByTestId('planner-layout-options').count())throw Error('Old alternatives survived new inputs');
- }finally{await p.close();}
+ }finally{await isolated.close();}
 },page);
 
 await test('planner: workspace settings persist and responsive navigation preserves inputs', async () => {
