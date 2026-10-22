@@ -261,11 +261,7 @@ export default function PlannerPage() {
         if(typeof plan.reportName==='string')setReportName(plan.reportName.slice(0,120));
         if(typeof plan.jobId==='string')setWorkflowJob({id:plan.jobId,own:false});
         setLiveBoxes(null);
-        const asTemplate=params.get('template')==='1';
-      setOverhangCm([0,2.5,5].includes(Number(plan.stats.overhangCm)) ? Number(plan.stats.overhangCm) : 0);
-      setReportName(asTemplate ? '' : plan.name);
-      setWorkflowJob({id:crypto.randomUUID(),own:false});
-      setSharedBoxes(asTemplate ? null : Array.isArray(plan.boxes) ? plan.boxes : null);
+        setSharedBoxes(Array.isArray(plan.boxes) ? plan.boxes : null);
         setSeed((n) => n + 1);
         track('share_open');
       } catch { /* leave defaults */ }
@@ -292,7 +288,11 @@ export default function PlannerPage() {
       if (CONTAINERS[plan.container_key as ContainerKey]) setContainerKey(plan.container_key as ContainerKey);
       if (Array.isArray(plan.specs)) { setSpecs(plan.specs); setAppliedSpecs(plan.specs); }
       setLiveBoxes(null);
-      setSharedBoxes(Array.isArray(plan.boxes) ? plan.boxes : null);
+      const asTemplate=params.get('template')==='1';
+      setOverhangCm([0,2.5,5].includes(Number(plan.stats?.overhangCm)) ? Number(plan.stats?.overhangCm) : 0);
+      setReportName(asTemplate ? '' : plan.name);
+      setWorkflowJob({id:!asTemplate && typeof plan.stats?.jobId==='string' ? plan.stats.jobId : crypto.randomUUID(),own:false});
+      setSharedBoxes(asTemplate ? null : Array.isArray(plan.boxes) ? plan.boxes : null);
       setSeed((n) => n + 1);
       track('saved_open');
     })();
@@ -311,7 +311,7 @@ export default function PlannerPage() {
       container,
       specs: appliedSpecs,
       boxes: currentBoxes,
-      stats: { volumeUtil: stats.volumeUtil, totalWeight: stats.totalWeight, placedCount: currentBoxes.length, kind: saveAsTemplate ? 'template' : 'job', overhangCm },
+      stats: { volumeUtil: stats.volumeUtil, totalWeight: stats.totalWeight, placedCount: currentBoxes.length, kind: saveAsTemplate ? 'template' : 'job', jobId:workflowJob.id, overhangCm },
     });
     if (error) {
       setSaveState('error'); setAccountMessage(T('Save failed. Your plan is still here; please try again.','保存失敗，方案仍然保留，請重試。'));
@@ -609,7 +609,7 @@ export default function PlannerPage() {
               <div><span className="text-slate-500">{T('Volume','空間')}</span> <strong>{stats.volumeUtil.toFixed(1)}%</strong></div>
               <div><span className="text-slate-500">{T('Cargo','貨重')}</span> <strong>{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} kg</strong>{appliedSpecs.some(s=>s.weightKnown===false)&&<span className="text-amber-800"> · {T('Incomplete','未完整')}</span>}</div>
             </div>}
-            <div id="planner-result-detail" hidden={!resultDetails}>
+            {resultDetails && <div id="planner-result-detail">
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-2" data-testid="planner-result-cards">
               <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs font-medium text-blue-800">{T('Cartons loaded', '已裝箱數')}</p><p data-testid={resultDetails ? "planner-packed" : undefined} className="mt-1 text-xl font-bold text-blue-950 tabular-nums">{currentBoxes.length} / {totalQty}</p><p className="mt-1 text-xs text-blue-700">{T('Loaded / requested', '已裝 / 要求數量')}</p></div>
               <div className={`rounded-lg p-3 ${totalQty > currentBoxes.length ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'}`}><p className="text-xs font-medium">{T('Cartons remaining', '未裝箱數')}</p><p className="mt-1 text-xl font-bold tabular-nums">{Math.max(0,totalQty-currentBoxes.length)}</p><p className="mt-1 text-xs">{totalQty > currentBoxes.length ? T('Review fit & loading rules', '檢查尺寸及裝載限制') : T('All requested cartons fit', '全部要求箱數已裝入')}</p></div>
@@ -617,7 +617,7 @@ export default function PlannerPage() {
               <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-medium text-slate-600">{T('Loaded cargo weight', '已裝貨物重量')}</p><p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} <span className="text-sm">kg</span></p><p className={`mt-1 text-xs ${appliedSpecs.some(s=>s.weightKnown===false) || (stats.weightUtil??0)>100 ? 'text-amber-800' : 'text-slate-500'}`}>{appliedSpecs.some(s=>s.weightKnown===false) ? T('Incomplete · missing weights', '未完整 · 部分箱重欠缺') : stats.weightUtil != null ? `${stats.weightUtil.toFixed(1)}% ${T('of payload limit', '佔載重上限')}` : T('Payload limit not set', '未設定載重上限')}</p></div>
             </div>
             {!liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
-            </div>
+            </div>}
           </section>
           <div className="flex items-center justify-between gap-2 text-xs mb-2"><span className="text-slate-500">{T("Auto rotation pauses while a carton is selected and follows reduced-motion settings.", "選取紙箱時會暫停自動旋轉，亦會遵從減少動態效果設定。")}</span><button type="button" aria-pressed={rotateView} onClick={()=>setRotateView(v=>!v)} className="shrink-0 border rounded px-2 py-1 text-blue-700">{rotateView ? T("Pause rotation", "暫停旋轉") : T("Auto rotate", "自動旋轉")}</button></div>
           <InteractiveLoadPlanner
@@ -766,7 +766,7 @@ export default function PlannerPage() {
           {auth.enabled && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
             <h3 className="font-semibold">{T('My plans & templates','我的方案與模板')}</h3>
             <p className="text-xs text-slate-600">{T('Save named jobs or reusable cargo templates to your private account. Templates start a new calculation; your original is kept. Only plans you choose to save are uploaded.','將命名工作或常用貨單模板保存到私人帳戶。模板會開始新的計算，原本記錄保留；只有選擇保存的方案會上傳。')}</p>
-            <Link to="/plans" onClick={e=>{if(hasPendingChanges || !preserve())e.preventDefault();}} className="inline-block font-semibold text-blue-700 underline">{auth.userId ? T('Open my plans & templates','開啟我的方案與模板') : T('Create account / sign in','建立帳戶／登入')}</Link>
+            <Link to="/plans" onClick={e=>{if(hasPendingChanges){e.preventDefault();setAccountMessage(T('Calculate pending changes before opening your account so this work can be saved.','請先計算待處理修改，保存工作後再開啟帳戶。'));}else if(!preserve())e.preventDefault();}} className="inline-block font-semibold text-blue-700 underline">{auth.userId ? T('Open my plans & templates','開啟我的方案與模板') : T('Create account / sign in','建立帳戶／登入')}</Link>
             <p className="text-xs">{T('Your current calculated plan is saved on this device before opening your account.','開啟帳戶前會在本機保存目前已計算方案。')}</p>
             {auth.userId && <><label className="block text-sm">{T('Job or template name','工作或模板名稱')}<input className="w-full rounded border p-2 mt-1" maxLength={120} value={accountName} onChange={e=>setAccountName(e.target.value)}/></label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={saveAsTemplate} onChange={e=>setSaveAsTemplate(e.target.checked)}/>{T('Save as reusable template','存為常用模板')}</label></>}
           </div>}

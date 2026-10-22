@@ -324,7 +324,7 @@ await test('compare: the three switching questions link to real evidence', async
 // ---------- planner ----------
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   await page.locator('canvas').first().waitFor();
 }, page);
 
@@ -841,7 +841,7 @@ await test('plans: sign-in gate renders', async () => {
 // ---------- physical realism (turn model + door aperture) ----------
 await test('planner: door-aperture warning flags a too-tall carton', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   // make the first carton 235cm in every axis: fits the 20GP interior (239h)
   // but NOT the 234x228 door in any orientation
   const dims = page.locator('input[type="number"]');
@@ -863,7 +863,7 @@ await test('warehouse: route readout reports 90° turns vs the turn box', async 
 
 await test('planner: truck vessel shows live axle loads; est. fills crush limit', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
   await page.getByRole('button', { name: /53' trailer/i }).click();
   await page.getByText(/front axle group/i).waitFor();
   await page.getByText(/rear axle group/i).waitFor();
@@ -876,7 +876,7 @@ await test('planner: pallet vessel offers overhang allowance', async () => {
   await page.getByRole('button', { name: /eur pallet/i }).click();
   await page.getByText(/overhang allowance/i).waitFor();
   await page.getByRole('button', { name: /2\.5 cm\/side/i }).click();
-  await page.getByText(/Volume utilization/i).waitFor();
+  await page.getByTestId('planner-packed').waitFor();
 }, page);
 
 await test('warehouse: chilled pallet without a chilled zone is flagged', async () => {
@@ -1145,7 +1145,7 @@ await test('embed: widget.js loader is served and builds an iframe', async () =>
 if (IS_LIVE) {
   await test('LIVE share: create link and reopen it', async () => {
     await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Volume utilization/i).waitFor();
+    await page.getByTestId('planner-packed').waitFor();
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/share') && r.request().method() === 'POST'),
       page.getByRole('button', { name: /share this plan/i }).click(),
@@ -1153,7 +1153,7 @@ if (IS_LIVE) {
     const { id } = await resp.json();
     if (!id) throw new Error('no share id');
     await page.goto(`${BASE}/planner?share=${id}`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Volume utilization/i).waitFor();
+    await page.getByTestId('planner-packed').waitFor();
   }, page);
 
   await test('LIVE warehouse share: create and reopen', async () => {
