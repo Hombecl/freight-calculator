@@ -642,25 +642,26 @@ export default function PlannerPage() {
       </div>
 
       {packing.ready && <div className="mt-4 space-y-3"><PlannerReviewPanel review={review} zh={IS_ZH}/>
-          {packing.ready && <div className="text-sm text-slate-600 space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          {packing.ready && <div data-testid="planner-load-checks" className="text-sm text-slate-600 space-y-4 rounded-xl border border-slate-200 bg-white p-4">
             <h3 className="font-semibold text-slate-900">{T("Load checks & distribution", "裝載檢查與分佈")}</h3>
             {doorBlocked.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
                 🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.
               </div>
             )}
-            <div className="flex justify-between">
-              <span>Horizontal CoG offset</span>
-              <span className={`font-semibold ${balanceWarn ? 'text-amber-600' : 'text-green-600'}`}>
-                {balanceWarn ? 'Outside centre band' : 'Within centre band'} ({stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}%, {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%)
-              </span>
-            </div>
-            {'tare' in container && container.tare != null && (
-              <div className="flex justify-between" title="SOLAS Verified Gross Mass = cargo + container tare. Required on shipping docs; misdeclaration is fined.">
-                <span>VGM (cargo + {container.tare.toLocaleString()} kg tare)</span>
-                <span className="font-semibold">{(stats.totalWeight + container.tare).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg</span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium text-slate-500">{T('Horizontal CoG offset','水平重心偏移')}</p>
+                <p className={`mt-1 font-semibold ${balanceWarn ? 'text-amber-700' : 'text-green-700'}`}>{balanceWarn ? T('Outside centre band','超出中心範圍') : T('Within centre band','位於中心範圍')}</p>
+                <p className="mt-1 text-xs tabular-nums">{T('Length','長度方向')} {stats.cogOffsetPct.x >= 0 ? '+' : ''}{stats.cogOffsetPct.x.toFixed(0)}% · {T('Width','寬度方向')} {stats.cogOffsetPct.z >= 0 ? '+' : ''}{stats.cogOffsetPct.z.toFixed(0)}%</p>
               </div>
-            )}
+              {'tare' in container && container.tare != null && <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium text-slate-500">{T('VGM estimate · cargo + tare','VGM 估算 · 貨物＋櫃重')}</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{(stats.totalWeight + container.tare).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg</p>
+                <p className="mt-1 text-xs">{T('Includes','包括')} {container.tare.toLocaleString()} kg {T('container tare','貨櫃淨重')}</p>
+                {appliedSpecs.some(s=>s.weightKnown===false)&&<p className="mt-1 text-xs text-amber-800">{T('Incomplete · some carton weights are missing','未完整 · 部分箱重欠缺')}</p>}
+              </div>}
+            </div>
             {topHeavy && cogH && (
               <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
                 ⚠️ <b>Top-heavy load:</b> centre of gravity sits at {cogH.pct.toFixed(0)}% of the load height — braking and cornering work on a long lever. Move heavy cartons to the floor.
@@ -673,13 +674,13 @@ export default function PlannerPage() {
             )}
             {axles && 'axles' in container && container.axles && (
               <>
-                <div className="flex justify-between">
+                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-3 rounded-lg bg-slate-50 p-3">
                   <span>Front axle group</span>
                   <span className={`font-semibold ${axles.frontOver ? 'text-red-600' : 'text-green-600'}`}>
                     {(axles.front / 1000).toFixed(1)} t / {(container.axles.frontLimit / 1000).toFixed(1)} t
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-3 rounded-lg bg-slate-50 p-3">
                   <span>Rear axle group</span>
                   <span className={`font-semibold ${axles.rearOver ? 'text-red-600' : 'text-green-600'}`}>
                     {(axles.rear / 1000).toFixed(1)} t / {(container.axles.rearLimit / 1000).toFixed(1)} t
@@ -703,24 +704,25 @@ export default function PlannerPage() {
               </div>
             )}
             {!liveBoxes && !sharedBoxes && result.zones.length > 1 && (
-              <div className="pt-1">
-                <span className="text-xs font-semibold text-slate-500">Load zones (back → door)</span>
-                <div className="flex gap-1 mt-1">
-                  {[...result.zones].map((z) => (
-                    <div
-                      key={z.unloadOrder}
-                      className="flex-1 text-center text-[10px] py-1 rounded bg-slate-100 text-slate-600"
-                      style={{ flexGrow: Math.max(1, z.xEnd - z.xStart) }}
-                    >
-                      #{z.unloadOrder} · {z.count}
-                    </div>
-                  ))}
-                  <div className="text-[10px] py-1 px-1 rounded bg-green-100 text-green-700 font-semibold self-stretch flex items-center">DOOR</div>
+              <section className="border-t border-slate-100 pt-3" aria-label={T('Load zones','裝卸分區')}>
+                <div className="flex items-center justify-between gap-3 text-xs font-medium"><span>{T('Load zones (back → door)','裝卸分區（櫃尾 → 櫃門）')}</span><span className="shrink-0 rounded bg-green-100 px-2 py-1 text-green-800">{T('DOOR','櫃門')}</span></div>
+                <div className="flex h-3 gap-0.5 my-2 overflow-hidden rounded-full" aria-hidden="true">
+                  {result.zones.map((z,i)=><div key={z.unloadOrder} className={['bg-blue-500','bg-teal-500','bg-violet-500'][i%3]} style={{flexBasis:0,flexGrow:Math.max(1,z.xEnd-z.xStart)}}/>)}
                 </div>
-              </div>
+                <ul className="grid gap-2 sm:grid-cols-2" data-testid="planner-zone-labels">
+                  {result.zones.map((z,i)=><li key={z.unloadOrder} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <span className="flex items-center gap-2"><span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-sm ${['bg-blue-500','bg-teal-500','bg-violet-500'][i%3]}`}/><span className="whitespace-nowrap">{T('Unload','卸貨順序')} #{z.unloadOrder}</span></span>
+                    <strong className="whitespace-nowrap text-slate-700 tabular-nums">{z.count} {T('cartons','箱')}</strong>
+                  </li>)}
+                </ul>
+              </section>
             )}
             {totalQty > currentBoxes.length && (
-              <p className="text-xs text-amber-600">{totalQty - currentBoxes.length} carton(s) not placed — check dimensions, payload and stacking rules, or choose a larger container. Recalculating unchanged inputs gives the same result.</p>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                <p className="font-semibold">{totalQty - currentBoxes.length} {T('carton(s) not placed','箱未裝入')}</p>
+                <p className="mt-1 text-xs leading-relaxed">{T('Check dimensions, payload and stacking rules, or compare a larger container.','請檢查尺寸、載重及堆疊限制，或比較較大櫃型。')}</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800">{T('Recalculating unchanged inputs gives the same result.','輸入不變，重新計算結果亦相同。')}</p>
+              </div>
             )}
             {stats.weightUtil != null && stats.weightUtil > 100 && (
               <p className="text-xs text-red-600">Over the container payload limit.</p>
