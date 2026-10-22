@@ -1394,7 +1394,7 @@ await test('planner: workspace settings persist and responsive navigation preser
       if(width>=1024 && parseFloat(geometry.columns)<380) throw Error('Cargo column too narrow');
       if(geometry.canvas && Math.abs(geometry.canvas.w/geometry.canvas.h-1.6)>0.03) throw Error('3D aspect ratio distorted');
       await mkdir('test-artifacts',{recursive:true});
-      await p.evaluate(()=>window.scrollTo(0,0));
+      await p.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
       await p.screenshot({path:`test-artifacts/planner-${width}-top.png`});
       await p.getByRole('heading',{name:'Save & share this job',exact:true}).scrollIntoViewIfNeeded();
       await p.getByText('Share a snapshot / manage links',{exact:true}).click();
