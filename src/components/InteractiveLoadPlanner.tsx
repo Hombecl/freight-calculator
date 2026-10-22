@@ -34,7 +34,7 @@ interface Props {
   readOnly?: boolean;
   placedCountTestId?: string;
   className?: string;
-  viewportHeight?: number; // fixed hero height avoids shifts when WebGL replaces its preview
+  viewportHeight?: number | string; // fixed hero or viewport-relative workspace height
   maxPixelRatio?: number; // decorative previews need fewer pixels than exported plans
   batchBoxes?: boolean; // opaque homepage cartons share two draw calls
   loadingPreview?: string;

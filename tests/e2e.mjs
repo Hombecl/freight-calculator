@@ -1362,6 +1362,39 @@ await test('planner: improved single-SKU layout and cancellable background calcu
  }finally{await p.close();}
 },page);
 
+await test('planner: workspace settings persist and responsive navigation preserves inputs', async () => {
+  const p = await ctx.newPage();
+  try {
+    await p.goto(`${BASE}/planner`);
+    await p.getByTestId('planner-packed').waitFor();
+    const packed = await p.getByTestId('planner-packed').innerText();
+    await p.getByRole('navigation', {name:'Tool navigation',exact:true}).waitFor();
+    await p.getByRole('button',{name:'Settings',exact:true}).click();
+    const dialog = p.getByRole('dialog',{name:'Workspace settings'});
+    await dialog.waitFor();
+    await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).check();
+    await dialog.getByRole('checkbox',{name:'Show calculation updates in Planner',exact:true}).uncheck();
+    await dialog.getByRole('button',{name:'Done',exact:true}).click();
+    if(await p.getByRole('complementary',{name:'Product updates'}).count()) throw Error('Announcement preference ignored');
+    if(await p.getByTestId('planner-packed').innerText() !== packed) throw Error('Display preference changed cargo');
+    await p.reload();
+    await p.getByRole('button',{name:'Settings',exact:true}).click();
+    if(!await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).isChecked()) throw Error('Preference not persisted');
+    await p.keyboard.press('Escape');
+    if(await dialog.isVisible()) throw Error('Escape did not close settings');
+    if(!await p.getByRole('button',{name:'Settings',exact:true}).evaluate(el=>el===document.activeElement)) throw Error('Focus not restored');
+    for(const width of [390,768,1024,1440,1920]) {
+      await p.setViewportSize({width,height:900});
+      if(await p.evaluate(()=>document.documentElement.scrollWidth > innerWidth)) throw Error(`Horizontal overflow at ${width}`);
+      if(width>=1280 && !await p.getByRole('navigation',{name:'Tool navigation',exact:true}).isVisible()) throw Error('Desktop sidebar missing');
+    }
+    await p.getByRole('button',{name:'Settings',exact:true}).click();
+    await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).uncheck();
+    await dialog.getByRole('checkbox',{name:'Show calculation updates in Planner',exact:true}).check();
+    await dialog.getByRole('button',{name:'Done',exact:true}).click();
+  } finally { await p.close(); }
+},page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

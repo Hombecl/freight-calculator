@@ -1,4 +1,5 @@
 import PackingGain from '../components/PackingGain';
+import { useWorkspace } from '../components/layout/WorkspacePreferences';
 import ProductUpdate from '../components/ProductUpdate';
 import {usePackingWorker} from '../hooks/usePackingWorker';
 import PlannerReviewPanel from '../components/PlannerReviewPanel';
@@ -123,6 +124,7 @@ const PRESETS: Record<string, { container: ContainerKey; specs: Spec[] }> = {
 };
 
 export default function PlannerPage() {
+  const { showUpdates } = useWorkspace();
   const T = (en: string, zh: string) => (IS_ZH ? zh : en);
   const [params] = useSearchParams();
   const preset = PRESETS[params.get('demo') ?? ''];
@@ -392,7 +394,7 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="w-full px-3 md:px-5 py-4">
       <Helmet>
         {/* Intent split (2026-08-23): the homepage owned "3d packing simulator" at
             pos 1-2 until this page's title was exact-matched to the same query in
@@ -413,9 +415,9 @@ export default function PlannerPage() {
         </p>
       </div>
 
-      <div className="mb-5"><ProductUpdate planner /></div>
+      {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+      <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] gap-4 xl:gap-5">
         {/* left: inputs */}
         <div className="space-y-4">
           <div>
@@ -730,6 +732,7 @@ export default function PlannerPage() {
         <div>
           {packing.ready && <><div className="mb-4"><PlannerReviewPanel review={review} zh={IS_ZH}/></div>
           <InteractiveLoadPlanner
+            viewportHeight="clamp(360px, 56vh, 680px)"
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
             key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
             container={packSpace}
