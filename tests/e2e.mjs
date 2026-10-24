@@ -1249,7 +1249,8 @@ await test('workspace: bilingual sign-in and private noindex route', async () =>
   await page.goto(`${BASE}/zh/workspace`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'團隊工作區',exact:true}).waitFor();
   await page.getByRole('textbox',{name:'Email',exact:true}).waitFor();
-  if(!await page.locator('meta[name="robots"]').evaluateAll(nodes=>nodes.some(n=>n.content.includes('noindex'))))throw Error('Private route must be noindex');
+  // Helmet updates metadata after the visible React commit. Await the required directive.
+  await page.locator('meta[name="robots"][content*="noindex"]').waitFor({state:'attached'});
   if(await page.getByRole('button',{name:'建立工作區',exact:true}).count())throw Error('Guest sees team mutations');
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Workspace overflows mobile viewport');
   await page.setViewportSize({width:1440,height:900});
