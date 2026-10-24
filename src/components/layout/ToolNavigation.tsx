@@ -8,7 +8,6 @@ export const navItems = [
   { path: '/packing', label: 'Packing', labelZh: '產品裝箱', icon: Package, activeColor: 'bg-blue-600' },
   { path: '/container', label: 'Container', labelZh: '貨櫃裝載', icon: Container, activeColor: 'bg-teal-600' },
   { path: '/#more-tools', label: 'More tools', labelZh: '其他工具', icon: Calculator, activeColor: 'bg-slate-600' },
-  { path: '/#calculators', label: 'Calculators', labelZh: '計算器', icon: Calculator, activeColor: 'bg-blue-600' },
   { path: '/guides', label: 'Guides', labelZh: '指南', icon: BookOpen, activeColor: 'bg-slate-600' },
 ];
 

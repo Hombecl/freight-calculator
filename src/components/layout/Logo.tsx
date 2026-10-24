@@ -4,9 +4,10 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
   linkToHome?: boolean;
+  inverse?: boolean;
 }
 
-export default function Logo({ size = 'md', showText = true, linkToHome = true }: LogoProps) {
+export default function Logo({ size = 'md', showText = true, linkToHome = true, inverse = false }: LogoProps) {
   const sizes = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
@@ -31,11 +32,11 @@ export default function Logo({ size = 'md', showText = true, linkToHome = true }
         <line x1="61" y1="25" x2="61" y2="31" stroke="#93C5FD" strokeWidth="1.5"/>
       </svg>
       {showText && (
-        <h1 className={`${textSizes[size]} font-bold tracking-tight`}>
+        <span className={`${textSizes[size]} font-bold tracking-tight`}>
           <span className="text-blue-600">Dim</span>
-          <span className="text-slate-800">Pack</span>
+          <span className={inverse ? "text-white" : "text-slate-800"}>Pack</span>
           <span className="text-blue-400">3D</span>
-        </h1>
+        </span>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ export default function Footer() {
   const T = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
   const product = [
+    { to: '/plans', label: T('My plans & templates','我的方案與範本') },
     { to: '/shipping-tools', label: T('Shipping tools in your language', '多語言運輸計算工具') },
     { to: '/workspace', label: T('Team workspace', '團隊工作區') },
     { to: '/planner', label: T('3D Load Planner', '3D 裝載規劃器') },
@@ -88,12 +89,13 @@ export default function Footer() {
           <div>
             <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">{T('Product', '產品')}</h4>
             <ul className="space-y-2.5 text-sm">
-              {product.map((l) => (
+              {product.filter(l=>['/planner','/packing','/container','/plans'].includes(l.to)).map((l) => (
                 <li key={l.to}>
                   <Link to={l.to} className="hover:text-white transition-colors">{l.label}</Link>
                 </li>
               ))}
             </ul>
+            <details className="mt-4"><summary className="cursor-pointer py-2 text-sm text-slate-300">{T('All tools & integrations','全部工具及整合')}</summary><ul className="space-y-2.5 text-sm mt-3">{product.filter(l=>!['/planner','/packing','/container','/plans'].includes(l.to)).map(l=><li key={l.to}><Link to={l.to} className="hover:text-white">{l.label}</Link></li>)}</ul></details>
           </div>
 
           {/* Guides */}
@@ -108,16 +110,16 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Compare */}
+          {/* Compare: links remain crawlable without overwhelming the footer. */}
           <div>
             <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">{T('Compare', '比較')}</h4>
-            <ul className="space-y-2.5 text-sm">
+            <details><summary className="cursor-pointer py-2 text-sm text-slate-300">{T('Compare loading software','比較裝載軟件')}</summary><ul className="space-y-2.5 text-sm mt-3">
               {compare.map((l) => (
                 <li key={l.to}>
                   <Link to={l.to} className="hover:text-white transition-colors">{l.label}</Link>
                 </li>
               ))}
-            </ul>
+            </ul></details>
           </div>
         </div>
 
