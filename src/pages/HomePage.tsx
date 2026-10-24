@@ -241,7 +241,7 @@ export default function HomePage() {
                         : T('Master carton · 60×40×40 cm', '外箱 · 60×40×40 cm')}
                   </span>
                 </div>
-                <div ref={heroRef} className="p-3 h-[640px] sm:h-[580px] [&_p]:text-slate-500 [&_.bg-slate-100]:bg-slate-800 [&_.bg-slate-100]:text-slate-300 [&_.text-slate-700]:text-slate-300 [&_.bg-slate-200]:bg-slate-700 [&_.bg-slate-200]:text-slate-200">
+                <div ref={heroRef} className={`p-3 ${interactive ? "h-[640px] sm:h-[580px]" : "h-[460px]"} [&_p]:text-slate-500 [&_.bg-slate-100]:bg-slate-800 [&_.bg-slate-100]:text-slate-300 [&_.text-slate-700]:text-slate-300 [&_.bg-slate-200]:bg-slate-700 [&_.bg-slate-200]:text-slate-200`}>
                   {interactive ? (
                     <Suspense fallback={<img src={`/hero/${heroMode}.svg`} width={720} height={440}
                       className="w-full h-[360px] object-contain bg-slate-900" alt={T('Loading interactive 3D…', '載入互動 3D…')} />}>
