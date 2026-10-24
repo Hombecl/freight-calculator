@@ -286,7 +286,7 @@ await test('pallet chain: marks current step and does not self-link', async () =
 
 await test('home: primary planning tools stay visible and secondary tools remain accessible', async () => {
   await page.goto(`${BASE}/`, {waitUntil:'domcontentloaded'});
-  for (const href of ['/planner', '/packing', '/container']) await page.locator(`a[href="${href}"]`).first().waitFor();
+  for (const href of ['/planner', '/packing', '/container']) await page.locator(`main a[href="${href}"]`).first().waitFor();
   await page.locator('#more-tools summary').click();
   for (const href of ['/fba', '/warehouse']) await page.locator(`#more-tools a[href="${href}"]`).first().waitFor();
 }, page);
@@ -890,7 +890,9 @@ await test('home: visible FAQ and structured data agree in both languages', asyn
   for(const path of ['/','/zh']){
     await page.goto(`${BASE}${path}`);
     await page.getByRole('heading',{name:path==='/'?'Questions, answered':'常見問題',exact:true}).waitFor();
-    const schema=await page.locator('script[type="application/ld+json"]').evaluateAll(nodes=>nodes.map(n=>JSON.parse(n.textContent)).find(s=>s['@type']==='FAQPage'));
+    const schemas=await page.locator('script[type="application/ld+json"]').evaluateAll(nodes=>nodes.map(n=>JSON.parse(n.textContent)).filter(s=>s['@type']==='FAQPage'));
+    if(schemas.length!==1)throw Error(`Expected exactly one FAQ schema, got ${schemas.length}`);
+    const schema=schemas[0];
     for(const q of schema.mainEntity){
       const summary=page.locator('summary').filter({hasText:q.name});await summary.click();
       await page.getByText(q.acceptedAnswer.text,{exact:true}).waitFor();
