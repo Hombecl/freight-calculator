@@ -21,7 +21,7 @@ export default function PackingPage() {
                 "name": "How does the packing calculator work?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Enter your product dimensions and carton dimensions. The calculator automatically determines the optimal arrangement to maximize the number of products per carton, then calculates total CBM and estimates shipping costs for both air and sea freight."
+                  "text": "Enter your product dimensions and carton dimensions. The calculator compares candidate arrangements to find more products per carton, without guaranteeing a global optimum, then calculates total CBM and estimates shipping costs for both air and sea freight."
                 }
               },
               {

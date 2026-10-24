@@ -1249,7 +1249,8 @@ await test('workspace: bilingual sign-in and private noindex route', async () =>
   await page.goto(`${BASE}/zh/workspace`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'團隊工作區',exact:true}).waitFor();
   await page.getByRole('textbox',{name:'Email',exact:true}).waitFor();
-  if(!await page.locator('meta[name="robots"]').evaluateAll(nodes=>nodes.some(n=>n.content.includes('noindex'))))throw Error('Private route must be noindex');
+  // Helmet updates metadata after the visible React commit. Await the required directive.
+  await page.locator('meta[name="robots"][content*="noindex"]').waitFor({state:'attached'});
   if(await page.getByRole('button',{name:'建立工作區',exact:true}).count())throw Error('Guest sees team mutations');
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Workspace overflows mobile viewport');
   await page.setViewportSize({width:1440,height:900});
@@ -1318,6 +1319,21 @@ await test('planner review: shared draft flags missing support and reconciles sa
   const opened=p.waitForEvent('popup');await p.getByRole('button',{name:/unlock & download/i}).click();const report=await opened;
   try{await report.getByText('DRAFT · remaining cargo or issues need review',{exact:true}).waitFor();await report.getByText('review-b',{exact:true}).waitFor();if(await report.locator('svg').count())throw Error('Summary includes crew steps');}finally{await report.close();}
  }finally{await p.close();}
+},page);
+
+await test('product packing: improved count, gross weight and 3D agree',async()=>{
+ const isolated=await browser.newContext({viewport:{width:1440,height:900}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/packing`);
+  await p.getByTestId('product-packing-count').waitFor();
+  if(await p.getByTestId('product-packing-count').innerText()!=='35')throw Error('Expected 35 products');
+  await p.getByTestId('product-packing-gain').waitFor();
+  if(!(await p.locator('main').innerText()).includes('29.50'))throw Error('Packed gross weight not updated');
+  await p.getByRole('button',{name:'Open 3D Sim',exact:true}).click();
+  await p.locator('canvas').waitFor();
+  if(await p.getByTestId('loading-scenario-count').first().innerText()!=='35')throw Error('3D differs from summary');
+  await p.getByText('Optimized arrangement',{exact:true}).waitFor();
+ }finally{await isolated.close();}
 },page);
 
 await test('planner review: comparison preserves a local revision and transfers cargo',async()=>{
