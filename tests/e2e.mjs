@@ -1328,6 +1328,10 @@ await test('product packing: improved count, gross weight and 3D agree',async()=
   await p.getByTestId('product-packing-count').waitFor();
   if(await p.getByTestId('product-packing-count').innerText()!=='35')throw Error('Expected 35 products');
   await p.getByTestId('product-packing-gain').waitFor();
+  await p.getByTestId('packing-inline-preview').locator('canvas').waitFor();
+  if(await p.getByRole('button',{name:'Auto rotate',exact:true}).count()) await p.getByRole('button',{name:'Auto rotate',exact:true}).click();
+  await p.getByRole('button',{name:'Pause rotation',exact:true}).click();
+  await p.getByRole('button',{name:'Auto rotate',exact:true}).waitFor();
   if(!(await p.locator('main').innerText()).includes('29.50'))throw Error('Packed gross weight not updated');
   await p.getByRole('button',{name:'Open 3D Sim',exact:true}).click();
   await p.locator('canvas').waitFor();

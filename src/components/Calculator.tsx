@@ -92,6 +92,7 @@ interface ThreeVisualizerProps {
   t: (key: string) => string;
   isContainerMode?: boolean;
   containerPreset?: ContainerKey;
+  compact?: boolean;
 }
 
 interface SettingsModalProps {
@@ -442,6 +443,8 @@ const TRANSLATIONS: TranslationDictionary = {
     dimNote: "*顯示尺寸為擺放方向 (LxWxH)",
     zoomHint: "滾輪縮放 / 拖曳旋轉",
     resetView: "重置視角",
+    pauseRotation: "暫停旋轉",
+    autoRotation: "自動旋轉",
     orientationLabel: "方向圖例:",
     legendStandard: "標準",
     legendGap: "縫隙",
@@ -615,6 +618,8 @@ const TRANSLATIONS: TranslationDictionary = {
     dimNote: "*Dimensions shown as placed (LxWxH)",
     zoomHint: "Scroll to Zoom / Drag to Rotate",
     resetView: "Reset View",
+    pauseRotation: "Pause rotation",
+    autoRotation: "Auto rotate",
     orientationLabel: "Orientation:",
     legendStandard: "Standard",
     legendGap: "Gap Fill",
@@ -744,7 +749,7 @@ const useThree = (active: boolean = true): boolean => {
 // --- Algorithms (Advanced) ---
 
 // --- 3D Visualizer Component ---
-const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenario, units, t, isContainerMode = false }) => {
+const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenario, units, t, isContainerMode = false, compact = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const threeLoaded = useThree();
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -753,7 +758,10 @@ const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenari
   const groupRef = useRef<THREE.Group | null>(null);
   const initialCameraPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const requestRef = useRef<number | null>(null);
-  const [isHudExpanded, setIsHudExpanded] = useState(true);
+  const [isHudExpanded, setIsHudExpanded] = useState(!compact);
+  const [rotating, setRotating] = useState(() => !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const rotatingRef = useRef(rotating);
+  rotatingRef.current = rotating;
 
   // Helper to format Metric values to User Units
   const formatDim = (val: number): string => {
@@ -877,7 +885,7 @@ const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenari
     window.addEventListener('mouseup', onMouseUp);
     dom.addEventListener('mousemove', onMouseMove);
     dom.addEventListener('wheel', onWheel, { passive: false });
-    dom.addEventListener('touchstart', () => { isDragging = true; }, {passive: true});
+    dom.addEventListener('touchstart', (e: TouchEvent) => { isDragging = true; if(e.touches[0]) previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, {passive: true});
     dom.addEventListener('touchend', () => { isDragging = false; }, {passive: true});
     dom.addEventListener('touchmove', (e: TouchEvent) => {
         if(isDragging && e.touches[0]) {
@@ -889,9 +897,22 @@ const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenari
         }
     }, {passive: true});
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (!containerRef.current) return;
+      const { clientWidth: w, clientHeight: h } = containerRef.current;
+      if (!w || !h) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+    resizeObserver.observe(containerRef.current);
+    let visible = true;
+    const visibilityObserver = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
+    visibilityObserver.observe(containerRef.current);
     const animate = () => {
       requestRef.current = requestAnimationFrame(animate);
-      if (!isDragging) {
+      if (!visible || document.hidden) return;
+      if (!isDragging && rotatingRef.current) {
          group.rotation.y += 0.001;
       }
       renderer.render(scene, camera);
@@ -905,6 +926,15 @@ const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenari
       if (containerRef.current && renderer.domElement) {
          containerRef.current.removeChild(renderer.domElement);
       }
+      resizeObserver.disconnect();
+      visibilityObserver.disconnect();
+      scene.traverse(object => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach(material => material.dispose());
+        else mesh.material?.dispose();
+      });
+      renderer.dispose();
       window.removeEventListener('mouseup', onMouseUp);
     };
   }, [threeLoaded, outer, inner, scenario, isContainerMode]);
@@ -972,6 +1002,7 @@ const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenari
       </div>
 
       <div className="absolute top-2 right-2 flex items-center gap-1.5 md:gap-2">
+        <button type="button" aria-pressed={rotating} onClick={() => setRotating(value => !value)} className="bg-white/95 text-gray-700 px-2 py-1.5 rounded border border-gray-200 text-[10px] font-bold">{t(rotating ? 'pauseRotation' : 'autoRotation')}</button>
         <button
           onClick={handleResetView}
           className="bg-white/95 hover:bg-white active:bg-gray-100 text-gray-700 p-1.5 md:px-2 md:py-1.5 rounded shadow-sm border border-gray-200 text-[10px] font-bold flex items-center gap-1 transition-colors"
@@ -3723,7 +3754,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
 
         {/* Compact controls when header is hidden (for standalone pages) */}
         {hideHeader && (
-          <div className="flex items-center justify-between bg-white px-3 md:px-4 py-2.5 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap gap-2 items-center justify-between bg-white px-3 md:px-4 py-2.5 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2">
               <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]">
                 <Languages size={14} /> <span>{lang === 'zh' ? '繁' : 'EN'}</span>
@@ -3762,6 +3793,20 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
 
         {mode === 'packing' ? (
           <>
+            <section data-testid="packing-inline-preview" aria-label={lang === 'zh' ? '即時 3D 裝箱預覽' : 'Live 3D packing preview'} className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-blue-100">
+                <div><h2 className="flex items-center gap-2 font-bold text-blue-900"><Cuboid size={18} />{lang === 'zh' ? '即時 3D 裝箱預覽' : 'Live 3D packing preview'}</h2><p className="text-xs text-slate-500 mt-1">{lang === 'zh' ? '改下面嘅尺寸，即時睇到擺位。拖拉可轉動。' : 'Change dimensions below to update the layout. Drag to rotate.'}</p></div>
+                <button type="button" onClick={() => setIsSimOpen(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">{lang === 'zh' ? '放大及比較方案' : 'Expand & compare layouts'}</button>
+              </div>
+              <div className="relative h-[280px] sm:h-[340px]" data-testid="packing-inline-scene">
+                {!isSimOpen && <ThreeVisualizer outer={simCartonInit} inner={innerCartonMetric} scenario={bestPacking} units={units} t={t} compact />}
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-slate-100 px-4 py-2 text-sm text-slate-700" aria-live="polite">
+                <span><strong>{bestPacking?.count ?? 0}</strong> {lang === 'zh' ? '件／箱' : 'pcs / box'}</span>
+                <span>{t('utilization')}: <strong>{packingCosts?.stats.utilization.toFixed(1) ?? '0'}%</strong></span>
+                <span>{t('grossWeight')}: <strong>{packingCosts ? displayWeight(fromMetricW(packingCosts.stats.grossWeight)) : '—'}</strong></span>
+              </div>
+            </section>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CompactCard title={t('productSpecs')} icon={Package} className="border-l-4 border-l-purple-500">
                 <div className="grid grid-cols-3 gap-3 mb-4">
