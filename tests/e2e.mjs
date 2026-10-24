@@ -831,7 +831,7 @@ await test('i18n: /zh homepage renders Chinese', async () => {
 
 await test('plans: sign-in gate renders', async () => {
   await page.goto(`${BASE}/plans`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/sign in to keep your plans|accounts are not configured/i).waitFor();
+  await page.getByText(/create an account \/ sign in|sign in to keep your plans|accounts are not configured/i).waitFor();
 }, page);
 
 // ---------- physical realism (turn model + door aperture) ----------
