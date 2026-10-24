@@ -1223,7 +1223,7 @@ await test('search workflow: downloadable guide example opens the matching 20-ca
 }, searchPage);
 await test('search workflow: Traditional Chinese planner links use exactly one locale prefix', async () => {
   await searchPage.goto(`${BASE}/zh/planner`);
-  for (const [name,target] of [['用此散箱貨單計算卡板報價','/zh/order-quote'],['比較此貨單的櫃型','/zh/consolidation']]) {
+  for (const [name,target] of [['用此散箱貨單計算卡板報價','/zh/order-quote'],['比較此貨單的櫃型','/zh/consolidation?from=planner']]) {
     if(await searchPage.getByRole('link',{name,exact:true}).getAttribute('href')!==target)throw Error('Broken planner handoff locale: '+name);
   }
   await searchPage.getByText('使用指南與常見問題',{exact:true}).click();
@@ -1325,7 +1325,10 @@ await test('planner review: comparison preserves a local revision and transfers 
  await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).fill('Synthetic comparison');
  await page.getByTestId('planner-packed').waitFor();
  await page.getByRole('link',{name:'Compare containers for this cargo',exact:true}).click();
- await page.getByRole('button',{name:'Replace example cargo with these items',exact:true}).click();
+ await page.getByTestId('carried-cargo-ready').waitFor();
+ if(!await page.getByTestId('carried-cargo-ready').innerText().then(t=>t.includes('20 cartons')))throw Error('Expected original 20 cartons without an extra import step');
+ await page.getByTestId('consolidation-run').click();
+ await page.getByTestId('container-decision-summary').first().waitFor();
  if(!await page.getByText('example-master',{exact:false}).count()) {
   const data=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('dp_cargo_transfer_v1')));
   if(data.specs.reduce((n,s)=>n+s.qty,0)!==20)throw Error('Transferred quantity differs');
@@ -1339,6 +1342,17 @@ await test('planner review: comparison preserves a local revision and transfers 
  await page.getByTestId('planner-packed').waitFor();
  await page.getByRole('button',{name:'Start next job (keep inputs)',exact:true}).click();
  if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='')throw Error('Previous report reference carried to next job');
+},page);
+
+await test('container comparison: missing transfer never substitutes example cargo',async()=>{
+ const isolated=await browser.newContext({viewport:{width:390,height:844}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/consolidation?from=planner`);
+  await p.getByRole('alert').waitFor();
+  if(!await p.getByTestId('consolidation-run').isDisabled())throw Error('Missing transfer enabled example calculation');
+  if(await p.getByRole('textbox',{name:'PO 1',exact:true}).count())throw Error('Example cargo substituted');
+  if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Comparison overflow');
+ }finally{await isolated.close();}
 },page);
 
 await test('planner: improved single-SKU layout and cancellable background calculation',async()=>{

@@ -777,7 +777,7 @@ export default function PlannerPage() {
 
           <p data-testid="export-email-notice" className="text-xs text-slate-500">{IS_ZH ? '免費匯出會要求提供電郵；產品更新可自行選擇訂閱。' : 'Free export asks for an email. Product updates are optional.'}</p>
           <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'quote')}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
-          <Link to="/consolidation" className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
+          <Link to="/consolidation?from=planner" className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
           <p className="text-xs text-slate-600">{T('Your current layout is saved locally before comparison. Compare the same quantities and rules; costs need your own quotes.','比較前會在本機保存目前擺位。沿用相同數量及限制；成本需提供自己的報價。')}</p>
           {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
         </section>
