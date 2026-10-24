@@ -184,14 +184,10 @@ await test('home: English and Chinese 3D fit a mobile viewport', async () => {
   } finally { await mobileContext.close(); }
 }, page);
 
-await test('home: the four pallet questions link the chain', async () => {
-  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: /work out your pallets/i }).waitFor();
-  for (const href of ['/pallet-calculator', '/pallets-per-container',
-                      '/warehouse-space-calculator', '/pallet-storage-cost-calculator']) {
-    // prefix match so this keeps working if these cards ever carry ?c_* params
-    await page.locator(`a[href^="${href}"]`).first().waitFor();
-  }
+await test('home: supporting tools remain discoverable through anchored directory', async () => {
+  await page.goto(`${BASE}/#more-tools`);
+  await page.locator('#more-tools[open]').waitFor();
+  for(const href of ['/pallets-per-container','/warehouse-space-calculator','/pallet-storage-cost-calculator','/warehouse','/fba'])await page.locator(`#more-tools a[href="${href}"]`).waitFor();
 }, page);
 
 await test('pallet chain: carries the plan into the next step', async () => {
@@ -890,13 +886,17 @@ await test('warehouse: chilled pallet without a chilled zone is flagged', async 
   await page.getByText(/outside their required zone/i).waitFor();
 }, page);
 
-await test('home: reality-checks showcase renders all nine cards', async () => {
-  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/reality checks — what the floor actually fights with/i).waitFor();
-  for (const c of [/door clearance/i, /90° turn box/i, /axle loads/i, /loading sequence/i]) {
-    await page.getByText(c).first().waitFor();
+await test('home: visible FAQ and structured data agree in both languages', async () => {
+  for(const path of ['/','/zh']){
+    await page.goto(`${BASE}${path}`);
+    await page.getByRole('heading',{name:path==='/'?'Questions, answered':'常見問題',exact:true}).waitFor();
+    const schema=await page.locator('script[type="application/ld+json"]').evaluateAll(nodes=>nodes.map(n=>JSON.parse(n.textContent)).find(s=>s['@type']==='FAQPage'));
+    for(const q of schema.mainEntity){
+      const summary=page.locator('summary').filter({hasText:q.name});await summary.click();
+      await page.getByText(q.acceptedAnswer.text,{exact:true}).waitFor();
+    }
   }
-}, page);
+},page);
 
 await test('planner: container vessel shows SOLAS VGM line', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
@@ -904,13 +904,23 @@ await test('planner: container vessel shows SOLAS VGM line', async () => {
   await page.getByText('Includes 2,300 kg container tare',{exact:true}).waitFor();
 }, page);
 
-await test('home: pain-first sections render (surprises + system story)', async () => {
-  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/problems that surface at the last step/i).waitFor();
-  await page.getByText(/the rear axle group is over/i).waitFor();
-  await page.getByText(/one engine\. one plan\. every layer of your team\./i).waitFor();
-  await page.getByText(/the loading crew/i).first().waitFor();
-}, page);
+await test('home: focused entry navigation fits phone, tablet and desktop', async () => {
+ const p=await ctx.newPage();
+ try{
+  for(const width of [390,820,1440]){
+   await p.setViewportSize({width,height:900}); await p.goto(`${BASE}/`);
+   await p.getByRole('heading',{name:/plan a mixed load in 3D/i}).waitFor();
+   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error(`Homepage overflow ${width}`);
+   const nav=p.getByRole('navigation',{name:'Homepage navigation'});await nav.locator('summary').click();
+   const dir=nav.getByRole('link',{name:'All tools',exact:true});await dir.click();
+   await p.locator('#more-tools[open]').waitFor();
+   if(await nav.locator('details').getAttribute('open')!==null)throw Error('Navigation did not close after selection');
+   await p.getByRole('link',{name:'Import Excel / CSV',exact:true}).click();
+   await p.getByRole('dialog').waitFor();
+   if(!p.url().includes('/planner?import=1'))throw Error('Import CTA lost import intent');
+  }
+ }finally{await p.close();}
+},page);
 
 await test('reality-checks: package page lists all 11 checks', async () => {
   await page.goto(`${BASE}/reality-checks`, { waitUntil: 'domcontentloaded' });
@@ -928,9 +938,9 @@ await test('planner: FBA pallet preset locks overhang and shows the rule', async
 
 await test('home: product clips render and load', async () => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
-  await page.getByText(/watch the checks fire/i).waitFor();
+  await page.getByRole('heading',{name:'One shipment. Compare, adjust, hand off.',exact:true}).waitFor();
   const vids = page.locator('video');
-  if (await vids.count() < 2) throw new Error('expected 2 product clips');
+  if (await vids.count() !== 1) throw new Error('Expected focused Planner clip');
   await vids.first().scrollIntoViewIfNeeded();
   await page.waitForFunction(() => Array.from(document.querySelectorAll('video')).some(v => !v.paused && v.currentTime > 0), undefined, { timeout: 15_000 });
   await page.getByRole('heading', { name: /plan a mixed load in 3D/i }).scrollIntoViewIfNeeded();
