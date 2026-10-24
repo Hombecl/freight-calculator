@@ -1,3 +1,4 @@
+import {calculatePackingScenarios,productPackingScenarios,type PackingScenario} from '../lib/productPacking';
 import { constrainContainerScenarios, containerCountLimit } from '../lib/legacyContainer';
 import { FBA_RATE_AS_OF, FBA_SIZE_TIERS, type FBASizeTier, type FBASizeTierInfo } from '../data/fbaRates';
 // type-only: three.js is loaded from a CDN at runtime (window.THREE), but the
@@ -14,7 +15,6 @@ type WeightUnit = 'kg' | 'lb';
 type Currency = 'USD' | 'RMB';
 type Mode = 'packing' | 'loading' | 'fba';
 type ContainerKey = '20gp' | '40gp' | '40hq';
-type ScenarioType = 'standard' | 'mixed' | 'layered';
 
 interface Dimensions {
   l: number;
@@ -42,34 +42,6 @@ interface Rates {
 
 interface ContainerSpec extends Dimensions {
   cbm: number;
-}
-
-interface PackedItem {
-  x: number;
-  y: number;
-  z: number;
-  l: number;
-  w: number;
-  h: number;
-  colorType: number;
-}
-
-interface Gaps {
-  l: number;
-  w: number;
-  h: number;
-  isMixed?: boolean;
-}
-
-interface PackingScenario {
-  nameKey: string;
-  descKey: string;
-  dims: [number, number, number];
-  type: ScenarioType;
-  count: number;
-  utilization: number;
-  gaps: Gaps;
-  items: PackedItem[];
 }
 
 interface CustomCarton extends DimensionsWithWeight {
@@ -441,6 +413,8 @@ const TRANSLATIONS: TranslationDictionary = {
     remainingGaps: "剩餘空隙 (Remaining Gaps)",
     dimFactor: "空運材積系數 (Dim Factor)",
     exchangeRate: "匯率",
+    scenarioOptimized: "改良混合擺位",
+    descOptimized: "經檢查嘅分區及混合層疊",
     scenarioStandard: "標準堆疊 (Standard)",
     scenarioMixed: "縫隙填充 (Gap Filling)",
     scenarioLayered: "混合層疊 (Mixed Layers)",
@@ -612,6 +586,8 @@ const TRANSLATIONS: TranslationDictionary = {
     remainingGaps: "Remaining Gaps",
     dimFactor: "Dim Factor",
     exchangeRate: "Exchange Rate",
+    scenarioOptimized: "Optimized arrangement",
+    descOptimized: "Checked partitions and mixed layers",
     scenarioStandard: "Standard Stack",
     scenarioMixed: "Gap Filling",
     scenarioLayered: "Mixed Layers",
@@ -766,213 +742,6 @@ const useThree = (active: boolean = true): boolean => {
 };
 
 // --- Algorithms (Advanced) ---
-
-const calculatePackingScenarios = (item: Dimensions, space: Dimensions): PackingScenario[] => {
-  // Use Inner Dimensions for the space available
-  const { l: cL, w: cW, h: cH } = space;
-
-  if (item.l <= 0 || item.w <= 0 || item.h <= 0 || cL <= 0 || cW <= 0 || cH <= 0) return [];
-
-  const candidates: PackingScenario[] = [];
-  const itemVol = item.l * item.w * item.h;
-  const spaceVol = cL * cW * cH;
-
-  // Helper: Create a box item definition
-  const createItem = (x: number, y: number, z: number, dim: [number, number, number], colorType: number): PackedItem => ({ x, y, z, l: dim[0], w: dim[1], h: dim[2], colorType });
-
-  const orientations: [number, number, number][] = [
-    [item.l, item.w, item.h], [item.l, item.h, item.w],
-    [item.w, item.l, item.h], [item.w, item.h, item.l],
-    [item.h, item.l, item.w], [item.h, item.w, item.l]
-  ];
-
-  // 1. SCENARIO A: Standard Orientations
-  orientations.forEach((dims) => {
-    const cols = Math.floor(cL / dims[0]);
-    const rows = Math.floor(cW / dims[1]);
-    const layers = Math.floor(cH / dims[2]);
-    const count = cols * rows * layers;
-
-    if (count > 0) {
-      const items: PackedItem[] = [];
-      for (let z = 0; z < layers; z++) {
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            items.push(createItem(x * dims[0], y * dims[1], z * dims[2], dims, 0));
-          }
-        }
-      }
-
-      const usedL = cols * dims[0];
-      const usedW = rows * dims[1];
-      const usedH = layers * dims[2];
-
-      candidates.push({
-        nameKey: "scenarioStandard",
-        descKey: "descStandard",
-        dims: dims,
-        type: 'standard',
-        count,
-        utilization: (count * itemVol / spaceVol) * 100,
-        gaps: { l: cL - usedL, w: cW - usedW, h: cH - usedH },
-        items
-      });
-    }
-  });
-
-  // 2. SCENARIO B: Mixed (Gap Filling)
-  let bestMixed: Partial<PackingScenario> & { count: number } = { count: 0 };
-
-  orientations.forEach((dims) => {
-    const cols = Math.floor(cL / dims[0]);
-    const rows = Math.floor(cW / dims[1]);
-    const layers = Math.floor(cH / dims[2]);
-
-    const currentItems: PackedItem[] = [];
-    for (let z = 0; z < layers; z++) {
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          currentItems.push(createItem(x * dims[0], y * dims[1], z * dims[2], dims, 0));
-        }
-      }
-    }
-
-    const usedL = cols * dims[0];
-    const remainL = cL - usedL;
-    let gapItemsL: PackedItem[] = [];
-
-    if (remainL > 0) {
-        const gapOrientations = orientations.filter(d => d[0] <= remainL);
-        let bestGapCount = 0;
-
-        gapOrientations.forEach(gDims => {
-             const gCols = Math.floor(remainL / gDims[0]);
-             const gRows = Math.floor(cW / gDims[1]);
-             const gLayers = Math.floor(cH / gDims[2]);
-             const gCount = gCols * gRows * gLayers;
-
-             if (gCount > bestGapCount) {
-                 bestGapCount = gCount;
-                 gapItemsL = [];
-                 for (let z = 0; z < gLayers; z++) {
-                    for (let y = 0; y < gRows; y++) {
-                        for (let x = 0; x < gCols; x++) {
-                            gapItemsL.push(createItem(usedL + (x * gDims[0]), y * gDims[1], z * gDims[2], gDims, 1));
-                        }
-                    }
-                 }
-             }
-        });
-        if (gapItemsL.length === 0) gapItemsL = [];
-    }
-
-    const totalCount = (cols * rows * layers) + gapItemsL.length;
-    if (totalCount > bestMixed.count && gapItemsL.length > 0) {
-        bestMixed = {
-            nameKey: "scenarioMixed",
-            descKey: "descMixed",
-            dims: dims,
-            type: 'mixed',
-            count: totalCount,
-            utilization: (totalCount * itemVol / spaceVol) * 100,
-            gaps: { l: 0, w: 0, h: 0, isMixed: true },
-            items: [...currentItems, ...gapItemsL]
-        };
-    }
-  });
-  if (bestMixed.count > 0) candidates.push(bestMixed as PackingScenario);
-
-
-  // 3. SCENARIO C: Mixed Layers
-  let bestLayered: Partial<PackingScenario> & { count: number } = { count: 0 };
-  const standingDims = orientations.reduce((prev, curr) => curr[2] > prev[2] ? curr : prev, [0,0,0] as [number, number, number]);
-  const flatDims = orientations.reduce((prev, curr) => curr[2] < prev[2] ? curr : prev, [999,999,999] as [number, number, number]);
-
-  if (standingDims[2] !== flatDims[2]) {
-      const standingLayers = Math.floor(cH / standingDims[2]);
-      for (let i = 1; i <= standingLayers; i++) {
-          const hUsed = i * standingDims[2];
-          const hRemain = cH - hUsed;
-
-          const sCols = Math.floor(cL / standingDims[0]);
-          const sRows = Math.floor(cW / standingDims[1]);
-          const sCount = sCols * sRows * i;
-
-          const fLayers = Math.floor(hRemain / flatDims[2]);
-          const fCols = Math.floor(cL / flatDims[0]);
-          const fRows = Math.floor(cW / flatDims[1]);
-          const fCount = fCols * fRows * fLayers;
-
-          const total = sCount + fCount;
-
-          if (total > bestLayered.count) {
-              const items: PackedItem[] = [];
-              for (let z = 0; z < i; z++) {
-                  for (let y = 0; y < sRows; y++) {
-                      for (let x = 0; x < sCols; x++) {
-                          items.push(createItem(x * standingDims[0], y * standingDims[1], z * standingDims[2], standingDims, 0));
-                      }
-                  }
-              }
-              for (let z = 0; z < fLayers; z++) {
-                  for (let y = 0; y < fRows; y++) {
-                      for (let x = 0; x < fCols; x++) {
-                          items.push(createItem(x * flatDims[0], y * flatDims[1], hUsed + (z * flatDims[2]), flatDims, 2));
-                      }
-                  }
-              }
-              bestLayered = {
-                  nameKey: "scenarioLayered",
-                  descKey: "descLayered",
-                  dims: standingDims,
-                  type: 'layered',
-                  count: total,
-                  utilization: (total * itemVol / spaceVol) * 100,
-                  gaps: { l: 0, w: 0, h: 0, isMixed: true },
-                  items: items
-              };
-          }
-      }
-  }
-  if (bestLayered.count > 0) candidates.push(bestLayered as PackingScenario);
-
-  // Sort Logic: Count DESC, then Utilization DESC
-  candidates.sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return b.utilization - a.utilization;
-  });
-
-  // Filter Logic
-  const finalScenarios: PackingScenario[] = [];
-  const seenKeys = new Set<string>();
-
-  const addIfUnique = (sc: PackingScenario) => {
-      const key = `${sc.type}-${sc.count}-${sc.utilization.toFixed(2)}`;
-      if (!seenKeys.has(key)) {
-          finalScenarios.push(sc);
-          seenKeys.add(key);
-      }
-  };
-
-  // Keep Best of All + Best of Specific Types
-  if(candidates.length > 0) addIfUnique(candidates[0]);
-
-  const bestM = candidates.find(c => c.type === 'mixed');
-  if (bestM) addIfUnique(bestM);
-
-  const bestL = candidates.find(c => c.type === 'layered');
-  if (bestL) addIfUnique(bestL);
-
-  // Fill remaining slots
-  candidates.filter(c => c.type === 'standard').forEach(c => {
-      if(finalScenarios.length < 3) addIfUnique(c);
-  });
-
-  finalScenarios.sort((a, b) => b.count - a.count);
-
-  return finalScenarios.slice(0, 3);
-};
-
 
 // --- 3D Visualizer Component ---
 const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ outer, inner, scenario, units, t, isContainerMode = false }) => {
@@ -1618,7 +1387,7 @@ const CartonOptimizerModal: React.FC<CartonOptimizerModalProps> = ({
       h: Math.max(0, cartonMetric.h - thicknessMetric * 2)
     };
 
-    const scenarios = calculatePackingScenarios(productMetric, innerDims);
+    const scenarios = productPackingScenarios(productMetric, innerDims);
     if (scenarios.length === 0) return null;
 
     const best = scenarios[0];
@@ -2470,7 +2239,7 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
   }, [simOuter, cartonThickness, units, isContainerMode]);
 
   const scenarios = useMemo(() => {
-    const geometry = calculatePackingScenarios(simItem, packingSpace);
+    const geometry = isContainerMode ? calculatePackingScenarios(simItem, packingSpace) : productPackingScenarios(simItem, packingSpace);
     return isContainerMode ? constrainContainerScenarios(geometry, simItem, containerPreset) : geometry;
   }, [simItem, packingSpace, isContainerMode, containerPreset]);
 
@@ -3662,7 +3431,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
       };
   }, [carton, cartonThickness, units]);
 
-  const packingScenarios = useMemo(() => calculatePackingScenarios(
+  const packingScenarios = useMemo(() => productPackingScenarios(
       { l: toMetricL(product.l), w: toMetricL(product.w), h: toMetricL(product.h) },
       innerCartonMetric
   ), [product, innerCartonMetric, units]);
@@ -4062,10 +3831,11 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
             </div>
 
             <CompactCard title={t('packingAnalysis')} icon={Scale} action={<button onClick={() => setIsSimOpen(true)} disabled={!packingCosts} className="flex items-center gap-2 text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-indigo-200"><Cuboid size={14} /><span>{t('open3D')}</span></button>}>
+              {bestPacking?.baselineCount != null && <div data-testid="product-packing-gain" className="mb-3 rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm text-blue-900"><strong>{lang==='zh'?'改良擺位：':'Improved arrangement: '}{bestPacking.baselineCount} → {bestPacking.count} {lang==='zh'?'件／箱':'pcs / box'}</strong><p className="mt-1 text-xs">{lang==='zh'?'相比此尺寸嘅原有算法。可自由旋轉嘅幾何擺位；請核對產品方向、緩衝包材及裝箱重量。':'Compared with the previous calculation for these dimensions. Geometric fit with free rotation; check product orientation, cushioning and packed weight.'}</p><time dateTime="2026-10-24" className="mt-1 block text-xs text-blue-700">{lang==='zh'?'計算更新 · 2026年10月24日':'Calculation update · 24 Oct 2026'}</time></div>}
               <div className="flex flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1 w-full md:w-auto flex items-center gap-4">
                   <div className="text-center bg-slate-100 p-3 rounded-xl min-w-[100px]">
-                    <div className="text-3xl font-black text-slate-700 leading-none">{bestPacking ? bestPacking.count : 0}</div>
+                    <div data-testid="product-packing-count" className="text-3xl font-black text-slate-700 leading-none">{bestPacking ? bestPacking.count : 0}</div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">PCS / Box</div>
                   </div>
                   <div className="flex-1 space-y-2">
