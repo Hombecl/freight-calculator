@@ -16,9 +16,9 @@
  */
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync, readFileSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { chromium } from 'playwright';
 
 import { ROUTES, writeSitemap, fixMeta, validateSnapshot, validateRelease } from './release-routes.mjs';
 
@@ -61,6 +61,7 @@ const previewIsReady = () => {
   }
 };
 
+let snapshotBrowser;
 try {
   // Wait for the preview server. The window used to be 15s (30 x 500ms), which
   // is fine on an idle machine but not on a loaded one: at load ~30 `npx vite
@@ -79,32 +80,33 @@ try {
   }
   if (!up) throw new Error(`vite preview did not start within ${READY_TIMEOUT_MS / 1000}s (machine load? check \`sysctl -n vm.loadavg\`)`);
 
-  // hang-proof renderer: own profile dir (no lock contention with the user's
-  // running Chrome), process-group SIGKILL on a hard 45s timer (execFileSync's
-  // timeout can block forever on a pipe held open by an orphaned Chrome helper)
-  // high machine load starves parallel Chromes into timeouts — tunable
-  const CONCURRENCY = Math.max(1, Number(process.env.PRERENDER_WORKERS) || 4);
-  const profiles = Array.from({ length: CONCURRENCY }, () => mkdtempSync(join(tmpdir(), 'prerender-profile-')));
-  const renderRoute = (url, profile) => new Promise((resolve) => {
-    const child = spawn(chrome, [
-      '--headless=new',
-      '--disable-gpu',
-      '--hide-scrollbars',
-      '--no-first-run',
-      '--disable-extensions',
-      `--user-data-dir=${profile}`,
-      '--virtual-time-budget=15000',
-      '--dump-dom',
-      url,
-    ], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
-    let out = '';
-    const timer = setTimeout(() => {
-      try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ }
-    }, 45_000);
-    child.stdout.on('data', (d) => { out += d; });
-    child.on('close', () => { clearTimeout(timer); resolve(out); });
-    child.on('error', () => { clearTimeout(timer); resolve(''); });
-  });
+  // Build-time browser rendering uses the same installed Chrome as before.
+  // Virtual-time dump-dom could finish before React's lazy route and Helmet
+  // resolved, producing wrong canonical/description tags. Wait for route-owned
+  // metadata explicitly; release validation still rejects incomplete snapshots.
+  const CONCURRENCY = Math.max(1, Number(process.env.PRERENDER_WORKERS) || 2);
+  const profiles = Array.from({length: CONCURRENCY}, (_, index) => index);
+  snapshotBrowser = await chromium.launch({executablePath: chrome, headless: true});
+  const renderRoute = async (url) => {
+    const context = await snapshotBrowser.newContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 30000});
+      await page.waitForFunction(expected => {
+        const canonical = document.querySelector('link[rel="canonical"][data-rh="true"]');
+        const description = document.querySelector('meta[name="description"][data-rh="true"]');
+        if(expected.endsWith('/embed')) return description?.getAttribute('content') && document.body.innerText.length > 200;
+        const normalize = value => value.replace(/\/$/, '') || '/';
+        return canonical && description?.getAttribute('content') &&
+          normalize(new URL(canonical.href).pathname) === normalize(expected) &&
+          document.body.innerText.length > 200;
+      }, new URL(url).pathname, {timeout: 20000});
+      return await page.content();
+    } catch (error) {
+      console.warn(`[prerender] renderer ${new URL(url).pathname}: ${error.message.split('\n')[0]}`);
+      return '';
+    } finally { await context.close(); }
+  };
 
   let ok = 0;
   const failed = [];
@@ -147,7 +149,9 @@ try {
   // '/' goes LAST: until its snapshot is written, dist/index.html is the clean
   // build template and therefore a clean SPA fallback. Rendering it first let
   // its runtime-injected tags leak into every subsequent route's snapshot.
-  const queue = [...ROUTES.filter((r) => r !== '/'), ...(ROUTES.includes('/') ? ['/'] : [])];
+  const requestedRoutes=process.env.PRERENDER_ROUTES?.split(',')??ROUTES;
+  if(requestedRoutes.some(route=>!ROUTES.includes(route)))throw new Error('Unknown prerender route');
+  const queue = [...requestedRoutes.filter((r) => r !== '/'), ...(requestedRoutes.includes('/') ? ['/'] : [])];
   await Promise.all(profiles.map(async (profile) => {
     while (queue.length) {
       const route = queue.shift();
@@ -168,5 +172,6 @@ try {
   if (failed.length) throw new Error(`Incomplete release: ${failed.join(', ')}`);
   validateRelease();
 } finally {
+  await snapshotBrowser?.close();
   try { process.kill(-preview.pid, 'SIGTERM'); } catch { preview.kill('SIGTERM'); }
 }

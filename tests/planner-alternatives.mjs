@@ -8,7 +8,8 @@ const specs=[{id:'a',label:'Cargo',l:60,w:40,h:35,weight:1,qty:1000,color:1}];
 const original=JSON.stringify(specs),base=optimizePacking(c,specs),baseBefore=JSON.stringify(base);
 const alternatives=plannerAlternatives(c,specs,base);
 assert.ok(alternatives.length>=1 && alternatives.length<=2);
-assert.ok(alternatives.some(a=>a.result.boxes.length===820),'retains a real general-solver arrangement');
+assert.ok(alternatives.some(a=>a.result.boxes.length>820),'retains a stronger search candidate instead of taking the first general methods');
+assert.ok(alternatives.every((a,i)=>i===0||alternatives[i-1].result.stats.volumeUtil>=a.result.stats.volumeUtil),'alternatives ranked by actual loaded volume');
 assert.equal(JSON.stringify(base),baseBefore);assert.equal(JSON.stringify(specs),original);
 const seen=new Set([layoutSignature(base.boxes)]);
 for(const {result} of alternatives){
@@ -25,3 +26,10 @@ const mixed=[{...specs[0],qty:9,unloadOrder:2,maxStack:0},{...specs[0],id:'b',l:
 const small={l:180,w:100,h:100,maxWeight:30,door:{w:90,h:90}};
 for(const {result} of plannerAlternatives(small,mixed,optimizePacking(small,mixed)))assert.equal(reviewPlanner(result.boxes,small,mixed,small.door).issues.length,0);
 console.log('Planner alternatives: distinct real layouts, quantities, constraints, identity, immutability and no-duplicate fallback passed');
+
+const {matchingPackingBenchmark}=await import('../src/lib/packingBenchmark.ts');
+assert.equal(matchingPackingBenchmark(c,specs)?.count,886);
+assert.equal(matchingPackingBenchmark(c,[{...specs[0],weight:2}]),null);
+assert.equal(matchingPackingBenchmark(c,[{...specs[0],keepUpright:true}]),null);
+assert.equal(matchingPackingBenchmark(c,[{...specs[0],qty:999}]),null);
+assert.equal(matchingPackingBenchmark({...c,maxWeight:1000},specs),null);

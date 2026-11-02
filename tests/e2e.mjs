@@ -1354,7 +1354,7 @@ await test('product packing: improved count, gross weight and 3D agree',async()=
   await p.getByRole('button',{name:'Open 3D Sim',exact:true}).click();
   await p.locator('canvas').waitFor();
   if(await p.getByTestId('loading-scenario-count').first().innerText()!=='35')throw Error('3D differs from summary');
-  await p.getByText('Optimized arrangement',{exact:true}).waitFor();
+  await p.getByText('Supported columns',{exact:true}).waitFor();
  }finally{await isolated.close();}
 },page);
 
@@ -1415,6 +1415,12 @@ await test('planner: improved single-SKU layout and cancellable background calcu
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
   await p.getByText(/10.00 →/).waitFor();
   await p.getByText('9.26',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('packing-public-reference').waitFor();
+  if(!await p.getByTestId('packing-public-reference').innerText().then(t=>t.includes('886')))throw Error('Reference count mismatch');
+  await p.getByTestId('planner-layout-1').waitFor();
+  if(!await p.getByTestId('planner-layout-1').innerText().then(t=>t.includes('879')||t.includes('878')))throw Error('Stronger search alternatives not retained');
+
   await load('name,length,width,height,weight,qty\nSlow case,44,32.5,30,1,1782');
   await p.getByRole('button',{name:'Cancel calculation',exact:true}).waitFor();
   await p.getByLabel('Report reference (optional)',{exact:true}).fill('Still responsive');
@@ -1440,12 +1446,19 @@ await test('planner: distinct options switch layout, preserve original and expor
   await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
   await p.getByTestId('planner-layout-2').waitFor();
   await p.getByText('215 / 240',{exact:true}).waitFor();
-  if(await p.getByTestId('planner-layout-2').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
+  if(await p.getByTestId('planner-layout-1').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
+  await mkdir('test-artifacts',{recursive:true});
+  for(const [width,height] of [[390,844],[768,1024],[1440,900]]){
+   await p.setViewportSize({width,height});
+   await p.getByTestId('planner-layout-options').scrollIntoViewIfNeeded();
+   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error(`Options overflow at ${width}`);
+   await p.screenshot({path:`test-artifacts/packing-options-${width}.png`});
+  }
   const history=await p.evaluate(()=>JSON.parse(localStorage.getItem('dp_planner_history_v1')??'[]'));
   if(!history.some(s=>s.boxes.length===188))throw Error('Original plan not preserved');
   await p.getByTestId('planner-layout-0').click();
   await p.getByText('188 / 240',{exact:true}).waitFor();
-  await p.getByTestId('planner-layout-2').click();
+  await p.getByTestId('planner-layout-1').click();
   await p.getByText('215 / 240',{exact:true}).waitFor();
   const download=p.waitForEvent('download');
   await p.getByRole('button',{name:'CSV',exact:true}).click();

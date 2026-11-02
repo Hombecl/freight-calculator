@@ -2,6 +2,8 @@ import type { PackContainer, PackItemSpec } from './binPacking';
 import type { PlannerBox } from './plannerBox';
 import { allowedOrientations, reviewPlanner } from './plannerReview';
 
+export type SearchMethod = 'grid-search' | 'layer-search' | 'partition-search' | 'axis-length' | 'axis-width';
+type CandidateSink = (boxes: PlannerBox[], method: SearchMethod) => void;
 const EPS = 1e-6;
 type Layout = { count: number; l: number; w: number; h: number; nx: number; nz: number; ny: number; top?: Layout } |
   { count: number; axis: 'x' | 'z'; cut: number; first: Layout; second: Layout };
@@ -104,18 +106,21 @@ function searchSingleSkuPacking(container: PackContainer, spec: PackItemSpec, la
 }
 
 /** Retain the original search and try one additional supported layer. */
-export function singleSkuPacking(container: PackContainer, spec: PackItemSpec): PlannerBox[] {
+export function singleSkuPacking(container: PackContainer, spec: PackItemSpec, retain?: CandidateSink): PlannerBox[] {
   const original = searchSingleSkuPacking(container, spec);
   const layered = searchSingleSkuPacking(container, spec, 2);
+  retain?.(original, 'grid-search');
+  retain?.(layered, 'layer-search');
   return layered.length > original.length ? layered : original;
 }
 
 /** Worker-side refinement: bounded extra search; never discard a better incumbent.
  * This is not an optimality proof. Keep it out of synchronous input rendering. */
-export function refineSingleSkuPacking(container: PackContainer, spec: PackItemSpec, incumbent: PlannerBox[]): PlannerBox[] {
+export function refineSingleSkuPacking(container: PackContainer, spec: PackItemSpec, incumbent: PlannerBox[], retain?: CandidateSink): PlannerBox[] {
   const upper = Math.min(spec.qty, Math.floor(container.l * container.w * container.h / (spec.l * spec.w * spec.h) + EPS));
   if (incumbent.length >= upper) return incumbent;
   const candidate = searchSingleSkuPacking(container, spec, 2, 3, 24000);
+  retain?.(candidate, 'partition-search');
   let best = candidate.length > incumbent.length ? candidate : incumbent;
   // The construction axis is not necessarily physical gravity. Try the other
   // two axes only for freely rotatable, unlimited-stack cargo, then independently
@@ -135,6 +140,7 @@ export function refineSingleSkuPacking(container: PackContainer, spec: PackItemS
       return {...box, l: sizes[0], w: sizes[1], h: sizes[2], px: positions[0], pz: positions[1], py: positions[2]};
     });
     if (verifySingleSkuPacking(transformed, container, spec)) {
+      retain?.(transformed, permutation[2] === 0 ? 'axis-length' : 'axis-width');
       best = transformed;
       continue;
     }
@@ -152,7 +158,10 @@ export function refineSingleSkuPacking(container: PackContainer, spec: PackItemS
       }
       settled.push({...box, py: y});
     }
-    if (verifySingleSkuPacking(settled, container, spec)) best = settled;
+    if (verifySingleSkuPacking(settled, container, spec)) {
+      retain?.(settled, permutation[2] === 0 ? 'axis-length' : 'axis-width');
+      best = settled;
+    }
   }
   return best;
 }

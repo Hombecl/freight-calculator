@@ -1,4 +1,4 @@
-import {singleSkuPacking,verifySingleSkuPacking} from './singleSkuPacking';
+import {singleSkuPacking,verifySingleSkuPacking,type SearchMethod} from './singleSkuPacking';
 export interface Dimensions { l:number; w:number; h:number; }
 export interface PackedItem { x:number; y:number; z:number; l:number; w:number; h:number; colorType:number; }
 export interface PackingScenario { baselineCount?:number; nameKey:string; descKey:string; dims:[number,number,number]; type:'standard'|'mixed'|'layered'|'optimized'; count:number; utilization:number; gaps:{l:number;w:number;h:number;isMixed?:boolean}; items:PackedItem[]; }
@@ -222,13 +222,21 @@ export function productPackingScenarios(item:Dimensions, space:Dimensions):Packi
  // Bounded single-product search. Retain the baseline outside this budget.
  if(upper>0 && upper<=2000 && upper>(baseline[0]?.count??0)) {
   const spec={...item,id:'product',label:'Product',qty:upper,weight:1,color:0x60a5fa};
-  const boxes=singleSkuPacking(space,spec);
-  if(boxes.length>(baseline[0]?.count??0) && verifySingleSkuPacking(boxes,space,spec)) {
+  const candidates: {boxes:ReturnType<typeof singleSkuPacking>;method:SearchMethod}[]=[];
+  singleSkuPacking(space,spec,(boxes,method)=>candidates.push({boxes,method}));
+  for(const {boxes,method} of candidates){
+  if(boxes.length>0 && verifySingleSkuPacking(boxes,space,spec)) {
    const first=boxes[0];
-   const improved:PackingScenario={baselineCount:baseline[0]?.count??0,nameKey:'scenarioOptimized',descKey:'descOptimized',type:'optimized',dims:[first.l,first.w,first.h],count:boxes.length,utilization:100*boxes.length*item.l*item.w*item.h/(space.l*space.w*space.h),gaps:{l:0,w:0,h:0,isMixed:true},items:boxes.map(b=>({x:b.px,y:b.pz,z:b.py,l:b.l,w:b.w,h:b.h,colorType:b.l===first.l&&b.w===first.w&&b.h===first.h?0:1}))};
-   result=[improved,...baseline].slice(0,3);
+   const improved:PackingScenario={baselineCount:boxes.length>(baseline[0]?.count??0)?baseline[0]?.count:undefined,nameKey:method==='grid-search'?'scenarioSupportedColumns':'scenarioSupportedLayers',descKey:'descOptimized',type:'optimized',dims:[first.l,first.w,first.h],count:boxes.length,utilization:100*boxes.length*item.l*item.w*item.h/(space.l*space.w*space.h),gaps:{l:0,w:0,h:0,isMixed:true},items:boxes.map(b=>({x:b.px,y:b.pz,z:b.py,l:b.l,w:b.w,h:b.h,colorType:b.l===first.l&&b.w===first.w&&b.h===first.h?0:1}))};
+   result=[...result,improved];
+  }
   }
  }
+ const seen=new Set<string>();
+ result=result.sort((a,b)=>b.count-a.count).filter(plan=>{
+  const signature=plan.items.map(b=>[b.x,b.y,b.z,b.l,b.w,b.h].join(':')).sort().join(';');
+  if(seen.has(signature))return false;seen.add(signature);return true;
+ }).slice(0,3);
  if(cache.size>=32)cache.delete(cache.keys().next().value!);
  cache.set(key,result);return result;
 }
