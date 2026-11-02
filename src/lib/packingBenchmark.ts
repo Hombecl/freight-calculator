@@ -5,7 +5,7 @@ export interface PackingBenchmark {count:number;date:string;source:string;}
 export function matchingPackingBenchmark(container:PackContainer,specs:PackItemSpec[]):PackingBenchmark|null {
  const active=specs.filter(s=>s.qty>0);if(active.length!==1)return null;
  const s=active[0];
- if(s.allowRotate===false||s.keepUpright||(s.maxStack!=null&&s.maxStack!==Infinity)||s.group||(s.unloadOrder??1)!==1||s.weight!==1||container.maxWeight!==26500)return null;
+ if(s.allowRotate===false||s.keepUpright||(s.maxStack!=null&&s.maxStack!==Infinity)||s.group||(s.unloadOrder??1)!==1||s.weightKnown===false||s.weight!==1||container.maxWeight!==26500)return null;
  const values=[container.l,container.w,container.h,s.l,s.w,s.h,s.qty];
  const row=rows.find(row=>values.every((v,i)=>Math.abs(v-row[i])<1e-6));
  return row?{count:row[7],date:'2026-10-16',source:'https://brimload.com/t1/benchmark/'}:null;

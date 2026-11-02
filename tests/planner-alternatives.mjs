@@ -33,3 +33,5 @@ assert.equal(matchingPackingBenchmark(c,[{...specs[0],weight:2}]),null);
 assert.equal(matchingPackingBenchmark(c,[{...specs[0],keepUpright:true}]),null);
 assert.equal(matchingPackingBenchmark(c,[{...specs[0],qty:999}]),null);
 assert.equal(matchingPackingBenchmark({...c,maxWeight:1000},specs),null);
+
+assert.equal(matchingPackingBenchmark(c,[{...specs[0],weightKnown:false}]),null);

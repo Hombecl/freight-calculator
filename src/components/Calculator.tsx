@@ -587,7 +587,7 @@ const TRANSLATIONS: TranslationDictionary = {
     reset: "Reset",
     settings: "Settings",
     close: "Close",
-    applyCarton: "Apply",
+    applyCarton: "Apply carton size",
     best: "BEST",
     scenarios: "Select Scenario",
     remainingGaps: "Remaining Gaps",
