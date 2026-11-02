@@ -1,5 +1,6 @@
+import {fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
 import {loweredBox} from '../lib/plannerInteractions';
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { IS_ZH } from '../lib/locale';
 import type { PlannerBox } from '../lib/plannerBox';
 
@@ -31,6 +32,9 @@ export type { PlannerBox };
 
 
 interface Props {
+  cameraTools?: boolean;
+  highlightIds?: string[];
+  onViewChange?: () => void;
   readOnly?: boolean;
   placedCountTestId?: string;
   className?: string;
@@ -108,6 +112,9 @@ const useThree = (): boolean => {
 };
 
 export default function InteractiveLoadPlanner({
+  cameraTools = false,
+  highlightIds,
+  onViewChange,
   readOnly = false,
   placedCountTestId,
   className = '',
@@ -137,6 +144,13 @@ export default function InteractiveLoadPlanner({
   onAction,
   registerSnapshot,
 }: Props) {
+  const [viewPreset,setViewPreset]=useState<ViewPreset>('perspective');
+  const presetRef=useRef<((view:ViewPreset|'fit')=>void)|null>(null);
+  const viewChangeRef=useRef(onViewChange);viewChangeRef.current=onViewChange;
+  const highlighted=useMemo(()=>new Set(highlightIds??[]),[highlightIds]);
+  const highlightRef=useRef(highlighted);highlightRef.current=highlighted;
+  const fixedViewRef=useRef(false);
+  const resumeViewRef=useRef<(()=>void)|null>(null);
   const actionRef=useRef(onAction); actionRef.current=onAction;
   const [actionMessage,setActionMessage]=useState('');
   const resetViewRef = useRef<(() => void) | null>(null);
@@ -229,8 +243,17 @@ export default function InteractiveLoadPlanner({
       camera.lookAt(target);
       needsRender = true;
     };
-    applyCamera();
-    resetViewRef.current = () => { radius = maxDim * (lightTheme ? 1.75 : 2.1); theta = Math.PI * 0.25; phi = Math.PI * 0.32; applyCamera(); };
+    const fitCamera=()=>{radius=fitViewDistance(container,camera.aspect,camera.fov,theta,phi);applyCamera();};
+    if(cameraTools)fitCamera();else applyCamera();
+    resumeViewRef.current=()=>{theta=Math.PI/4;phi=Math.PI*0.32;setViewPreset('perspective');fitCamera();};
+    presetRef.current=(view)=>{
+      if(view!=='fit'){const angles=viewAngles(view,doorEdge);theta=angles.theta;phi=angles.phi;setViewPreset(view);}
+      fixedViewRef.current=true;viewChangeRef.current?.();fitCamera();
+    };
+    resetViewRef.current = () => { theta = Math.PI * 0.25; phi = Math.PI * 0.32;setViewPreset('perspective');
+      if(cameraTools){fixedViewRef.current=true;viewChangeRef.current?.();fitCamera();}
+      else {radius=maxDim*(lightTheme?1.75:2.1);applyCamera();}
+    };
 
     // WebGL can be unavailable (headless crawlers, GPU-blacklisted or locked-down
     // machines). Never let that take down the whole React tree.
@@ -367,7 +390,7 @@ export default function InteractiveLoadPlanner({
       needsRender = true;
       const sel = selectedIdRef.current;
       meshById.forEach((m, id) => {
-        m.material.emissive?.setHex(id === sel ? 0x2563eb : 0x000000);
+        m.material.emissive?.setHex(id === sel ? 0x2563eb : highlightRef.current.has(id) ? 0x14532d : 0x000000);
         m.material.opacity = 1;
         m.material.transparent = false;
       });
@@ -532,7 +555,7 @@ export default function InteractiveLoadPlanner({
         hoveredId = hid;
         meshById.forEach((m: any, id: string) => {
           if (id === selectedIdRef.current) return; // selection highlight wins
-          m.material.emissive?.setHex(id === hoveredId ? 0x334477 : 0x000000);
+          m.material.emissive?.setHex(id === hoveredId ? 0x334477 : highlightRef.current.has(id) ? 0x14532d : 0x000000);
         });
         dom.style.cursor = hoveredId ? 'grab' : 'move';
       }
@@ -576,7 +599,7 @@ export default function InteractiveLoadPlanner({
       lastFrame = now;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
-      if (autoSpinRef.current && !reducedMotion.matches && !selectedIdRef.current && mode === 'idle') {
+      if (autoSpinRef.current && !fixedViewRef.current && !reducedMotion.matches && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
@@ -619,6 +642,7 @@ export default function InteractiveLoadPlanner({
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      if(cameraTools)fitCamera();
       needsRender = true;
     };
     window.addEventListener('resize', onResize);
@@ -642,19 +666,23 @@ export default function InteractiveLoadPlanner({
       mount.innerHTML = '';
       sceneApi.current = null;
       resetViewRef.current = null;
+      presetRef.current = null;
+      resumeViewRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme]);
+  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
+
+  useEffect(()=>{if(autoSpin){if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
     const api = sceneApi.current;
     if (!api) return;
     api.meshById.forEach((m: any, id: string) => {
-      m.material.emissive?.setHex(id === selectedId ? 0x2563eb : 0x000000);
+      m.material.emissive?.setHex(id === selectedId ? 0x2563eb : highlighted.has(id) ? 0x14532d : 0x000000);
     });
     api.invalidate();
-  }, [selectedId]);
+  }, [selectedId,highlighted,boxes,threeLoaded]);
 
   // tint flagged boxes red (restores the box's own color when unflagged)
   useEffect(() => {
@@ -888,6 +916,11 @@ export default function InteractiveLoadPlanner({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
+      {cameraTools&&<div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="flex flex-wrap items-center gap-1 text-xs">
+        {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`rounded border px-2.5 py-2 ${viewPreset===view?'border-blue-400 bg-blue-50 text-blue-800':'bg-white text-slate-700'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
+        <button type="button" disabled={!threeLoaded||webglFailed} className="rounded border bg-white px-2.5 py-2" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合畫面':'Fit to view'}</button>
+        {showDoor&&<span className="text-emerald-800 px-1">{IS_ZH?'綠色框＝門口':'Green frame = door'}</span>}
+      </div>}
       <div className="relative">
         <div
           ref={mountRef}
