@@ -1,5 +1,5 @@
 import {computeStats, packWithConstraints, type ConstrainedResult, type PackContainer, type PackItemSpec} from './binPacking';
-import {singleSkuPacking, verifySingleSkuPacking} from './singleSkuPacking';
+import {singleSkuPacking, refineSingleSkuPacking, verifySingleSkuPacking} from './singleSkuPacking';
 
 export interface OptimizedResult extends ConstrainedResult {
   optimization: { baselineCount: number; addedCount: number; method: 'general' | 'single-sku'; };
@@ -14,7 +14,7 @@ export function optimizePacking(container: PackContainer, specs: PackItemSpec[],
   const active = specs.filter(s => s.qty > 0);
   if (active.length !== 1 || baseline.unplaced === 0) return original;
   progress?.('improving');
-  const candidate = singleSkuPacking(container, active[0]);
+  const candidate = refineSingleSkuPacking(container, active[0], singleSkuPacking(container, active[0]));
   if (candidate.length <= baseline.boxes.length) return original;
   progress?.('checking');
   if (!verifySingleSkuPacking(candidate, container, active[0])) return original;

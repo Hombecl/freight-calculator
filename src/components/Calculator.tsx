@@ -3744,7 +3744,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                       )}
                     </button>
 
-                    <button onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
+                    <button data-testid="calculator-reset" onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
                       <RotateCcw size={16} />
                     </button>
 
@@ -3786,7 +3786,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                   </span>
                 )}
               </button>
-              <button onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
+              <button data-testid="calculator-reset" onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
                 <RotateCcw size={16} />
               </button>
               <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">

@@ -1333,7 +1333,7 @@ await test('packing evidence: no prompt on sample, optional feedback after editi
   await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
   await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
   if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
-  await p.getByTitle('Reset',{exact:true}).click();
+  await p.getByTestId('calculator-reset').click();
   if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Reset retained own-job feedback');
  }finally{await isolated.close();}
 },page);

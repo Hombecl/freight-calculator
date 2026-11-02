@@ -6,7 +6,9 @@ npm run benchmark:single-sku -- /absolute/path/to/vendor-comparison.json
 The first command emits synthetic inputs and placements for reproducibility.
 The second uses the historical vendor CSV in tests/fixtures, not live competitor runs.
 
-Results from main 63de381 algorithms (this change adds measurement, not a new optimizer)
+Pre-upgrade baseline results from main 63de381 algorithms
+The refined search in this PR is evaluated separately; these figures describe
+the production baseline at the start of the audit.
 Carton: 24 synthetic cases, 14 improved vs previous engine, 10 unchanged, 0 regressions.
 All alternative layouts passed independent bounds/non-overlap checks.
 Two positive-fit cases reached the volume upper bound; four zero-fit cases also
