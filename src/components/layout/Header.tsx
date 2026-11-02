@@ -10,6 +10,7 @@ export default function Header() {
   const location = useLocation();
   const { lang, units, toggleLengthUnit, toggleWeightUnit, toggleCurrency, setIsSettingsOpen, handleClearData, t } = useApp();
 
+  const localCalculator = ['/packing','/container','/fba'].includes(location.pathname);
   const isHomePage = location.pathname === '/';
 
   // homepage: absolute over the dark hero, scrolls away with the page —
@@ -43,7 +44,7 @@ export default function Header() {
               {lang === 'zh' ? '繁' : 'EN'}
             </button>
 
-            {!isHomePage && (
+            {!isHomePage && !localCalculator && (
               <>
                 <div className={`hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg ${location.pathname === '/planner' ? '!hidden' : ''}`}>
                   <button onClick={toggleLengthUnit} className="px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition-colors">

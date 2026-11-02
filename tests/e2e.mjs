@@ -1436,6 +1436,64 @@ await test('planner: improved single-SKU layout and cancellable background calcu
  }finally{await p.close();}
 },page);
 
+await test('packing: one functional toolbar on mobile keeps the 3D preview visible',async()=>{
+ const isolated=await browser.newContext({viewport:{width:390,height:844}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/packing`);await p.getByTestId('packing-inline-preview').waitFor();
+  if(await p.getByRole('button',{name:'Settings',exact:true}).count()!==1)throw Error('Duplicate or inaccessible settings');
+  if(await p.getByTestId('calculator-reset').count()!==1)throw Error('Reset missing');
+  if(await p.getByRole('button',{name:'CM',exact:true}).count()!==1)throw Error('Duplicate unit controls');
+  await p.getByRole('button',{name:'Settings',exact:true}).click();await p.getByRole('heading',{name:'Settings',exact:true}).waitFor();
+  await mkdir('test-artifacts',{recursive:true});await p.screenshot({path:'test-artifacts/packing-mobile-settings.png'});
+  await p.reload();await p.getByTestId('packing-inline-preview').waitFor();
+  if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error('Packing overflow');
+  await p.screenshot({path:'test-artifacts/packing-mobile-toolbar.png'});
+ }finally{await isolated.close();}
+},page);
+
+await test('planner: visual comparison, camera presets and cargo focus preserve the plan',async()=>{
+ const isolated=await browser.newContext({viewport:{width:1440,height:1000}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  const count=await p.getByTestId('planner-packed').innerText();
+  await p.getByRole('button',{name:'Remaining',exact:false}).click();
+  await p.locator('#remaining-cargo').getByText(/remaining \/ /).first().waitFor();
+  await p.getByRole('button',{name:'Highlight in 3D',exact:true}).first().click();
+  await p.getByTestId('cargo-focus-status').getByText(/Master carton/).waitFor();
+  await p.getByRole('button',{name:'Clear highlight',exact:true}).click();
+  for(const name of ['Top view','Side view','Door view','3D view']){
+   await p.getByRole('button',{name,exact:true}).click();
+   if(await p.getByRole('button',{name,exact:true}).getAttribute('aria-pressed')!=='true')throw Error('Preset not selected');
+   if(await p.getByRole('button',{name:'Auto rotate',exact:true}).getAttribute('aria-pressed')!=='false')throw Error('Preset rotated away');
+   if(await p.getByTestId('planner-packed').innerText()!==count)throw Error('Camera changed cargo');
+  }
+  await p.getByRole('button',{name:'Top view',exact:true}).click();
+  const canvas=p.getByTestId('planner-sticky-view').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  const rect=await canvas.boundingBox();
+  for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
+  await p.getByTestId('cargo-focus-status').waitFor();
+  if(!await p.locator('[data-testid^="cargo-row-"] button[aria-pressed="true"]').count())throw Error('3D selection did not highlight source row');
+  await p.getByRole('button',{name:'Clear highlight',exact:true}).click();
+  await p.getByRole('button',{name:'3D view',exact:true}).click();
+  await p.getByRole('button',{name:'Fit to view',exact:true}).click();
+  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();await p.getByTestId('planner-layout-2').waitFor();
+  await p.waitForFunction(()=>[...document.querySelectorAll('[data-testid="planner-layout-options"] canvas')].every(c=>c.width===640));
+  const images=await p.getByTestId('planner-layout-options').locator('canvas').evaluateAll(cs=>cs.map(c=>c.toDataURL()));
+  if(new Set(images).size!==3)throw Error('Different layouts need different previews');
+  await mkdir('test-artifacts',{recursive:true});
+  for(const width of [390,768,1440]){
+   await p.setViewportSize({width,height:1000});await p.getByTestId('planner-layout-options').scrollIntoViewIfNeeded();
+   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error('Visual options overflow');
+   await p.screenshot({path:`test-artifacts/visual-options-${width}.png`});
+   await p.getByTestId('planner-sticky-view').scrollIntoViewIfNeeded();await p.getByRole('button',{name:'Fit to view',exact:true}).click();
+   await p.screenshot({path:`test-artifacts/visual-workspace-${width}.png`});
+  }
+  await p.locator('input[type="number"]').nth(4).fill('141');
+  if(!await p.getByRole('button',{name:'Highlight in 3D',exact:true}).first().isDisabled())throw Error('Stale cargo can be focused');
+  await p.getByTestId('planner-view-state').getByText(/Inputs changed/).waitFor();
+ }finally{await isolated.close();}
+},page);
+
 await test('planner: distinct options switch layout, preserve original and export selected positions',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:900}});
  const p=await isolated.newPage();

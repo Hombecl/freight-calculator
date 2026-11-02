@@ -3736,7 +3736,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                   <div className="flex items-center gap-2">
                     {/* Product Library Button */}
                     <button
-                      onClick={() => setIsProductLibraryOpen(true)}
+                      aria-label={lang==='zh'?'產品資料庫':'Saved products'} onClick={() => setIsProductLibraryOpen(true)}
                       className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]"
                     >
                       <Library size={16} />
@@ -3752,7 +3752,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                       <RotateCcw size={16} />
                     </button>
 
-                    <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">
+                    <button aria-label={t('settings')} title={t('settings')} onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">
                       <Settings size={16} className="group-hover:rotate-90 transition-transform duration-500" />
                       <span className="hidden md:inline">{t('settings')}</span>
                     </button>
@@ -3766,9 +3766,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
         {hideHeader && (
           <div className="flex flex-wrap gap-2 items-center justify-between bg-white px-3 md:px-4 py-2.5 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center gap-2">
-              <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]">
-                <Languages size={14} /> <span>{lang === 'zh' ? '繁' : 'EN'}</span>
-              </button>
+
               <div className="flex items-center bg-slate-100 p-0.5 md:p-1 rounded-lg border border-slate-200">
                 <button onClick={toggleLengthUnit} className="px-2 md:px-3 py-1.5 text-xs font-bold hover:bg-white rounded-md text-slate-600 w-12 md:w-14 active:scale-[0.98]">{units.length.toUpperCase()}</button>
                 <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
@@ -3780,7 +3778,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
             <div className="flex items-center gap-2">
               {/* Product Library Button (standalone pages) */}
               <button
-                onClick={() => setIsProductLibraryOpen(true)}
+                aria-label={lang==='zh'?'產品資料庫':'Saved products'} onClick={() => setIsProductLibraryOpen(true)}
                 className="flex items-center gap-1.5 px-2.5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors text-xs font-bold shadow-sm active:scale-[0.98]"
               >
                 <Library size={16} />
@@ -3793,7 +3791,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
               <button data-testid="calculator-reset" onClick={handleReset} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm active:scale-[0.98]" title={t('reset')}>
                 <RotateCcw size={16} />
               </button>
-              <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">
+              <button aria-label={t('settings')} title={t('settings')} onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors text-xs font-bold shadow-sm group active:scale-[0.98]">
                 <Settings size={16} className="group-hover:rotate-90 transition-transform duration-500" />
                 <span className="hidden md:inline">{t('settings')}</span>
               </button>

@@ -6,7 +6,7 @@ import { useWorkspace } from '../components/layout/WorkspacePreferences';
 import ProductUpdate from '../components/ProductUpdate';
 import {usePackingWorker} from '../hooks/usePackingWorker';
 import PlannerReviewPanel from '../components/PlannerReviewPanel';
-import {reviewPlanner} from '../lib/plannerReview';
+import {reviewPlanner,sourceSpec,remainderText} from '../lib/plannerReview';
 import {plannerManifestCSV,type PlannerReportView} from '../lib/plannerReport';
 import {readPlannerHistory,savePlannerSnapshot,snapshotRevision,snapshotChanges,type PlannerSnapshot} from '../lib/plannerHistory';
 import {shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
@@ -332,7 +332,13 @@ export default function PlannerPage() {
 
   // export
   const snapshotFn = useRef<(() => string | null) | null>(null);
+  const [focusedSpec,setFocusedSpec]=useState<string|null>(null);
+  const [selectedBox,setSelectedBox]=useState<string|null>(null);
+  const [showRemaining,setShowRemaining]=useState(false);
+  useEffect(()=>{setFocusedSpec(null);setSelectedBox(null);},[result,hasPendingChanges]);
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
+  const highlightedIds=useMemo(()=>focusedSpec&&!hasPendingChanges?currentBoxes.filter(b=>sourceSpec(b,appliedSpecs)?.id===focusedSpec).map(b=>b.id):[],[focusedSpec,hasPendingChanges,currentBoxes,appliedSpecs]);
+  const focusCargo=(id:string)=>{setFocusedSpec(v=>v===id?null:id);setSelectedBox(null);setRotateView(false);if(window.matchMedia('(max-width: 1023px)').matches)document.querySelector('[data-testid="planner-sticky-view"]')?.scrollIntoView({block:'start'});};
   const meta = (): PlanMeta => ({
     title: T('Container Load Plan','貨櫃裝載計劃') + (selectedLayout>0 && !liveBoxes && !sharedBoxes ? ` — ${layoutName(selectedMethod,IS_ZH)}` : ''),
     containerLabel: container.label,
@@ -447,7 +453,7 @@ export default function PlannerPage() {
       </div>
 
       {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
-      {packing.ready && <PlannerLayoutOptions benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
+      {packing.ready && <PlannerLayoutOptions container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
         if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
         if(!preserve())return;
         setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});
@@ -508,16 +514,17 @@ export default function PlannerPage() {
               </div>
             </div>
             {specs.map((s) => (
-              <div key={s.id} className="p-2 rounded-lg border border-slate-200 space-y-2">
+              <div key={s.id} data-testid={`cargo-row-${s.id}`} className={`p-2 rounded-lg border space-y-2 ${focusedSpec===s.id?'border-blue-500 bg-blue-50':'border-slate-200'}`}>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-sm" style={{ background: `#${s.color.toString(16).padStart(6, '0')}` }} />
                   <input
                     value={s.label}
                     onChange={(e) => updateSpec(s.id, { label: e.target.value })}
-                    className="flex-1 text-sm font-medium bg-transparent outline-none"
+                    className="min-w-0 flex-1 text-sm font-medium bg-transparent outline-none"
                   />
                   <button onClick={() => removeSpec(s.id)} className="text-xs text-slate-300 hover:text-red-500">✕</button>
                 </div>
+                <button type="button" aria-pressed={focusedSpec===s.id} disabled={hasPendingChanges||!currentBoxes.some(b=>sourceSpec(b,appliedSpecs)?.id===s.id)} onClick={()=>focusCargo(s.id)} className="text-xs text-blue-700 underline disabled:text-slate-400 disabled:no-underline">{T('Highlight in 3D','喺 3D 標示')}</button>
                 <div className="grid grid-cols-5 gap-1">
                   {(['l', 'w', 'h', 'weight', 'qty'] as const).map((k) => (
                     <div key={k}>
@@ -630,7 +637,7 @@ export default function PlannerPage() {
             </div>
             {!resultDetails && <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-xs" data-testid="planner-result-compact">
               <div><span className="text-slate-500">{T('Loaded','已裝')}</span> <strong data-testid="planner-packed" className="text-slate-900 tabular-nums">{currentBoxes.length} / {totalQty}</strong></div>
-              <div><span className="text-slate-500">{T('Remaining','未裝')}</span> <strong className="text-amber-800">{Math.max(0,totalQty-currentBoxes.length)}</strong></div>
+              <button type="button" aria-expanded={showRemaining} aria-controls="remaining-cargo" className="text-left underline decoration-dotted text-amber-800" onClick={()=>setShowRemaining(v=>!v)}>{T('Remaining','未裝')} <strong>{Math.max(0,totalQty-currentBoxes.length)}</strong></button>
               <div><span className="text-slate-500">{T('Volume','空間')}</span> <strong>{stats.volumeUtil.toFixed(1)}%</strong></div>
               <div><span className="text-slate-500">{T('Cargo','貨重')}</span> <strong>{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} kg</strong>{appliedSpecs.some(s=>s.weightKnown===false)&&<span className="text-amber-800"> · {T('Incomplete','未完整')}</span>}</div>
             </div>}
@@ -644,8 +651,17 @@ export default function PlannerPage() {
             {!liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
             </div>}
           </section>
+          <div role="status" data-testid="planner-view-state" className={`mb-2 text-xs ${hasPendingChanges?'text-amber-800':'text-slate-600'}`}>{hasPendingChanges?T('Inputs changed · calculate to update this view','輸入已修改 · 請重新計算更新畫面'):review.complete?T('Up to date · ready to export','已更新 · 可匯出'):T('Up to date · draft export includes remaining cargo and checks','已更新 · 草稿匯出會包括餘貨及核對項目')}</div>
+          {showRemaining&&<section id="remaining-cargo" className="mb-3 rounded-lg border bg-white p-3 text-xs max-h-52 overflow-auto"><h3 className="font-semibold mb-2">{T('Remaining cargo by type','按貨物類別查看餘貨')}</h3>{review.cargo.filter(r=>r.remaining>0).map(r=><div key={r.id} className="border-t py-2"><strong>{r.label}</strong> · {r.remaining} {T('remaining','箱未裝')} / {r.requested} {T('requested','箱要求')}<p className="text-slate-600">{r.reason&&remainderText(r.reason,IS_ZH)}</p></div>)}{!review.cargo.some(r=>r.remaining>0)&&<p>{T('No remaining cartons in this calculated plan.','此計算方案沒有餘貨。')}</p>}</section>}
+          {focusedSpec&&<div className="mb-2 flex items-center justify-between gap-2 rounded bg-blue-50 px-2 py-1 text-xs" data-testid="cargo-focus-status"><span>{T('Highlighted','已標示')}: {appliedSpecs.find(s=>s.id===focusedSpec)?.label} · {highlightedIds.length} {T('loaded cartons','箱已裝')}</span><button type="button" className="underline" onClick={()=>{setFocusedSpec(null);setSelectedBox(null);}}>{T('Clear highlight','清除標示')}</button></div>}
           <div className="flex items-center justify-between gap-2 text-xs mb-2"><span className="text-slate-500">{T("Auto rotation pauses while a carton is selected and follows reduced-motion settings.", "選取紙箱時會暫停自動旋轉，亦會遵從減少動態效果設定。")}</span><button type="button" aria-pressed={rotateView} onClick={()=>setRotateView(v=>!v)} className="shrink-0 border rounded px-2 py-1 text-blue-700">{rotateView ? T("Pause rotation", "暫停旋轉") : T("Auto rotate", "自動旋轉")}</button></div>
           <InteractiveLoadPlanner
+            cameraTools
+            readOnly={hasPendingChanges}
+            onViewChange={()=>setRotateView(false)}
+            highlightIds={highlightedIds}
+            selectId={selectedBox}
+            onSelect={id=>{setSelectedBox(id);const box=currentBoxes.find(b=>b.id===id);setFocusedSpec(box?sourceSpec(box,appliedSpecs)?.id??null:null);}}
             viewportAspectRatio="16 / 10"
             lightTheme
             autoSpin={rotateView}
