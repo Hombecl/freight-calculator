@@ -75,3 +75,33 @@ Next work justified by these findings
 4. Observe voluntary feedback and obtain consented real-work fixtures before
    prioritizing new physical constraints or promising commercial loading savings.
 5. Re-run competitors on current matched inputs before publishing superiority claims.
+
+
+Final single-SKU result — completed 3 November 2026 (Hong Kong)
+91 historical vendor fixtures: 15 above, 76 equal, 0 below vendor-reported counts.
+26 improved vs production 63de381; no count regressions.
+All 91 independently checked: specialized results checked during the full run;
+seven general fallbacks supplemented from fallback-audit.json with matching counts.
+The benchmark script now checks general fallbacks on every future run as well.
+Flagship: production 878 -> new 886 (historical vendor 886).
+Examples exceeding reported counts: 1302 -> 1312 vs 1308; 1786 -> 1797 vs 1794;
+1942 -> 1949 vs 1946. These are vendor-reported historical comparisons, not live
+competitor reruns or a proof of universal dominance.
+Timing including verification: median 2363ms, p95 18493ms, max 29853ms.
+Concurrent local execution; no claim of faster-than-competitor performance.
+The extra search increases computation. It remains cancellable in a web worker.
+Carton quality: 24 synthetic cases, 14 improved vs the legacy engine, 10 unchanged,
+0 regressions, all alternative geometries valid. No additional gain on these 24
+cases over the previous production upgrade; the additional layer broadens search.
+Six synthetic container constraint fixtures also passed.
+
+Validation: typecheck, full unit suite, seeded and adversarial placement tests passed.
+Local full E2E: 105 passed plus one stale expected count; after updating 878/58/9.34
+to 886/66/9.26, the focused calculation/cancellation/retry test passed.
+Full updated GitHub CI pending. SPA build passed. Full prerender failed route
+metadata/timeouts; production deployment has NOT occurred. PR #33 contains changes.
+
+See competitive-assessment.txt for separate mixed-cargo research and constraints.
+
+GA4 categorical reporting needs a registered event-scoped meta custom dimension;
+this turn did not verify its configuration. First-party events retain categories.
