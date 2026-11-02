@@ -20,8 +20,10 @@ fallbacks were not passed to that verifier by the existing comparison runner.
 Six additional synthetic container fixtures passed geometry/quantity/payload checks;
 five single-SKU fixtures also passed the single-SKU verifier. Mixed-SKU full
 support/load propagation was not independently audited by this new runner.
-Observed optimization times: median 185ms, nearest-rank-style index p95 9554ms,
-maximum 22354ms. Single local run, machine-dependent, not browser/competitor speed.
+Observed computation plus candidate-verification times: median 185ms,
+p95 (sorted index floor(0.95*(n-1))) 9554ms, maximum 22354ms. The existing vendor
+runner includes independent verification in its timer; these are not isolated
+optimizer times. Single local run, machine-dependent, not browser/competitor speed.
 Carton synthetic maximum 7.36ms in this run; not a universal latency guarantee.
 Flagship case: baseline 820, current 878, vendor-reported 886.
 Worst relative count shortfall: CLB40HQ-06005, 210 vs 214 (1.87%).
