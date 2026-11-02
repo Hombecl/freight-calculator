@@ -1321,6 +1321,23 @@ await test('planner review: shared draft flags missing support and reconciles sa
  }finally{await p.close();}
 },page);
 
+await test('packing evidence: no prompt on sample, optional feedback after editing',async()=>{
+ const isolated=await browser.newContext();const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/packing`);
+  await p.getByTestId('product-packing-count').waitFor();
+  if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Sample should not show own-job feedback');
+  await p.getByRole('spinbutton').first().fill('25');
+  await p.getByRole('checkbox',{name:'These dimensions are for my own job',exact:true}).check();
+  await p.getByText('Does this layout help? (optional)',{exact:true}).click();
+  await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
+  await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
+  if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
+  await p.getByTitle('Reset',{exact:true}).click();
+  if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Reset retained own-job feedback');
+ }finally{await isolated.close();}
+},page);
+
 await test('product packing: improved count, gross weight and 3D agree',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:900}});const p=await isolated.newPage();
  try{

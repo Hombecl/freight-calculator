@@ -13,7 +13,8 @@
     "e2e": "node tests/e2e.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.functions.json",
     "generate:hero": "tsx scripts/generate-hero.ts",
-    "benchmark:single-sku": "tsx scripts/benchmark-single-sku.mjs"
+    "benchmark:single-sku": "tsx scripts/benchmark-single-sku.mjs",
+    "benchmark:quality": "tsx scripts/benchmark-packing-quality.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",

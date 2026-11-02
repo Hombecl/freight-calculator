@@ -1,3 +1,5 @@
+import PackingEvidence from './PackingEvidence';
+import {track} from '../lib/track';
 import {calculatePackingScenarios,productPackingScenarios,type PackingScenario} from '../lib/productPacking';
 import { constrainContainerScenarios, containerCountLimit } from '../lib/legacyContainer';
 import { FBA_RATE_AS_OF, FBA_SIZE_TIERS, type FBASizeTier, type FBASizeTierInfo } from '../data/fbaRates';
@@ -2435,7 +2437,7 @@ const SimulationModal: React.FC<SimulationModalProps> = ({ isOpen, onClose, item
                 {scenarios.map((sc, idx) => {
                   const costs = !isContainerMode ? getUnitCosts(sc) : null;
                   return (
-                    <button key={idx} onClick={() => setSelectedIdx(idx)} className={`w-full text-left p-3 rounded-lg border transition-all flex justify-between items-start group relative ${selectedIdx === idx ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`}>
+                    <button key={idx} onClick={() => {setSelectedIdx(idx);if(!isContainerMode)track('packing_scenario_select',idx===0?'recommended':'alternative');}} className={`w-full text-left p-3 rounded-lg border transition-all flex justify-between items-start group relative ${selectedIdx === idx ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`}>
                       {idx === 0 && <div className="absolute -top-2 -right-1 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm">{t('best')}</div>}
                       <div className="flex-1 min-w-0 pr-2">
                         <div className={`font-bold text-sm truncate ${selectedIdx === idx ? 'text-blue-800' : 'text-gray-700'}`}>{t(sc.nameKey)}</div>
@@ -3293,6 +3295,8 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
 
   // Use fixedMode if provided, otherwise use internal state
   const mode = fixedMode || internalMode;
+  const [packingRevision,setPackingRevision] = useState(0);
+  const packingPreviewUsed=useRef(false);
   const setMode = fixedMode ? () => {} : setInternalMode;
 
   const t = (key: string): string => TRANSLATIONS[lang][key] || key;
@@ -3351,6 +3355,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
   // --- Helper Functions ---
   const handleReset = () => {
     if(mode === 'packing') {
+        setPackingRevision(0); packingPreviewUsed.current=false;
         setProduct({l:0,w:0,h:0,weight:0}); setCarton({l:0,w:0,h:0,weight:0});
     } else {
         setShipmentCarton({l:0,w:0,h:0,weight:0});
@@ -3358,6 +3363,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
   };
 
   const handleClearAllData = useCallback(() => {
+    setPackingRevision(0); packingPreviewUsed.current=false;
     // Clear localStorage
     localStorage.removeItem(STORAGE_KEY);
     // Reset all states to defaults
@@ -3593,7 +3599,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
   const simContainer: DimensionsWithWeight = { ...CONTAINER_SPECS[selectedContainerKey], weight: 0 }; // Already metric
 
   return (
-    <div className={`${embed ? '' : 'min-h-screen '}bg-slate-50 p-4 font-sans text-slate-800 flex flex-col`}>
+    <div onChangeCapture={e=>{if(mode==='packing' && e.target instanceof HTMLInputElement && e.target.type==='number')setPackingRevision(v=>v+1);}} className={`${embed ? '' : 'min-h-screen '}bg-slate-50 p-4 font-sans text-slate-800 flex flex-col`}>
       <SettingsModal
         isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)}
         rates={rates} setRates={setRates} dimFactor={dimFactor} setDimFactor={setDimFactor}
@@ -3796,9 +3802,9 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
             <section data-testid="packing-inline-preview" aria-label={lang === 'zh' ? '即時 3D 裝箱預覽' : 'Live 3D packing preview'} className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-blue-100">
                 <div><h2 className="flex items-center gap-2 font-bold text-blue-900"><Cuboid size={18} />{lang === 'zh' ? '即時 3D 裝箱預覽' : 'Live 3D packing preview'}</h2><p className="text-xs text-slate-500 mt-1">{lang === 'zh' ? '改下面嘅尺寸，即時睇到擺位。拖拉可轉動。' : 'Change dimensions below to update the layout. Drag to rotate.'}</p></div>
-                <button type="button" onClick={() => setIsSimOpen(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">{lang === 'zh' ? '放大及比較方案' : 'Expand & compare layouts'}</button>
+                <button type="button" onClick={() => {setIsSimOpen(true);if(mode==='packing')track('packing_compare_open',packingRevision?'edited':'unconfirmed');}} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">{lang === 'zh' ? '放大及比較方案' : 'Expand & compare layouts'}</button>
               </div>
-              <div className="relative h-[280px] sm:h-[340px]" data-testid="packing-inline-scene">
+              <div className="relative h-[280px] sm:h-[340px]" data-testid="packing-inline-scene" onPointerDown={()=>{if(!packingPreviewUsed.current){packingPreviewUsed.current=true;track('packing_preview_interact',packingRevision?'edited':'unconfirmed');}}}>
                 {!isSimOpen && <ThreeVisualizer outer={simCartonInit} inner={innerCartonMetric} scenario={bestPacking} units={units} t={t} compact />}
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-slate-100 px-4 py-2 text-sm text-slate-700" aria-live="polite">
@@ -3807,6 +3813,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
                 <span>{t('grossWeight')}: <strong>{packingCosts ? displayWeight(fromMetricW(packingCosts.stats.grossWeight)) : '—'}</strong></span>
               </div>
             </section>
+            {packingRevision > 0 && <PackingEvidence revision={packingRevision} signature={JSON.stringify([product,carton,cartonThickness,units.length,units.weight])} count={bestPacking?.count??0} lang={lang}/>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CompactCard title={t('productSpecs')} icon={Package} className="border-l-4 border-l-purple-500">
                 <div className="grid grid-cols-3 gap-3 mb-4">
@@ -3875,7 +3882,7 @@ export default function LogisticsCalculator({ fixedMode, hideHeader = false, emb
               </div>
             </div>
 
-            <CompactCard title={t('packingAnalysis')} icon={Scale} action={<button onClick={() => setIsSimOpen(true)} disabled={!packingCosts} className="flex items-center gap-2 text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-indigo-200"><Cuboid size={14} /><span>{t('open3D')}</span></button>}>
+            <CompactCard title={t('packingAnalysis')} icon={Scale} action={<button onClick={() => {setIsSimOpen(true);if(mode==='packing')track('packing_compare_open',packingRevision?'edited':'unconfirmed');}} disabled={!packingCosts} className="flex items-center gap-2 text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-indigo-200"><Cuboid size={14} /><span>{t('open3D')}</span></button>}>
               {bestPacking?.baselineCount != null && <div data-testid="product-packing-gain" className="mb-3 rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm text-blue-900"><strong>{lang==='zh'?'改良擺位：':'Improved arrangement: '}{bestPacking.baselineCount} → {bestPacking.count} {lang==='zh'?'件／箱':'pcs / box'}</strong><p className="mt-1 text-xs">{lang==='zh'?'相比此尺寸嘅原有算法。可自由旋轉嘅幾何擺位；請核對產品方向、緩衝包材及裝箱重量。':'Compared with the previous calculation for these dimensions. Geometric fit with free rotation; check product orientation, cushioning and packed weight.'}</p><time dateTime="2026-10-24" className="mt-1 block text-xs text-blue-700">{lang==='zh'?'計算更新 · 2026年10月24日':'Calculation update · 24 Oct 2026'}</time></div>}
               <div className="flex flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1 w-full md:w-auto flex items-center gap-4">

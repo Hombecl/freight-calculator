@@ -1,0 +1,73 @@
+Packing quality and outcome measurement — 2026-11-02
+
+Reproduce
+npm run benchmark:quality -- /absolute/path/to/output
+npm run benchmark:single-sku -- /absolute/path/to/vendor-comparison.json
+The first command emits synthetic inputs and placements for reproducibility.
+The second uses the historical vendor CSV in tests/fixtures, not live competitor runs.
+
+Results from main 63de381 algorithms (this change adds measurement, not a new optimizer)
+Carton: 24 synthetic cases, 14 improved vs previous engine, 10 unchanged, 0 regressions.
+All alternative layouts passed independent bounds/non-overlap checks.
+Two positive-fit cases reached the volume upper bound; four zero-fit cases also
+have a zero volume bound. Other cases have no optimality proof.
+Container: 91 single-SKU vendor-fixture cases, 83 improved vs general baseline,
+8 unchanged, 0 regressed. 77 matched historical T1 reported counts, 14 fell short,
+none exceeded them. Mean per-case count gain vs baseline 10.28%.
+This is a vendor-selected, historical test set, NOT a representative customer uplift.
+83 specialized candidates passed the existing independent verifier; 8 general
+fallbacks were not passed to that verifier by the existing comparison runner.
+Six additional synthetic container fixtures passed geometry/quantity/payload checks;
+five single-SKU fixtures also passed the single-SKU verifier. Mixed-SKU full
+support/load propagation was not independently audited by this new runner.
+Observed optimization times: median 185ms, nearest-rank-style index p95 9554ms,
+maximum 22354ms. Single local run, machine-dependent, not browser/competitor speed.
+Carton synthetic maximum 7.36ms in this run; not a universal latency guarantee.
+Flagship case: baseline 820, current 878, vendor-reported 886.
+Worst relative count shortfall: CLB40HQ-06005, 210 vs 214 (1.87%).
+
+What these results establish
+The present engines improve geometric packing on these fixtures without count
+regressions. They do not prove global optimality, physical loadability for every
+cargo type, customer satisfaction, savings, or overall competitor superiority.
+Carton free rotation assumes product directions are allowed; packaging/cushioning
+must be included in dimensions. Cargo support, restraint, handling clearance and
+real loading must be checked against actual operations.
+
+New optional evidence events
+packing_input_started: first debounced numeric edit in this calculator mount.
+packing_result: distinct geometry/state signature after 800ms idle, own|unconfirmed
+and fit|no_fit. Signature, dimensions and product names are never transmitted.
+The in-memory dedup set holds at most 100 signatures, so this is not a job counter.
+packing_job_context: explicit own-job checkbox, own|unconfirmed.
+packing_usefulness: usable|constraints|layout|explore plus own/unconfirmed.
+packing_compare_open: expanded comparison, edited|unconfirmed.
+packing_scenario_select: recommended|alternative viewed; does not mean applied.
+packing_preview_interact: first pointer interaction with inline scene per mount.
+actual_loading_feedback: p|w:pdf|csv:not_yet|matched|adjusted|less|unused.
+The latter is an optional post-export self-report after report-usefulness feedback.
+No response is required to calculate or export. It is not physical verification.
+Reset clears packing feedback context. Reloading/remounting resets local state.
+A result emitted before own-job confirmation stays unconfirmed; checking the box
+is a separate event, not a retroactive relabel. Saved/imported inputs without a
+numeric edit are not counted as an edit by this initial instrumentation.
+These events supplement existing exports; they do not replace them.
+
+How to interpret after release
+Use GA4 users/sessions alongside events; do not treat total events as unique people.
+First-party cookie-less hit totals alone cannot establish unique people or companies.
+Report counts of each answer and response rate alongside percentages. Multiple
+sessions can belong to one person, and volunteer answers have selection bias.
+Not-yet-loaded must stay separate from matched/adjusted/less. Do not turn exports,
+repeat calculations or alternative selection into assumed satisfaction/dissatisfaction.
+New events have no pre-release history. Do not claim a before/after improvement
+without comparable cohorts, denominators and real outcome evidence.
+
+Next work justified by these findings
+1. Profile worst-latency cases; investigate worker/cancellation/bounded search while
+   preserving the present best solution and checking all 91 counts for regression.
+2. Focus solver experiments on the 14 count gaps; compare matched constraints.
+3. Expand mixed-SKU independent support, orientation and unload-order fixtures.
+4. Observe voluntary feedback and obtain consented real-work fixtures before
+   prioritizing new physical constraints or promising commercial loading savings.
+5. Re-run competitors on current matched inputs before publishing superiority claims.

@@ -14,3 +14,9 @@ next=usageTransition(next.state,{...e,day:19});assert.equal(next.event.return,'1
 assert.equal(usageTransition(next.state,{...e,revision:'changed',day:19}).event.job,'revision');
 assert.equal(usageTransition(next.state,{...e,job:'another',day:19}).event.job,'next_job');
 console.log('Export feedback categories and repeat intervals passed');
+
+const {actualFeedbackMeta,ACTUAL_OUTCOMES}=await import('../src/lib/exportFeedback.ts');
+for(const [value]of ACTUAL_OUTCOMES)assert.equal(actualFeedbackMeta('planner','pdf',value),`p:pdf:${value}`);
+assert.equal(actualFeedbackMeta('planner','pdf','private cargo'),null);
+assert.equal(actualFeedbackMeta('invalid','pdf','matched'),null);
+assert.equal(actualFeedbackMeta('planner','unknown','matched'),null);
