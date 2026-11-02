@@ -1,4 +1,12 @@
 import type { PlannerBox } from './plannerBox';
+/** Compare placement and report metadata, independent of object identity/key order. */
+export function samePlannerLayout(a: PlannerBox[], b: PlannerBox[]): boolean {
+  return a.length === b.length && a.every((box, i) => {
+    const other = b[i];
+    const keys = new Set([...Object.keys(box), ...Object.keys(other)] as (keyof PlannerBox)[]);
+    return [...keys].every(key => box[key] === other[key]);
+  });
+}
 /** Only supports below the current bottom can lower a box; never lift or clamp into another box. */
 export function loweredBox(box: PlannerBox, boxes: PlannerBox[]): PlannerBox {
   let y=0;

@@ -1494,6 +1494,44 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
  }finally{await isolated.close();}
 },page);
 
+await test('planner: inspecting, undo and reset preserve selected-layout state',async()=>{
+ const isolated=await browser.newContext({viewport:{width:1440,height:1000}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  const pick=async()=>{
+   await p.getByRole('button',{name:'Top view',exact:true}).click();
+   const canvas=p.getByTestId('planner-sticky-view').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+   const rect=await canvas.boundingBox();
+   for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
+   await p.getByTestId('cargo-focus-status').waitFor();
+  };
+  await pick();
+  if(await p.getByText('Manually adjusted layout',{exact:true}).count())throw Error('Selecting a carton falsely marks the plan as modified');
+  await p.getByRole('button',{name:'Clear highlight',exact:true}).click();
+  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByText('215 / 240',{exact:true}).waitFor();
+  const selected=p.getByTestId('planner-layout-1');
+  const checkSelected=async()=>{if(await selected.getAttribute('aria-pressed')!=='true')throw Error('Restored calculated plan lost selected-option status');};
+  await checkSelected();await pick();await checkSelected();
+  await p.getByRole('button',{name:'Delete',exact:true}).click();await p.getByText('214 / 240',{exact:true}).waitFor();
+  if(await selected.getAttribute('aria-pressed')!=='false')throw Error('Actual edit retained calculated-option status');
+  await p.getByRole('button',{name:'↩ Undo',exact:true}).click();await p.getByText('215 / 240',{exact:true}).waitFor();await checkSelected();
+  await pick();await p.getByRole('button',{name:'Delete',exact:true}).click();await p.getByText('214 / 240',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Reset to auto',exact:true}).click();await p.getByText('215 / 240',{exact:true}).waitFor();await checkSelected();
+  await p.getByRole('button',{name:'↩ Undo',exact:true}).click();await p.getByText('214 / 240',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Reset to auto',exact:true}).click();await checkSelected();
+  await p.getByRole('button',{name:'Top view',exact:true}).click();
+  const canvas=p.getByTestId('planner-sticky-view').locator('canvas');
+  await canvas.evaluate(c=>c.dataset.auditScene='preserve');
+  const qty=p.locator('input[type="number"]').nth(4);await qty.fill('141');
+  await p.getByTestId('planner-view-state').getByText(/Inputs changed/).waitFor();
+  if(await canvas.getAttribute('data-audit-scene')!=='preserve')throw Error('Editing inputs rebuilt the camera scene');
+  await qty.fill('140');await checkSelected();
+  if(await canvas.getAttribute('data-audit-scene')!=='preserve')throw Error('Reverting inputs rebuilt the camera scene');
+  if(await p.getByRole('button',{name:'Top view',exact:true}).getAttribute('aria-pressed')!=='true')throw Error('Input edits lost the view preset');
+ }finally{await isolated.close();}
+},page);
+
 await test('planner: distinct options switch layout, preserve original and export selected positions',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:900}});
  const p=await isolated.newPage();
