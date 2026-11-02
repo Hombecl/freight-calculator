@@ -22,6 +22,7 @@ let failed = 0;
 const results = [];
 
 async function test(name, fn, page) {
+  if (process.env.E2E_FILTER && !name.includes(process.env.E2E_FILTER)) return;
   try {
     await fn();
     passed++;
@@ -1407,13 +1408,13 @@ await test('planner: improved single-SKU layout and cancellable background calcu
    await p.getByRole('button',{name:'Use this list and calculate',exact:true}).click();
   };
   await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
-  await p.getByText('878 / 1000',{exact:true}).waitFor();
+  await p.getByText('886 / 1000',{exact:true}).waitFor();
   await p.getByRole('button',{name:'More detail',exact:true}).click();
-  await p.getByTestId('packing-improvement').getByText(/58 cartons/).waitFor();
+  await p.getByTestId('packing-improvement').getByText(/66 cartons/).waitFor();
   await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
   await p.getByText(/10.00 →/).waitFor();
-  await p.getByText('9.34',{exact:true}).waitFor();
+  await p.getByText('9.26',{exact:true}).waitFor();
   await load('name,length,width,height,weight,qty\nSlow case,44,32.5,30,1,1782');
   await p.getByRole('button',{name:'Cancel calculation',exact:true}).waitFor();
   await p.getByLabel('Report reference (optional)',{exact:true}).fill('Still responsive');
@@ -1537,4 +1538,4 @@ await browser.close();
 
 console.log('\n' + results.join('\n'));
 console.log(`\n${passed} passed, ${failed} failed (${BASE})`);
-process.exit(failed > 0 ? 1 : 0);
+process.exit(failed > 0 || passed === 0 ? 1 : 0);

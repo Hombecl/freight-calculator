@@ -12,7 +12,7 @@ for(const line of lines){
  const container={l:+row.space_l/10,w:+row.space_w/10,h:+row.space_h/10,maxWeight:26500};
  const spec={id:row.case_id,label:row.case_id,l:+row.box_l/10,w:+row.box_w/10,h:+row.box_h/10,weight:1,qty:+row.dimpack3d_cartons_requested,color:1};
  const start=performance.now();const result=optimizePacking(container,[spec]);
- const verified=result.optimization.method==='single-sku'?verifySingleSkuPacking(result.boxes,container,spec):null;
+ const verified=verifySingleSkuPacking(result.boxes,container,spec);
  const entry={id:row.case_id,stratum:row.stratum,baseline:result.optimization.baselineCount,loaded:result.boxes.length,t1Reported:+row.t1_deeper_cartons,improved:result.optimization.addedCount,verified,elapsedMs:Math.round(performance.now()-start)};
  results.push(entry);console.log(JSON.stringify(entry));
  if(verified===false||entry.loaded<entry.baseline)throw new Error(`Invalid or regressed plan: ${entry.id}`);
