@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import {singleSkuPacking,verifySingleSkuPacking} from '../src/lib/singleSkuPacking.ts';
+import fs from 'node:fs';
+import {singleSkuPacking,refineSingleSkuPacking,verifySingleSkuPacking} from '../src/lib/singleSkuPacking.ts';
 import {optimizePacking} from '../src/lib/optimizePacking.ts';
 import {packWithConstraints} from '../src/lib/binPacking.ts';
 const container={l:1203,w:235,h:269,maxWeight:26500};
 const spec={id:'cargo',label:'Cargo',l:60,w:40,h:35,weight:1,qty:1000,color:1};
 const result=optimizePacking(container,[spec]);
-assert.ok(result.boxes.length>=876,'single-SKU search closes most of the independently reproduced 820-carton gap');
+assert.ok(result.boxes.length>=886,'single-SKU search closes most of the independently reproduced 820-carton gap');
 assert.equal(result.optimization.baselineCount,820);
 assert.equal(result.unplaced,1000-result.boxes.length);
 assert.equal(verifySingleSkuPacking(result.boxes,container,spec),true);
@@ -22,7 +23,9 @@ let seed=20261022;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>
 for(let i=0;i<45;i++){
  const c={l:100+Math.floor(random()*140),w:80+Math.floor(random()*70),h:90+Math.floor(random()*80),maxWeight:300};
  const s={...spec,l:15+Math.floor(random()*60),w:15+Math.floor(random()*50),h:15+Math.floor(random()*50),qty:100,weight:2,keepUpright:i%3===0,maxStack:i%4===0?6:undefined};
- assert.ok(verifySingleSkuPacking(singleSkuPacking(c,s),c,s),`holdout ${i}`);
+ const fast=singleSkuPacking(c,s);
+ assert.ok(verifySingleSkuPacking(fast,c,s),`holdout ${i}`);
+ if(i<12){const refined=refineSingleSkuPacking(c,s,fast);assert.ok(refined.length>=fast.length,`refinement retains incumbent ${i}`);assert.ok(verifySingleSkuPacking(refined,c,s),`refined holdout ${i}`);}
 }
 const mixed=[{...spec,qty:10},{...spec,id:'b',l:30,qty:4,unloadOrder:1}];
 const original=packWithConstraints(container,mixed),optimized=optimizePacking(container,mixed);
@@ -32,3 +35,16 @@ const limited={...spec,qty:20,weight:10,maxStack:0,unloadOrder:2};
 const constrained=optimizePacking({l:100,w:100,h:100,maxWeight:30},[limited]);
 assert.ok(verifySingleSkuPacking(constrained.boxes,{l:100,w:100,h:100,maxWeight:30},limited));
 console.log('Single-SKU improvements, full support, constraints, independent rejection checks and 45 seeded holdouts passed');
+
+// This fixture needs a different construction axis and reversed/settled layers.
+// Validate actual support rather than accepting the candidate count alone.
+const [header,...rows]=fs.readFileSync(new URL('./fixtures/brimload-single-sku-20261016.csv',import.meta.url),'utf8').trim().split(/\r?\n/);
+const values=rows.find(row=>row.startsWith('CLB40HQ-06005,'))?.split(',');
+assert.ok(values);
+const row=Object.fromEntries(header.split(',').map((key,i)=>[key,values[i]]));
+const fixtureContainer={l:+row.space_l/10,w:+row.space_w/10,h:+row.space_h/10,maxWeight:26500};
+const fixtureSpec={...spec,l:+row.box_l/10,w:+row.box_w/10,h:+row.box_h/10,qty:+row.dimpack3d_cartons_requested};
+const repaired=optimizePacking(fixtureContainer,[fixtureSpec]);
+assert.ok(repaired.boxes.length>=214);
+assert.ok(verifySingleSkuPacking(repaired.boxes,fixtureContainer,fixtureSpec));
+console.log('Axis search and independently checked reversed-layer regression passed');

@@ -22,6 +22,7 @@ let failed = 0;
 const results = [];
 
 async function test(name, fn, page) {
+  if (process.env.E2E_FILTER && !name.includes(process.env.E2E_FILTER)) return;
   try {
     await fn();
     passed++;
@@ -1321,6 +1322,23 @@ await test('planner review: shared draft flags missing support and reconciles sa
  }finally{await p.close();}
 },page);
 
+await test('packing evidence: no prompt on sample, optional feedback after editing',async()=>{
+ const isolated=await browser.newContext();const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/packing`);
+  await p.getByTestId('product-packing-count').waitFor();
+  if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Sample should not show own-job feedback');
+  await p.getByRole('spinbutton').first().fill('25');
+  await p.getByRole('checkbox',{name:'These dimensions are for my own job',exact:true}).check();
+  await p.getByText('Does this layout help? (optional)',{exact:true}).click();
+  await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
+  await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
+  if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
+  await p.getByTestId('calculator-reset').click();
+  if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Reset retained own-job feedback');
+ }finally{await isolated.close();}
+},page);
+
 await test('product packing: improved count, gross weight and 3D agree',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:900}});const p=await isolated.newPage();
  try{
@@ -1336,7 +1354,7 @@ await test('product packing: improved count, gross weight and 3D agree',async()=
   await p.getByRole('button',{name:'Open 3D Sim',exact:true}).click();
   await p.locator('canvas').waitFor();
   if(await p.getByTestId('loading-scenario-count').first().innerText()!=='35')throw Error('3D differs from summary');
-  await p.getByText('Optimized arrangement',{exact:true}).waitFor();
+  await p.getByText('Supported columns',{exact:true}).waitFor();
  }finally{await isolated.close();}
 },page);
 
@@ -1390,13 +1408,19 @@ await test('planner: improved single-SKU layout and cancellable background calcu
    await p.getByRole('button',{name:'Use this list and calculate',exact:true}).click();
   };
   await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
-  await p.getByText('878 / 1000',{exact:true}).waitFor();
+  await p.getByText('886 / 1000',{exact:true}).waitFor();
   await p.getByRole('button',{name:'More detail',exact:true}).click();
-  await p.getByTestId('packing-improvement').getByText(/58 cartons/).waitFor();
+  await p.getByTestId('packing-improvement').getByText(/66 cartons/).waitFor();
   await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
   await p.getByText(/10.00 →/).waitFor();
-  await p.getByText('9.34',{exact:true}).waitFor();
+  await p.getByText('9.26',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('packing-public-reference').waitFor();
+  if(!await p.getByTestId('packing-public-reference').innerText().then(t=>t.includes('886')))throw Error('Reference count mismatch');
+  await p.getByTestId('planner-layout-1').waitFor();
+  if(!await p.getByTestId('planner-layout-1').innerText().then(t=>t.includes('879')||t.includes('878')))throw Error('Stronger search alternatives not retained');
+
   await load('name,length,width,height,weight,qty\nSlow case,44,32.5,30,1,1782');
   await p.getByRole('button',{name:'Cancel calculation',exact:true}).waitFor();
   await p.getByLabel('Report reference (optional)',{exact:true}).fill('Still responsive');
@@ -1422,12 +1446,19 @@ await test('planner: distinct options switch layout, preserve original and expor
   await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
   await p.getByTestId('planner-layout-2').waitFor();
   await p.getByText('215 / 240',{exact:true}).waitFor();
-  if(await p.getByTestId('planner-layout-2').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
+  if(await p.getByTestId('planner-layout-1').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
+  await mkdir('test-artifacts',{recursive:true});
+  for(const [width,height] of [[390,844],[768,1024],[1440,900]]){
+   await p.setViewportSize({width,height});
+   await p.getByTestId('planner-layout-options').scrollIntoViewIfNeeded();
+   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error(`Options overflow at ${width}`);
+   await p.screenshot({path:`test-artifacts/packing-options-${width}.png`});
+  }
   const history=await p.evaluate(()=>JSON.parse(localStorage.getItem('dp_planner_history_v1')??'[]'));
   if(!history.some(s=>s.boxes.length===188))throw Error('Original plan not preserved');
   await p.getByTestId('planner-layout-0').click();
   await p.getByText('188 / 240',{exact:true}).waitFor();
-  await p.getByTestId('planner-layout-2').click();
+  await p.getByTestId('planner-layout-1').click();
   await p.getByText('215 / 240',{exact:true}).waitFor();
   const download=p.waitForEvent('download');
   await p.getByRole('button',{name:'CSV',exact:true}).click();
@@ -1520,4 +1551,4 @@ await browser.close();
 
 console.log('\n' + results.join('\n'));
 console.log(`\n${passed} passed, ${failed} failed (${BASE})`);
-process.exit(failed > 0 ? 1 : 0);
+process.exit(failed > 0 || passed === 0 ? 1 : 0);

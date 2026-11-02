@@ -1,3 +1,4 @@
+import {matchingPackingBenchmark} from '../lib/packingBenchmark';
 import {usePlannerAlternatives} from '../hooks/usePlannerAlternatives';
 import PlannerLayoutOptions,{layoutName} from '../components/PlannerLayoutOptions';
 import PackingGain from '../components/PackingGain';
@@ -446,7 +447,7 @@ export default function PlannerPage() {
       </div>
 
       {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
-      {packing.ready && <PlannerLayoutOptions base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
+      {packing.ready && <PlannerLayoutOptions benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
         if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
         if(!preserve())return;
         setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});

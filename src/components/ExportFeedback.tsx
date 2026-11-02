@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { track } from '../lib/track';
-import { feedbackMeta, feedbackAnswerMeta, RECIPIENTS, CHOICE_REASONS } from '../lib/exportFeedback';
+import { feedbackMeta, feedbackAnswerMeta, RECIPIENTS, CHOICE_REASONS, ACTUAL_OUTCOMES, actualFeedbackMeta } from '../lib/exportFeedback';
 import type { ExportFormat } from '../lib/exportTracking';
 
 /** One click records usefulness. Extra context is optional and never delays output. */
@@ -11,6 +11,7 @@ export default function ExportFeedback({tool, format, onClose}: {tool:'planner'|
  const [done,setDone]=useState(()=>{try{return sessionStorage.getItem(key)==='done';}catch{return false;}});
  const [outcome,setOutcome]=useState(''),[purpose,setPurpose]=useState('unknown'),[blocker,setBlocker]=useState('');
  const shown=useRef(false),answered=useRef(false);
+ const [actual,setActual]=useState('');
  useEffect(()=>{if(format&&!done&&!shown.current){shown.current=true;track('export_feedback_shown',`${tool}:${format}`);}},[format,done,tool]);
  const remember=()=>{try{sessionStorage.setItem(key,'done');}catch{}};
  const finish=()=>{remember();setDone(true);onClose();};
@@ -27,6 +28,7 @@ export default function ExportFeedback({tool, format, onClose}: {tool:'planner'|
  <label className="block text-sm">{T('Who is the report for? (optional)','報告交畀邊個？（可略過）')}<select defaultValue="" onChange={e=>detail('recipient',e.target.value)} className="block border rounded p-2 w-full"><option value="">{T('Choose…','請選擇…')}</option>{RECIPIENTS.map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label>
  {outcome==='edit'&&<label className="block text-sm">{T('Main thing to improve','最需要改善嘅地方')}<select required value={blocker} onChange={e=>setBlocker(e.target.value)} className="block border rounded p-2 w-full"><option value="">{T('Choose…','請選擇…')}</option>{[['layout','Report layout','報告版面'],['fields','Missing information','欠缺資料欄位'],['math','Calculation / constraints','計算／限制'],['placement','Cargo arrangement','貨物排位'],['download','Opening / saving file','開啟／儲存檔案'],['other','Something else','其他']].map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label>}
  <details><summary className="text-sm cursor-pointer">{T('Add more context (optional)','補充用途／選用原因（可略過）')}</summary><label className="block text-sm mt-2">{T('What is it for?','用嚟做乜？')}<select value={purpose} onChange={e=>setPurpose(e.target.value)} className="block border rounded p-2 w-full">{[['unknown','Prefer not to say','暫不回答'],['load','Container / truck loading','裝櫃／裝車'],['pallet','Pallet planning','卡板規劃'],['quote','Freight quote','運費報價'],['crew','Warehouse instructions','倉務交接'],['other','Other task','其他用途']].map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label><label className="block text-sm mt-2">{T('Main reason for using DimPack today','今次選用 DimPack 嘅主要原因')}<select defaultValue="" onChange={e=>detail('choice',e.target.value)} className="block border rounded p-2 w-full"><option value="">{T('Choose…','請選擇…')}</option>{CHOICE_REASONS.map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label></details>
+ <label className="block text-sm">{T('Have you actually loaded this plan? (optional)','你有冇實際按呢個方案裝貨？（可略過）')}<select value={actual} disabled={!!actual} className="block border rounded p-2 w-full" onChange={e=>{const m=actualFeedbackMeta(tool,format,e.target.value);if(m){setActual(e.target.value);track('actual_loading_feedback',m);}}}><option value="">{T('Choose…','請選擇…')}</option>{ACTUAL_OUTCOMES.map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label>
  <button disabled={!meta} className="rounded bg-blue-600 text-white px-4 py-2 disabled:opacity-40">{T('Send details','提交補充資料')}</button><button type="button" className="border rounded px-3 py-2 ml-2" onClick={finish}>{T('Done','完成')}</button>
  </form></>}
  </section>;

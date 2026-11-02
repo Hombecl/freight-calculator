@@ -15,3 +15,8 @@ export function feedbackAnswerMeta(tool:string,format:string,kind:'usefulness'|'
  const allowed:readonly string[]=kind==='usefulness'?OUTCOMES:kind==='recipient'?RECIPIENTS.map(x=>x[0]):CHOICE_REASONS.map(x=>x[0]);
  return ['planner','warehouse'].includes(tool)&&['pdf','csv'].includes(format)&&allowed.includes(value)?`${tool==='planner'?'p':'w'}:${format}:${value}`:null;
 }
+
+export const ACTUAL_OUTCOMES = [['not_yet','Not loaded yet','未實際裝貨'],['matched','Loaded as planned','按方案成功裝貨'],['adjusted','Loaded after changing the layout','修改擺位後完成'],['less','Fewer items fitted than planned','實際裝入數量較少'],['unused','Did not use this layout','冇用呢個擺法']] as const;
+export function actualFeedbackMeta(tool:string,format:string,value:string){
+ return ['planner','warehouse'].includes(tool)&&['pdf','csv'].includes(format)&&ACTUAL_OUTCOMES.some(v=>v[0]===value)?`${tool==='planner'?'p':'w'}:${format}:${value}`:null;
+}

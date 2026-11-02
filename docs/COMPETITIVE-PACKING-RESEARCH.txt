@@ -1,0 +1,75 @@
+Competitive engine research — 2 November 2026
+
+Goal: match or beat reproducible public results with valid placements, then improve
+real-work adoption. Being most-used is a separate acquisition/retention measure;
+a geometric benchmark does not establish it.
+
+A universal promise to beat every website and every possible input is not proved.
+Use a per-case ledger: source/date, exact inputs, constraints, count or volume,
+time budget, actual coordinates, independent validation, best-known gap and bound.
+Do not compare highest count against highest volume on mixed-size cargo.
+
+Sources and claims:
+
+Brimload T1
+https://brimload.com/t1/benchmark/
+Historical vendor-reported per-case counts, 91 cases. Current benchmark page fetch failed this turn; competitor placements and current service not independently rerun.
+Single-SKU same recorded dimensions/quantity. Our accepted specialized candidates require full base support. Competitor complete constraint equivalence remains unverified.
+
+3DPACK.ING
+https://3dpack.ing/3d-bin-packing-benchmark
+Vendor reports 92.4% average fill across 190 BR instances on 29 September 2026; result CSV downloaded. BR4 excluded.
+More than 75% base support. Two allowed vertical dimensions restricted to one (choice not specified). Median 41 seconds for two searches, concurrent laptop run; not directly comparable timing.
+
+LoadingMCP
+https://loadingmcp.com/research
+Vendor page reports July 2026 BR1 86.4%, BR5 85.3%, BR7 82.6%, about 85% average. Uses PackingSolver according to vendor.
+Need per-instance results, exact solver configuration and matched rules.
+
+EasyCargo
+https://www.easycargo3d.com/en/
+Official product describes load planning within seconds; this research did not establish a reproducible numeric count leaderboard.
+Use consented/common test inputs in the actual tool; absence of a discovered public result is not evidence of inferiority.
+
+OR-Library
+https://people.brunel.ac.uk/~mastjjb/jeb/orlib/thpackinfo.html
+Primary benchmark definition: THPACK1–7, 100 instances each, per-axis vertical permissions and per-SKU quantities. Objective is packed volume, not box count.
+
+
+KU Leuven MCLP benchmark
+https://benchmark.gent.cs.kuleuven.be/mclp.html
+Public multi-container best-known results and validators. Different objective: number of containers; maintain a separate scoreboard.
+
+
+Code audit and initial mixed-cargo screen
+The present mixed-cargo engine accepts 60% base support. The newly found 3DPACK.ING
+benchmark requires >75%. The current input model expresses unrestricted, upright
+or fixed orientation, but not exactly two permitted vertical axes.
+A research-only run on the first ten BR1 cases used the shortest permitted vertical
+side when restrictions could not be expressed. Raw average fill was 79.9976%; five
+layouts failed the competitor support threshold. This is a diagnostic, NOT a valid
+matched head-to-head score. All raw inputs/placements are saved with the report.
+This identifies a substantive mixed-SKU development need, not a UI issue.
+
+Implemented single-SKU experiment
+Retain existing grid/partition incumbent; try an additional supported layer and
+deeper floor partition search; try two other construction axes. Every transformed
+candidate must pass independent validation in the original gravity frame. If
+necessary reverse layer order and settle cartons, then validate again. Never
+accept a larger invalid arrangement. No benchmark IDs, target counts or special
+fixture dimensions appear in production solver logic.
+The extra deep search runs inside the existing cancellable Planner worker.
+Product-to-carton uses the bounded extra-layer search, not the deep axis portfolio.
+Full 91-case result and regression comparison are recorded separately.
+
+Priorities after this single-SKU release
+1. Mixed-SKU block/layer candidate generation plus exact vertical-axis permissions
+   and explicit benchmark support threshold. Test all 700 BR instances, retaining
+   all results including failures, and publish the matched 190-case subset separately.
+2. Strengthen independent mixed support/load and quantity validation; compare equal
+   constraints, not relaxed constraints that artificially increase fill.
+3. Maintain unseen synthetic and consented real-work holdouts; preserve incumbent
+   quality across changes. Track p50/p95/worst runtime separately from validation.
+4. Report optimality only where an applicable upper bound equals the valid result.
+5. Observe actual-use feedback, return visits and task completion separately from
+   event/export counts; benchmark gains alone do not prove commercial adoption.
