@@ -144,7 +144,7 @@ export default function InteractiveLoadPlanner({
   onAction,
   registerSnapshot,
 }: Props) {
-  const [viewPreset,setViewPreset]=useState<ViewPreset>('perspective');
+  const [viewPreset,setViewPreset]=useState<ViewPreset|'custom'>('perspective');
   const presetRef=useRef<((view:ViewPreset|'fit')=>void)|null>(null);
   const viewChangeRef=useRef(onViewChange);viewChangeRef.current=onViewChange;
   const highlighted=useMemo(()=>new Set(highlightIds??[]),[highlightIds]);
@@ -519,6 +519,7 @@ export default function InteractiveLoadPlanner({
         const dx = e.clientX - last.x;
         const dy = e.clientY - last.y;
         last = { x: e.clientX, y: e.clientY };
+        if(cameraTools&&(dx||dy))setViewPreset('custom');
         theta -= dx * 0.01;
         phi = clamp(phi - dy * 0.01, 0.15, Math.PI / 2 - 0.02);
         applyCamera();

@@ -1436,6 +1436,21 @@ await test('planner: improved single-SKU layout and cancellable background calcu
  }finally{await p.close();}
 },page);
 
+await test('packing: one functional toolbar on mobile keeps the 3D preview visible',async()=>{
+ const isolated=await browser.newContext({viewport:{width:390,height:844}});const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/packing`);await p.getByTestId('packing-inline-preview').waitFor();
+  if(await p.getByRole('button',{name:'Settings',exact:true}).count()!==1)throw Error('Duplicate or inaccessible settings');
+  if(await p.getByTestId('calculator-reset').count()!==1)throw Error('Reset missing');
+  if(await p.getByRole('button',{name:'CM',exact:true}).count()!==1)throw Error('Duplicate unit controls');
+  await p.getByRole('button',{name:'Settings',exact:true}).click();await p.getByRole('heading',{name:'Settings',exact:true}).waitFor();
+  await mkdir('test-artifacts',{recursive:true});await p.screenshot({path:'test-artifacts/packing-mobile-settings.png'});
+  await p.reload();await p.getByTestId('packing-inline-preview').waitFor();
+  if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error('Packing overflow');
+  await p.screenshot({path:'test-artifacts/packing-mobile-toolbar.png'});
+ }finally{await isolated.close();}
+},page);
+
 await test('planner: visual comparison, camera presets and cargo focus preserve the plan',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:1000}});const p=await isolated.newPage();
  try{
