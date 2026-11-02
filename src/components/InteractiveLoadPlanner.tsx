@@ -604,10 +604,10 @@ export default function InteractiveLoadPlanner({
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
-          applyCamera();
+          if(cameraTools)fitCamera();else applyCamera();
         } else if (idleFor > 10_000) {
           theta -= 0.0009 * frameScale;
-          applyCamera();
+          if(cameraTools)fitCamera();else applyCamera();
         }
       }
       // animate the route marker (forklift) along the current path
