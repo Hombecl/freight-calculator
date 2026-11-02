@@ -563,7 +563,10 @@ export default function InteractiveLoadPlanner({
     };
 
     const onUp = (e: PointerEvent) => {
-      if (mode === 'drag') {if(dragMoved)reportAction('drag','ok');if(dragBlocked)reportAction('drag','collision');commit();}
+      if (mode === 'drag') {
+        if(dragMoved){reportAction('drag','ok');commit();}
+        if(dragBlocked)reportAction('drag','collision');
+      }
       mode = 'idle';
       dragId = null;
       shadow.visible = false;
@@ -581,6 +584,8 @@ export default function InteractiveLoadPlanner({
     dom.addEventListener('pointerdown', onDown);
     dom.addEventListener('pointermove', onMove);
     dom.addEventListener('pointerup', onUp);
+    dom.addEventListener('pointercancel', onUp);
+    dom.addEventListener('lostpointercapture', onUp);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
     let visible = true;
@@ -658,6 +663,8 @@ export default function InteractiveLoadPlanner({
       dom.removeEventListener('pointerdown', onDown);
       dom.removeEventListener('pointermove', onMove);
       dom.removeEventListener('pointerup', onUp);
+      dom.removeEventListener('pointercancel', onUp);
+      dom.removeEventListener('lostpointercapture', onUp);
       dom.removeEventListener('wheel', onWheel);
       registerSnapshot?.(null);
       clearBatch();
@@ -671,7 +678,7 @@ export default function InteractiveLoadPlanner({
       resumeViewRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
+  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
 
   useEffect(()=>{if(autoSpin){if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 

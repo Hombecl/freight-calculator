@@ -9,7 +9,7 @@ import PlannerReviewPanel from '../components/PlannerReviewPanel';
 import {reviewPlanner,sourceSpec,remainderText} from '../lib/plannerReview';
 import {plannerManifestCSV,type PlannerReportView} from '../lib/plannerReport';
 import {readPlannerHistory,savePlannerSnapshot,snapshotRevision,snapshotChanges,type PlannerSnapshot} from '../lib/plannerHistory';
-import {shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
+import {samePlannerLayout,shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
 import ExportFeedback from '../components/ExportFeedback';
 import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
 import {recordToolOutput} from '../lib/workflowUsage';
@@ -176,9 +176,13 @@ export default function PlannerPage() {
   }, [result, packing.ready]);
 
   // live stats reflect manual edits (falls back to the packer's own stats)
-  const [liveBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
+  const [editedBoxes, setLiveBoxes] = useState<PlannerBox[] | null>(null);
   // a plan opened from a share link (exact positions as shared)
   const [sharedBoxes, setSharedBoxes] = useState<PlannerBox[] | null>(null);
+  // Undo/reset may restore the exact selected plan. Don't label it as modified
+  // merely because the editor returned cloned boxes.
+  const liveBoxes = useMemo(() => editedBoxes && !samePlannerLayout(editedBoxes, sharedBoxes ?? result.boxes)
+    ? editedBoxes : null, [editedBoxes, sharedBoxes, result.boxes]);
   const stats = useMemo(() => {
     const effective = liveBoxes ?? sharedBoxes;
     return effective ? computeStats(effective, container) : result.stats;

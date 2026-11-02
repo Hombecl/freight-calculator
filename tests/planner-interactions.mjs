@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {loweredBox,shouldCalculate} from '../src/lib/plannerInteractions.ts';
+import {loweredBox,shouldCalculate,samePlannerLayout} from '../src/lib/plannerInteractions.ts';
 import {packWithConstraints} from '../src/lib/binPacking.ts';
 const box={id:'a',label:'a',l:20,w:20,h:20,px:0,py:0,pz:0,color:1};
 const overhead={...box,id:'b',py:20};
@@ -15,3 +15,8 @@ const container={l:100,w:100,h:100,maxWeight:1000};
 const specs=[{id:'cargo',label:'Cargo',l:40,w:30,h:20,weight:5,qty:12,color:1}];
 assert.deepEqual(packWithConstraints(container,specs),packWithConstraints(container,specs),'unchanged inputs do not explore a new alternative');
 console.log('Planner friction regressions: deterministic re-pack, no-op guard, and lower-only support placement passed');
+
+assert.equal(samePlannerLayout([box],[{...box}]),true,'cloning a plan is not an edit');
+for(const delta of [{px:1},{weight:5},{specId:'new'},{unloadOrder:2},{l:21}])assert.equal(samePlannerLayout([box],[{...box,...delta}]),false,'placement and report changes are real edits');
+assert.equal(samePlannerLayout([box],[]),false,'deleting cargo is an edit');
+assert.equal(samePlannerLayout([{weight:undefined,...box}],[box]),true,'absent optional values stay equivalent');
