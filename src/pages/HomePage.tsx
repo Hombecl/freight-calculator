@@ -113,6 +113,7 @@ export default function HomePage() {
   // (the strongest page) links to each one directly
   const calculators = [
     { to: '/cbm-calculator', title: T('CBM Calculator', 'CBM 計算器'), body: T('Carton → total cubic meters, container fit & air chargeable weight.', '紙箱 → 總立方米、貨櫃裝載同空運計費重量。') },
+    { to: '/ti-hi-calculator', title: T('TI / HI Pallet Calculator', 'TI／HI 卡板計算器'), body: T('Cases per layer and layers per pallet, with a layout to review.', '每層箱數、每板層數，同可核對嘅排位圖。') },
     { to: '/dimensional-weight-calculator', title: T('Dimensional Weight Calculator', '體積重量計算器'), body: T('Billable / DIM weight for FBA, UPS, FedEx, DHL & air freight.', 'FBA、UPS、FedEx、DHL 同空運嘅計費/體積重量。') },
     { to: '/pallet-calculator', title: T('Pallet Calculator', '卡板計算器'), body: T('Cartons per pallet, layers, and pallets needed for an order.', '每板箱數、層數同訂單所需板數。') },
     { to: '/pallet-storage-cost-calculator', title: T('Pallet Storage Cost Calculator', '卡板倉存費用計算器'), body: T('Estimate 3PL / warehouse storage cost per pallet, per month.', '估算 3PL/倉庫每板每月倉存費用。') },
@@ -317,13 +318,12 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 py-8 md:py-10">
           <h2 className="text-xl font-bold text-slate-900">{T('Need a quick calculation?','只需要快速計算？')}</h2>
           <p className="text-sm text-slate-600 mt-2">{T('Start with the question you have. Open the full planner when you need a mixed-cargo arrangement.','由你手上嘅問題開始；需要混合貨物擺位時，再進入完整規劃器。')}</p>
-          <div className="grid sm:grid-cols-3 gap-3 mt-5">{calculators.filter(c=>['/cbm-calculator','/pallet-calculator','/dimensional-weight-calculator'].includes(c.to)).map(c=><Link key={c.to} to={c.to} onClick={()=>track('home_entry',`calculator:${c.to}`)} className="border rounded-xl bg-white p-4 hover:border-blue-400"><h3 className="font-semibold text-slate-900">{c.title}</h3><p className="text-xs text-slate-600 mt-2">{c.body}</p></Link>)}</div>
-          <details id="more-tools" className="mt-5 rounded-xl border border-slate-200 bg-white p-4 scroll-mt-24">
+          <div className="grid sm:grid-cols-3 gap-3 mt-5">{calculators.filter(c=>['/cbm-calculator','/pallet-calculator','/ti-hi-calculator'].includes(c.to)).map(c=><Link key={c.to} to={c.to} onClick={()=>track('home_entry',`calculator:${c.to}`)} className="border rounded-xl bg-white p-4 hover:border-blue-400"><h3 className="font-semibold text-slate-900">{c.title}</h3><p className="text-xs text-slate-600 mt-2">{c.body}</p></Link>)}</div>
+          <details id="more-tools" onToggle={e=>{if(e.currentTarget.open)track('secondary_tools_expanded');}} className="mt-5 rounded-xl border border-slate-200 bg-white p-4 scroll-mt-24">
             <summary className="cursor-pointer py-1 font-semibold text-slate-800">{T('Browse all supporting tools','查看全部輔助工具')}</summary>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-              {[...tasks.slice(3),...calculators.filter(c=>!['/cbm-calculator','/pallet-calculator','/dimensional-weight-calculator'].includes(c.to)),
+              {[...tasks.slice(3),...calculators.filter(c=>!['/cbm-calculator','/pallet-calculator','/ti-hi-calculator'].includes(c.to)),
                 {to:'/pallets-per-container',title:T('Pallets per container','每櫃卡板數'),body:T('Compare floor patterns for loaded pallets.','比較整板貨物嘅櫃內地面擺法。')},
-                {to:'/ti-hi-calculator',title:T('TI / HI calculator','TI／HI 計算器'),body:T('Cases per layer and layers per pallet.','每層箱數及每板層數。')},
                 {to:'/pallet-height-calculator',title:T('Pallet height calculator','卡板高度計算器'),body:T('Review mixed-order height and pallet estimates.','核對混合訂單高度及卡板估算。')},
               ].map(c=><Link key={c.to} to={c.to} onClick={()=>track('secondary_tool_open',c.to)} className="rounded-lg border p-4 hover:border-blue-400"><h3 className="font-semibold text-sm">{c.title}</h3><p className="mt-1 text-xs text-slate-600">{c.body}</p></Link>)}
             </div>
