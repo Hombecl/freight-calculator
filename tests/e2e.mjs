@@ -1034,6 +1034,9 @@ await test('warehouse REGRESSION: drag sticks and survives re-renders', async ()
   await page.waitForTimeout(1500); // three.js scene up
   const before = await dpBoxes();
   const canvas = page.locator('canvas').first();
+  // Dismissing the tutorial may scroll toward its button. Pointer coordinates
+  // must target the visible canvas, not the offscreen part above the viewport.
+  await canvas.scrollIntoViewIfNeeded();
   const bb = await canvas.boundingBox();
   // try several grab points — pallet rows sit at different screen spots
   let after = before;
