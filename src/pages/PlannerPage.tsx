@@ -342,6 +342,7 @@ export default function PlannerPage() {
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const highlightedIds=useMemo(()=>focusedSpec&&!hasPendingChanges?currentBoxes.filter(b=>sourceSpec(b,appliedSpecs)?.id===focusedSpec).map(b=>b.id):[],[focusedSpec,hasPendingChanges,currentBoxes,appliedSpecs]);
   const focusCargo=(id:string)=>{setFocusedSpec(v=>v===id?null:id);setSelectedBox(null);if(window.matchMedia('(max-width: 1023px)').matches)document.querySelector('[data-testid="planner-sticky-view"]')?.scrollIntoView({block:'start'});};
+
   const meta = (): PlanMeta => ({
     title: T('Container Load Plan','貨櫃裝載計劃') + (selectedLayout>0 && !liveBoxes && !sharedBoxes ? ` — ${layoutName(selectedMethod,IS_ZH)}` : ''),
     containerLabel: container.label,
@@ -361,6 +362,9 @@ export default function PlannerPage() {
     setReportName(v.name);setWorkflowJob({id:v.jobId,own:false});
     setHistoryMessage(T('Saved version reopened. Confirm own-job again; edits make a new revision.','已重開保存版本。請重新確認自己的工作；修改會產生新版本。'));
   };
+  useEffect(()=>{
+    if(packing.ready && !hasPendingChanges && alternatives.status==='idle')alternatives.start();
+  },[packing.ready,packing.result,hasPendingChanges,alternatives.status]);
   const comparedBase=useRef<typeof packing.result|null>(null);
   useEffect(()=>{
     if(alternatives.status!=='done' || comparedBase.current===packing.result)return;
@@ -456,12 +460,7 @@ export default function PlannerPage() {
       </div>
 
       {showUpdates && <div className="mb-4"><ProductUpdate planner /></div>}
-      {packing.ready && <PlannerLayoutOptions container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
-        if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
-        if(!preserve())return;
-        setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});
-        track('planner_layout_select',index===0?'recommended':alternatives.items[index-1]?.id??'recommended');
-      }}/> }
+
 
       <div className="grid lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)] 2xl:grid-cols-[480px_minmax(0,1fr)] gap-4 xl:gap-5">
         {/* left: inputs */}
@@ -670,6 +669,12 @@ export default function PlannerPage() {
             onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
             registerSnapshot={(fn) => { snapshotFn.current = fn; }}
           />
+      {packing.ready && <PlannerLayoutOptions container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
+        if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
+        if(!preserve())return;
+        setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});
+        track('planner_layout_select',index===0?'recommended':alternatives.items[index-1]?.id??'recommended');
+      }}/> }
           {!liveBoxes&&!sharedBoxes&&result.optimization.addedCount>0&&<div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
           <p className="mt-2 text-xs text-slate-500">{T('Green frame = door · slow rotation resumes in 3D view; fixed views stay still.','綠色框＝門口 · 返回立體視角會恢復慢轉；固定視角保持靜止。')}</p>
 </>} 

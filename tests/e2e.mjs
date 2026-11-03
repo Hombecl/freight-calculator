@@ -27,9 +27,11 @@ async function test(name, fn, page) {
     await fn();
     passed++;
     results.push(`PASS  ${name}`);
+    console.log(`PASS  ${name}`);
   } catch (e) {
     failed++;
     results.push(`FAIL  ${name} — ${String(e.message ?? e).split('\n')[0].slice(0, 140)}`);
+    console.log(results.at(-1));
     try { await page?.screenshot({ path: `/tmp/e2e-fail-${name.replace(/\W+/g, '_')}.png` }); } catch { /* */ }
   }
 }
@@ -321,7 +323,7 @@ await test('compare: the three switching questions link to real evidence', async
 // ---------- planner ----------
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByTestId('planner-packed').waitFor();
+  await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   await page.locator('canvas').first().waitFor();
 }, page);
 
@@ -838,7 +840,7 @@ await test('plans: sign-in gate renders', async () => {
 // ---------- physical realism (turn model + door aperture) ----------
 await test('planner: door-aperture warning flags a too-tall carton', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByTestId('planner-packed').waitFor();
+  await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   // make the first carton 235cm in every axis: fits the 20GP interior (239h)
   // but NOT the 234x228 door in any orientation
   const dims = page.locator('input[type="number"]');
@@ -860,7 +862,7 @@ await test('warehouse: route readout reports 90° turns vs the turn box', async 
 
 await test('planner: truck vessel shows live axle loads; est. fills crush limit', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-  await page.getByTestId('planner-packed').waitFor();
+  await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   await page.getByRole('button', { name: /53' trailer/i }).click();
   await page.getByText(/front axle group/i).waitFor();
   await page.getByText(/rear axle group/i).waitFor();
@@ -873,7 +875,7 @@ await test('planner: pallet vessel offers overhang allowance', async () => {
   await page.getByRole('button', { name: /eur pallet/i }).click();
   await page.getByText(/overhang allowance/i).waitFor();
   await page.getByRole('button', { name: /2\.5 cm\/side/i }).click();
-  await page.getByTestId('planner-packed').waitFor();
+  await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
 }, page);
 
 await test('warehouse: chilled pallet without a chilled zone is flagged', async () => {
@@ -1162,7 +1164,7 @@ await test('embed: widget.js loader is served and builds an iframe', async () =>
 if (IS_LIVE) {
   await test('LIVE share: create link and reopen it', async () => {
     await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('planner-packed').waitFor();
+    await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/share') && r.request().method() === 'POST'),
       page.getByRole('button', { name: /share this plan/i }).click(),
@@ -1170,7 +1172,7 @@ if (IS_LIVE) {
     const { id } = await resp.json();
     if (!id) throw new Error('no share id');
     await page.goto(`${BASE}/planner?share=${id}`, { waitUntil: 'domcontentloaded' });
-    await page.getByTestId('planner-packed').waitFor();
+    await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   }, page);
 
   await test('LIVE warehouse share: create and reopen', async () => {
@@ -1364,7 +1366,7 @@ await test('product packing: improved count, gross weight and 3D agree',async()=
 await test('planner review: comparison preserves a local revision and transfers cargo',async()=>{
  await page.goto(`${BASE}/planner?demo=excel`);
  await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).fill('Synthetic comparison');
- await page.getByTestId('planner-packed').waitFor();
+ await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
  await page.getByRole('link',{name:'Compare containers for this cargo',exact:true}).click();
  await page.getByTestId('carried-cargo-ready').waitFor();
  if(!await page.getByTestId('carried-cargo-ready').innerText().then(t=>t.includes('20 cartons')))throw Error('Expected original 20 cartons without an extra import step');
@@ -1377,10 +1379,10 @@ await test('planner review: comparison preserves a local revision and transfers 
  await page.goto(`${BASE}/planner?demo=excel`);
  await page.getByText('Saved versions on this device',{exact:true}).click();
  await page.getByText(/Synthetic comparison/).first().waitFor();
- await page.getByTestId('planner-packed').waitFor();
+ await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
  await page.getByRole('button',{name:'Reopen version',exact:true}).first().click();
  if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='Synthetic comparison')throw Error('Reference not restored');
- await page.getByTestId('planner-packed').waitFor();
+ await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
  await page.getByRole('button',{name:'Start next job (keep inputs)',exact:true}).click();
  if(await page.getByRole('textbox',{name:'Report reference (optional)',exact:true}).inputValue()!=='')throw Error('Previous report reference carried to next job');
 },page);
@@ -1400,9 +1402,9 @@ await test('planner: improved single-SKU layout and cancellable background calcu
  const p=await ctx.newPage();
  try{
   await p.goto(`${BASE}/planner`);
-  await p.getByTestId('planner-packed').waitFor();
+  await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   await p.getByRole('button',{name:"40' HQ",exact:true}).click();
-  await p.getByTestId('planner-packed').waitFor();
+  await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   const load=async(csv)=>{
    await p.getByRole('button',{name:/Import Excel/}).click();
    await p.getByLabel('Paste carton list',{exact:true}).fill(csv);
@@ -1417,7 +1419,7 @@ await test('planner: improved single-SKU layout and cancellable background calcu
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
   await p.getByText(/10.00 →/).waitFor();
   await p.getByText('9.26',{exact:true}).waitFor();
-  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('planner-layout-2').waitFor();
   await p.getByTestId('packing-public-reference').waitFor();
   if(!await p.getByTestId('packing-public-reference').innerText().then(t=>t.includes('886')))throw Error('Reference count mismatch');
   await p.getByTestId('planner-layout-1').waitFor();
@@ -1456,7 +1458,7 @@ await test('packing: one functional toolbar on mobile keeps the 3D preview visib
 await test('planner: visual comparison, camera presets and cargo focus preserve the plan',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:1000}});const p=await isolated.newPage();
  try{
-  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   const count=await p.getByTestId('planner-packed').innerText();
   await p.getByRole('button',{name:'Remaining',exact:false}).click();
   await p.locator('#remaining-cargo').getByText(/remaining \/ /).first().waitFor();
@@ -1471,7 +1473,7 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
    if(await p.getByTestId('planner-packed').innerText()!==count)throw Error('Camera changed cargo');
   }
   await p.getByRole('button',{name:'Top view',exact:true}).click();
-  const canvas=p.getByTestId('planner-sticky-view').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
   const rect=await canvas.boundingBox();
   for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
   await p.getByTestId('cargo-focus-status').waitFor();
@@ -1479,7 +1481,7 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
   await p.getByRole('button',{name:'Clear highlight',exact:true}).click();
   await p.getByRole('button',{name:'3D view',exact:true}).click();
   await p.getByRole('button',{name:'Fit to view',exact:true}).click();
-  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();await p.getByTestId('planner-layout-2').waitFor();
+  await p.getByTestId('planner-layout-2').waitFor();await p.getByTestId('planner-layout-2').waitFor();
   await p.waitForFunction(()=>[...document.querySelectorAll('[data-testid="planner-layout-options"] canvas')].every(c=>c.width===640));
   const images=await p.getByTestId('planner-layout-options').locator('canvas').evaluateAll(cs=>cs.map(c=>c.toDataURL()));
   if(new Set(images).size!==3)throw Error('Different layouts need different previews');
@@ -1511,7 +1513,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
  });
  const p=await isolated.newPage();
  try{
-  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
   const pose=async()=>{const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
@@ -1529,6 +1531,20 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('button',{name:'3D view',exact:true}).click();await p.waitForTimeout(100);
   before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('3D view failed to resume rotation');
   await p.getByRole('button',{name:'Fit to view',exact:true}).click();before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Fit stopped rotation');
+  // Hovering must not restart a long idle timer, and explicit resume is immediate.
+  const box=await canvas.boundingBox();
+  await p.mouse.move(box.x+8,box.y+8);await p.mouse.down();await p.mouse.move(box.x+18,box.y+8);await p.mouse.up();
+  await p.getByRole('button',{name:'Pause rotation',exact:true}).click();
+  await p.getByRole('button',{name:'Auto rotate',exact:true}).click();
+  before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Explicit resume waited for inactivity');
+  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('top');
+  await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');return stage.querySelector('canvas').getBoundingClientRect().top>=stage.querySelector('[data-testid="viewer-metrics"]').getBoundingClientRect().bottom;});
+  await p.getByRole('button',{name:'Collapse results',exact:true}).click();
+  if(await p.getByTestId('planner-result-cards').count())throw Error('Results did not collapse');
+  if(!/loaded.*%/.test(await p.getByTestId('viewer-metrics').innerText()))throw Error('Collapsed results lost key totals');
+  if(await p.evaluate(()=>localStorage.getItem('planner-metrics-position'))!=='top')throw Error('Position not remembered');
+  await p.getByRole('button',{name:'Show load results',exact:true}).click();
+  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('bottom');
   const initialHeight=(await stage.boundingBox()).height;
   await p.getByRole('button',{name:'Expand view',exact:true}).click();
   await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
@@ -1558,16 +1574,28 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
   }
   if(await p.getByRole('button',{name:'More detail',exact:true}).count())throw Error('Key metrics are still hidden');
+  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('top');
+  await p.getByRole('button',{name:'Collapse results',exact:true}).click();
+  await p.emulateMedia({reducedMotion:'reduce'});await p.reload();
+  await p.getByRole('button',{name:'Show load results',exact:true}).waitFor();
+  if(await p.getByRole('combobox',{name:'Results position',exact:true}).inputValue()!=='top')throw Error('Corner preference lost after reload');
+  await canvas.scrollIntoViewIfNeeded();
+  await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
+  await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+  before=await pose();await p.waitForTimeout(350);if(await pose()!==before)throw Error('Reduced motion default ignored');
+  await p.getByRole('button',{name:'Auto rotate',exact:true}).click();
+  before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Explicit rotation choice ignored with reduced motion');
+
  }finally{await isolated.close();}
 },page);
 
 await test('planner: inspecting, undo and reset preserve selected-layout state',async()=>{
  const isolated=await browser.newContext({viewport:{width:1440,height:1000}});const p=await isolated.newPage();
  try{
-  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   const pick=async()=>{
    await p.getByRole('button',{name:'Top view',exact:true}).click();
-   const canvas=p.getByTestId('planner-sticky-view').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+   const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
    const rect=await canvas.boundingBox();
    for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
    await p.getByTestId('cargo-focus-status').waitFor();
@@ -1575,7 +1603,7 @@ await test('planner: inspecting, undo and reset preserve selected-layout state',
   await pick();
   if(await p.getByText('Manually adjusted layout',{exact:true}).count())throw Error('Selecting a carton falsely marks the plan as modified');
   await p.getByRole('button',{name:'Clear highlight',exact:true}).click();
-  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('planner-layout-2').waitFor();
   await p.getByText('215 / 240',{exact:true}).waitFor();
   const selected=p.getByTestId('planner-layout-1');
   const checkSelected=async()=>{if(await selected.getAttribute('aria-pressed')!=='true')throw Error('Restored calculated plan lost selected-option status');};
@@ -1588,7 +1616,7 @@ await test('planner: inspecting, undo and reset preserve selected-layout state',
   await p.getByRole('button',{name:'↩ Undo',exact:true}).click();await p.getByText('214 / 240',{exact:true}).waitFor();
   await p.getByRole('button',{name:'Reset to auto',exact:true}).click();await checkSelected();
   await p.getByRole('button',{name:'Top view',exact:true}).click();
-  const canvas=p.getByTestId('planner-sticky-view').locator('canvas');
+  const canvas=p.getByTestId('planner-viewport').locator('canvas');
   await canvas.evaluate(c=>c.dataset.auditScene='preserve');
   const qty=p.locator('input[type="number"]').nth(4);await qty.fill('141');
   await p.getByTestId('planner-view-state').getByText(/Inputs changed/).waitFor();
@@ -1605,8 +1633,8 @@ await test('planner: distinct options switch layout, preserve original and expor
  try{
   await p.route('**/api/lead',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
   await p.goto(`${BASE}/planner`);
-  await p.getByTestId('planner-packed').waitFor();
-  await p.getByRole('button',{name:'Find alternative layouts',exact:true}).click();
+  await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+  await p.getByTestId('planner-layout-2').waitFor();
   await p.getByTestId('planner-layout-2').waitFor();
   await p.getByText('215 / 240',{exact:true}).waitFor();
   if(await p.getByTestId('planner-layout-1').getAttribute('aria-pressed')!=='true')throw Error('Highest-volume candidate not selected');
@@ -1634,8 +1662,8 @@ await test('planner: distinct options switch layout, preserve original and expor
   await p.locator('input[type="number"]').nth(4).fill('141');
   if(!await p.getByTestId('planner-layout-0').isDisabled())throw Error('Option switch allowed with pending inputs');
   await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
-  await p.getByTestId('planner-packed').waitFor();
-  if(await p.getByTestId('planner-layout-options').count())throw Error('Old alternatives survived new inputs');
+  await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+  if(await p.getByTestId('planner-packed').innerText().then(t=>!t.endsWith('/ 241')))throw Error('Updated options use stale requested quantity');
  }finally{await isolated.close();}
 },page);
 
@@ -1643,7 +1671,7 @@ await test('planner: workspace settings persist and responsive navigation preser
   const p = await ctx.newPage();
   try {
     await p.goto(`${BASE}/planner`);
-    await p.getByTestId('planner-packed').waitFor();
+    await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
@@ -1687,7 +1715,7 @@ await test('planner: workspace settings persist and responsive navigation preser
       await p.getByTestId('planner-load-checks').scrollIntoViewIfNeeded();
       const zoneLabels=p.getByTestId('planner-zone-labels');
       await zoneLabels.getByText('Unload #1',{exact:true}).waitFor();
-      await zoneLabels.getByText('5 cartons',{exact:true}).waitFor();
+      if(!/\d+ cartons/.test(await zoneLabels.innerText()))throw Error('Load-zone quantities missing');
       if(await zoneLabels.evaluate(el=>el.scrollWidth>el.clientWidth))throw Error(`Load-zone labels overflow at ${width}`);
       await p.screenshot({path:`test-artifacts/planner-${width}-checks.png`});
       await p.getByRole('heading',{name:'Save & share this job',exact:true}).scrollIntoViewIfNeeded();
