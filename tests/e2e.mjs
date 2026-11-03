@@ -1542,7 +1542,9 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('button',{name:'Compact view',exact:true}).click();
   await mkdir('test-artifacts',{recursive:true});
   for(const width of [390,768,1440]){
-   await p.setViewportSize({width,height:1000});await stage.evaluate(el=>el.scrollIntoView({block:'start'}));
+   await p.setViewportSize({width,height:1000});
+   await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();const m=stage.querySelector('[data-testid="viewer-metrics"]')?.getBoundingClientRect();return c&&m&&c.bottom<=m.top+2;},{},{timeout:5000});
+   await stage.evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
    const bounds=await stage.boundingBox(),metrics=await p.getByTestId('viewer-metrics').boundingBox(),model=await canvas.boundingBox();
    if(metrics.y+metrics.height>bounds.y+bounds.height+1||metrics.x<bounds.x||metrics.x+metrics.width>bounds.x+bounds.width+1)throw Error('Floating metrics overflow viewer');
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
