@@ -666,7 +666,7 @@ export default function PlannerPage() {
             autoSpin={rotateView&&!selectedBox}
             hideSummary
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
-            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
+            key={`${containerKey}-${seed}`}
             container={packSpace}
             boxes={sharedBoxes ?? result.boxes}
             grid={1}
