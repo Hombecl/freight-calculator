@@ -630,7 +630,7 @@ export default function PlannerPage() {
         </div>
 
         {/* right: 3D editor */}
-        <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start" data-testid="planner-sticky-view">
+        <div className="min-w-0 scroll-mt-28 xl:scroll-mt-20 lg:sticky lg:top-28 xl:top-20 self-start" data-testid="planner-sticky-view">
           {packing.ready && <>
           <div role="status" data-testid="planner-view-state" className={`mb-2 text-xs ${hasPendingChanges?'text-amber-800':'text-slate-600'}`}>{hasPendingChanges?T('Inputs changed · calculate to update this view','輸入已修改 · 請重新計算更新畫面'):review.complete?T('Up to date · ready to export','已更新 · 可匯出'):T('Up to date · draft export includes remaining cargo and checks','已更新 · 草稿匯出會包括餘貨及核對項目')}</div>
 
@@ -640,7 +640,7 @@ export default function PlannerPage() {
             viewerActions={<button type="button" aria-pressed={rotateView&&!selectedBox} onClick={()=>{if(rotateView&&!selectedBox)setRotateView(false);else {setSelectedBox(null);setRotateView(true);}}} className="min-h-9 rounded-lg px-2 font-medium text-blue-700 hover:bg-blue-50">{rotateView&&!selectedBox?T('Pause rotation','暫停旋轉'):T('Auto rotate','自動旋轉')}</button>}
             viewerMetrics={<section aria-label={T('Load results','裝載結果')}>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2 text-xs">
-                <h2 className="font-bold text-slate-900">{T('Load results','裝載結果')} · {container.label}</h2>
+                <div className="flex gap-2 items-center"><h2 className="font-bold text-slate-900">{T('Load results','裝載結果')}</h2><span className="text-slate-500">{container.label}</span></div>
                 <span className={hasInputChanges?'text-amber-800':'text-blue-700'}>{hasInputChanges?T('Previous plan · inputs changed','上次方案 · 輸入已修改'):liveBoxes?T('Manually adjusted layout','手動調整擺位'):sharedBoxes?T('Shared layout','分享擺位'):T('Calculated layout','已計算擺位')}</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2" data-testid="planner-result-cards">

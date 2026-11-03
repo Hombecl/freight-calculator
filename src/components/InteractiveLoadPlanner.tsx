@@ -958,11 +958,11 @@ export default function InteractiveLoadPlanner({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?'relative rounded-2xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden':'relative'} style={cameraTools?{height:fullscreen?'100dvh':expandedView?'max(600px, 88dvh)':'clamp(520px, 74dvh, 680px)'}:undefined}>
+      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden':'relative'} style={cameraTools?{height:fullscreen?'100dvh':expandedView?'max(600px, 88dvh)':'clamp(520px, 74dvh, 680px)'}:undefined}>
         {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-col gap-2 items-start pointer-events-none">
           <div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="pointer-events-auto max-w-full flex flex-wrap items-center gap-0.5 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
             {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`min-h-9 whitespace-nowrap rounded-lg px-2 ${viewPreset===view?'bg-blue-600 text-white':'text-slate-700 hover:bg-slate-100'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
-            <button type="button" disabled={!threeLoaded||webglFailed} className="min-h-9 whitespace-nowrap rounded-lg px-2 text-slate-700 hover:bg-slate-100" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合畫面':'Fit to view'}</button>
+            <button type="button" aria-label={IS_ZH?'貼合畫面':'Fit to view'} disabled={!threeLoaded||webglFailed} className="min-h-9 whitespace-nowrap rounded-lg px-2 text-slate-700 hover:bg-slate-100" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合':'Fit'}</button>
           </div>
           <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
             <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>

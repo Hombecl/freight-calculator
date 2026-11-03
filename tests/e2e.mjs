@@ -1542,7 +1542,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('button',{name:'Compact view',exact:true}).click();
   await mkdir('test-artifacts',{recursive:true});
   for(const width of [390,768,1440]){
-   await p.setViewportSize({width,height:1000});await stage.scrollIntoViewIfNeeded();
+   await p.setViewportSize({width,height:1000});await stage.evaluate(el=>el.scrollIntoView({block:'start'}));
    const bounds=await stage.boundingBox(),metrics=await p.getByTestId('viewer-metrics').boundingBox(),model=await canvas.boundingBox();
    if(metrics.y+metrics.height>bounds.y+bounds.height+1||metrics.x<bounds.x||metrics.x+metrics.width>bounds.x+bounds.width+1)throw Error('Floating metrics overflow viewer');
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
@@ -1640,7 +1640,7 @@ await test('planner: workspace settings persist and responsive navigation preser
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
-      await resultsPanel.getByText('Remaining',{exact:true}).waitFor();
+    await resultsPanel.getByText('Remaining',{exact:true}).waitFor();
     await resultsPanel.getByText('Loaded cargo weight',{exact:true}).waitFor();
     if(await p.getByRole('button',{name:'Less detail',exact:true}).count())throw Error('Key metrics must not be collapsible');
     const rotation=p.getByRole('button',{name:/^(Auto rotate|Pause rotation)$/});
