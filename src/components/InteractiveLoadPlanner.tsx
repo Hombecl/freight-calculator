@@ -37,6 +37,7 @@ interface Props {
   viewerMetrics?: ReactNode;
   viewerActions?: ReactNode;
   viewerOptions?: (expanded:boolean)=>ReactNode;
+  onExpandedChange?: (expanded:boolean)=>void;
   highlightIds?: string[];
   onViewChange?: (rotating: boolean) => void;
   readOnly?: boolean;
@@ -120,6 +121,7 @@ export default function InteractiveLoadPlanner({
   viewerMetrics,
   viewerActions,
   viewerOptions,
+  onExpandedChange,
   highlightIds,
   onViewChange,
   readOnly = false,
@@ -166,7 +168,8 @@ export default function InteractiveLoadPlanner({
     setExpandedView(true);
   };
   const isExpanded=expandedView||fullscreen;
-  useEffect(()=>{if(!expandedView)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpandedView(false);};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[expandedView]);
+  useEffect(()=>{onExpandedChange?.(isExpanded);return()=>onExpandedChange?.(false);},[isExpanded,onExpandedChange]);
+  useEffect(()=>{if(!expandedView)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpandedView(false);};window.addEventListener('keydown',close);return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',close);};},[expandedView]);
   const toolbarRef=useRef<HTMLDivElement>(null);
   const metricsRef=useRef<HTMLDivElement>(null);
   const [viewerInsets,setViewerInsets]=useState({top:112,bottom:160});
@@ -976,7 +979,7 @@ export default function InteractiveLoadPlanner({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden':'relative'} style={cameraTools?{height:fullscreen?'100dvh':expandedView?'max(600px, 88dvh)':'clamp(520px, 74dvh, 680px)'}:undefined}>
+      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?`${expandedView?'fixed inset-0 z-[100]':'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl'} border border-slate-200 bg-slate-100 shadow-sm overflow-hidden`:'relative'} style={cameraTools?{height:isExpanded?'100dvh':'clamp(520px, 74dvh, 680px)'}:undefined}>
         <div className={cameraTools?`absolute inset-0 ${isExpanded&&viewerOptions?'bottom-[240px] lg:bottom-0 lg:right-[320px]':''}`:undefined}>
         {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-wrap justify-between gap-2 items-start pointer-events-none">
           <div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="pointer-events-auto max-w-full flex flex-wrap items-center gap-0.5 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">

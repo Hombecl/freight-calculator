@@ -32,6 +32,7 @@ async function test(name, fn, page) {
     failed++;
     results.push(`FAIL  ${name} — ${String(e.message ?? e).split('\n')[0].slice(0, 140)}`);
     console.log(results.at(-1));
+    console.error(e.stack);
     try { await page?.screenshot({ path: `/tmp/e2e-fail-${name.replace(/\W+/g, '_')}.png` }); } catch { /* */ }
   }
 }
@@ -1505,7 +1506,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   Object.defineProperty(window,'THREE',{configurable:true,set(three){
    Object.defineProperty(three,'WebGLRenderer',{configurable:true,set(Renderer){
     Object.defineProperty(three,'WebGLRenderer',{configurable:true,writable:true,value:class extends Renderer{
-     constructor(...args){super(...args);const render=this.render.bind(this);this.render=(scene,camera)=>{render(scene,camera);this.domElement.dataset.camera=camera.position.toArray().join(',');this.domElement.dataset.distance=String(camera.position.length());};}
+     constructor(...args){super(...args);const render=this.render.bind(this);this.render=(scene,camera)=>{render(scene,camera);this.domElement.dataset.camera=camera.position.toArray().join(',');this.domElement.dataset.distance=String(camera.position.length());this.domElement.dataset.renderedSize=`${this.domElement.width}x${this.domElement.height}`;};}
     }});
    }});
    Object.defineProperty(window,'THREE',{configurable:true,writable:true,value:three});
@@ -1592,6 +1593,10 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();return c&&c.height>120;});
   const mobileCanvas=await canvas.boundingBox(),mobilePanel=await mobileOptions.boundingBox();
   if(mobileCanvas.y+mobileCanvas.height>mobilePanel.y+2)throw Error('Mobile comparison covers 3D');
+  if(!await stage.evaluate(el=>el.contains(document.elementFromPoint(20,20))))throw Error('Site header covers fallback viewer');
+  const mobileStage=await stage.boundingBox();
+  if(Math.abs(mobileStage.y)>1||Math.abs(mobileStage.height-900)>2)throw Error('Fallback does not fill the mobile screen');
+  await p.waitForFunction(()=>{const c=document.querySelector('[data-testid="planner-viewport"] canvas');return c?.dataset.renderedSize===`${c?.width}x${c?.height}`;});
   await p.screenshot({path:'test-artifacts/expanded-mobile-comparison.png'});
   await p.keyboard.press('Escape');await mobileOptions.waitFor({state:'hidden'});
 

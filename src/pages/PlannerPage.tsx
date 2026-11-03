@@ -284,6 +284,7 @@ export default function PlannerPage() {
 
   // ---- save to account (Tier 1 data gravity — see ENTERPRISE.md) ----
   const [saveState, setSaveState] = useState<'idle' | 'busy' | 'saved' | 'error'>('idle');
+  const [expandedViewer,setExpandedViewer]=useState(false);
   const [rotateView,setRotateView]=useState(()=>typeof window!=='undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [accountName,setAccountName]=useState('');
   const [saveAsTemplate,setSaveAsTemplate]=useState(false);
@@ -629,13 +630,14 @@ export default function PlannerPage() {
         </div>
 
         {/* right: 3D editor */}
-        <div className="min-w-0 scroll-mt-28 xl:scroll-mt-20 lg:sticky lg:top-28 xl:top-20 self-start" data-testid="planner-sticky-view">
+        <div className={`min-w-0 scroll-mt-28 xl:scroll-mt-20 lg:sticky lg:top-28 xl:top-20 self-start ${expandedViewer?'relative z-[100]':''}`} data-testid="planner-sticky-view">
           {packing.ready && <>
           <div role="status" data-testid="planner-view-state" className={`mb-2 text-xs ${hasPendingChanges?'text-amber-800':'text-slate-600'}`}>{hasPendingChanges?T('Inputs changed · calculate to update this view','輸入已修改 · 請重新計算更新畫面'):review.complete?T('Up to date · ready to export','已更新 · 可匯出'):T('Up to date · draft export includes remaining cargo and checks','已更新 · 草稿匯出會包括餘貨及核對項目')}</div>
 
           {focusedSpec&&<div className="mb-2 flex items-center justify-between gap-2 rounded bg-blue-50 px-2 py-1 text-xs" data-testid="cargo-focus-status"><span>{T('Highlighted','已標示')}: {appliedSpecs.find(s=>s.id===focusedSpec)?.label} · {highlightedIds.length} {T('loaded cartons','箱已裝')}</span><button type="button" className="underline" onClick={()=>{setFocusedSpec(null);setSelectedBox(null);}}>{T('Clear highlight','清除標示')}</button></div>}
           <InteractiveLoadPlanner
             cameraTools
+            onExpandedChange={setExpandedViewer}
             viewerOptions={expanded=>(<PlannerLayoutOptions compact={expanded} container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
         if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
         if(!preserve())return;
