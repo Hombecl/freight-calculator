@@ -1514,7 +1514,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
   const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
-  const pose=()=>canvas.getAttribute('data-camera');
+  const pose=async()=>{const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
   let before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Default slow rotation stopped');
   await p.getByRole('button',{name:'Pause rotation',exact:true}).click();await p.waitForTimeout(100);
   before=await pose();await p.waitForTimeout(250);if(await pose()!==before)throw Error('Pause ignored');
@@ -1523,7 +1523,8 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   if(Number(await canvas.getAttribute('data-distance'))>=distance*.9)throw Error('Zoom in did not enlarge model');
   await p.getByRole('button',{name:'Zoom out',exact:true}).click();await p.waitForTimeout(100);
   if(Math.abs(Number(await canvas.getAttribute('data-distance'))-distance)>1)throw Error('Zoom out did not restore model scale');
-  await p.getByRole('button',{name:'Top view',exact:true}).click();await p.waitForTimeout(100);
+  await p.getByRole('button',{name:'Top view',exact:true}).click();
+  await p.waitForFunction(()=>{const xyz=document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera?.split(',').map(Number);return xyz&&xyz[1]/Math.hypot(...xyz)>.999;});
   before=await pose();await p.waitForTimeout(250);if(await pose()!==before)throw Error('Fixed view rotates');
   await p.getByRole('button',{name:'3D view',exact:true}).click();await p.waitForTimeout(100);
   before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('3D view failed to resume rotation');
