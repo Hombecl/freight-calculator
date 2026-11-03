@@ -1672,6 +1672,7 @@ await test('planner: workspace settings persist and responsive navigation preser
   try {
     await p.goto(`${BASE}/planner`);
     await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+    await p.getByText('215 / 240',{exact:true}).waitFor();
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
@@ -1695,6 +1696,7 @@ await test('planner: workspace settings persist and responsive navigation preser
     if(await p.getByRole('complementary',{name:'Product updates'}).count()) throw Error('Announcement preference ignored');
     if(await p.getByTestId('planner-packed').innerText() !== packed) throw Error('Display preference changed cargo');
     await p.reload();
+    await p.getByText('215 / 240',{exact:true}).waitFor();
     await p.getByRole('button',{name:'Settings',exact:true}).click();
     if(!await dialog.getByRole('checkbox',{name:'Compact desktop navigation (icons only)',exact:true}).isChecked()) throw Error('Preference not persisted');
     await p.keyboard.press('Escape');
