@@ -1514,16 +1514,18 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
  const p=await isolated.newPage();
  try{
   await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+  await p.getByText('215 / 240',{exact:true}).waitFor();
   const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
-  const pose=async()=>{const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
+  const pose=async()=>{await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
   let before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Default slow rotation stopped');
   await p.getByRole('button',{name:'Pause rotation',exact:true}).click();await p.waitForTimeout(100);
   before=await pose();await p.waitForTimeout(250);if(await pose()!==before)throw Error('Pause ignored');
   const distance=Number(await canvas.getAttribute('data-distance'));
   await p.getByRole('button',{name:'Zoom in',exact:true}).click();await p.waitForTimeout(100);
   if(Number(await canvas.getAttribute('data-distance'))>=distance*.9)throw Error('Zoom in did not enlarge model');
-  await p.getByRole('button',{name:'Zoom out',exact:true}).click();await p.waitForTimeout(100);
+  await p.getByRole('button',{name:'Zoom out',exact:true}).click();
+  await p.waitForFunction(d=>Math.abs(Number(document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.distance)-d)<1,distance);
   if(Math.abs(Number(await canvas.getAttribute('data-distance'))-distance)>1)throw Error('Zoom out did not restore model scale');
   await p.getByRole('button',{name:'Top view',exact:true}).click();
   await p.waitForFunction(()=>{const xyz=document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera?.split(',').map(Number);return xyz&&xyz[1]/Math.hypot(...xyz)>.999;});
@@ -1577,6 +1579,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('top');
   await p.getByRole('button',{name:'Collapse results',exact:true}).click();
   await p.emulateMedia({reducedMotion:'reduce'});await p.reload();
+  await p.locator('[data-testid="planner-layout-1"][aria-pressed="true"]').waitFor();
   await p.getByRole('button',{name:'Show load results',exact:true}).waitFor();
   if(await p.getByRole('combobox',{name:'Results position',exact:true}).inputValue()!=='top')throw Error('Corner preference lost after reload');
   await canvas.scrollIntoViewIfNeeded();
