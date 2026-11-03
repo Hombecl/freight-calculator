@@ -1576,11 +1576,14 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   const aBounds=await aCanvas.boundingBox();
   await p.mouse.move(aBounds.x+20,aBounds.y+20);await p.mouse.down();await p.mouse.move(aBounds.x+85,aBounds.y+45);await p.mouse.up();await synchronized();
   await comparison.getByRole('button',{name:'Zoom both views in',exact:true}).click();await synchronized();
+  await p.emulateMedia({reducedMotion:'reduce'});
   await comparison.getByRole('button',{name:'Rotate together',exact:true}).click();
   const beforeA=await aCanvas.getAttribute('data-camera');await p.waitForTimeout(450);if(await aCanvas.getAttribute('data-camera')===beforeA)throw Error('Linked rotation did not start');
   await comparison.getByRole('button',{name:'Pause rotation',exact:true}).click();await p.waitForTimeout(100);
   const pausedA=await aCanvas.getAttribute('data-camera');await p.waitForTimeout(350);if(await aCanvas.getAttribute('data-camera')!==pausedA)throw Error('Comparison pause ignored');
   await synchronized();
+  if(Math.abs(Number(await aCanvas.getAttribute('data-distance'))-Number(await bCanvas.getAttribute('data-distance')))>.1)throw Error('Comparison zoom scales differ');
+  await p.emulateMedia({reducedMotion:'no-preference'});
   if(await p.getByTestId('planner-packed').textContent()!=='215 / 240')throw Error('Preview changed selected plan');
   await p.screenshot({path:'test-artifacts/expanded-ab-comparison.png'});
   await comparison.getByRole('button',{name:'Use layout B',exact:true}).click();

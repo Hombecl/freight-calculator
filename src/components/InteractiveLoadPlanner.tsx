@@ -700,7 +700,7 @@ export default function InteractiveLoadPlanner({
       const frameScale = Math.min(elapsed, 100) / (1000 / 60);
       lastFrame = now;
       // Rotate at a fixed radius; refitting each frame causes distracting zoom pumping.
-      if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools) && !selectedIdRef.current && mode === 'idle') {
+      if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools || cameraSync) && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
