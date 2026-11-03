@@ -324,13 +324,13 @@ await test('compare: the three switching questions link to real evidence', async
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
-  await page.locator('canvas').first().waitFor();
+  await page.getByTestId('planner-viewport').locator('canvas').first().waitFor();
 }, page);
 
 await test('planner: unchanged calculations and current vessel cannot reset the editor',async()=>{
   const optimize=page.getByRole('button',{name:'Optimise pack',exact:true});
   if(!await optimize.isDisabled())throw Error('Unchanged deterministic calculation is enabled');
-  const canvas=page.locator('canvas').first();
+  const canvas=page.getByTestId('planner-viewport').locator('canvas').first();
   await canvas.evaluate(node=>node.dataset.regressionMarker='retained');
   await page.getByRole('button',{name:"20' GP",exact:true}).click();
   if(await canvas.getAttribute('data-regression-marker')!=='retained')throw Error('Current vessel remounted editor and lost undo history');
@@ -1515,7 +1515,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
  try{
   await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   await p.getByText('215 / 240',{exact:true}).waitFor();
-  const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas').first();await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
   const pose=async()=>{await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
   let before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Default slow rotation stopped');
