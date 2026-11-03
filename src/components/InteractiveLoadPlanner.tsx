@@ -149,6 +149,10 @@ export default function InteractiveLoadPlanner({
   registerSnapshot,
 }: Props) {
   const [expandedView,setExpandedView]=useState(false);
+  const [metricsPosition,setMetricsPosition]=useState<'top'|'bottom'>(()=>{try{return localStorage.getItem('planner-metrics-position')==='top'?'top':'bottom';}catch{return 'bottom';}});
+  const [metricsCollapsed,setMetricsCollapsed]=useState(()=>{try{return localStorage.getItem('planner-metrics-collapsed')==='true';}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem('planner-metrics-position',metricsPosition);localStorage.setItem('planner-metrics-collapsed',String(metricsCollapsed));}catch{/* Storage is optional. */}},[metricsPosition,metricsCollapsed]);
+  const [toolbarHeight,setToolbarHeight]=useState(88);
   const stageRef=useRef<HTMLDivElement>(null);
   const [fullscreen,setFullscreen]=useState(false);
   useEffect(()=>{const update=()=>setFullscreen(document.fullscreenElement===stageRef.current);document.addEventListener('fullscreenchange',update);return()=>document.removeEventListener('fullscreenchange',update);},[]);
@@ -164,14 +168,17 @@ export default function InteractiveLoadPlanner({
   useEffect(()=>{
     if(!cameraTools)return;
     const update=()=>{
-      const next={top:(toolbarRef.current?.offsetHeight??88)+24,bottom:(metricsRef.current?.offsetHeight??136)+24};
+      const toolbar=toolbarRef.current?.offsetHeight??88;
+      const metrics=metricsRef.current?.offsetHeight??136;
+      setToolbarHeight(toolbar);
+      const next=metricsPosition==='top'?{top:toolbar+metrics+36,bottom:12}:{top:toolbar+24,bottom:metrics+24};
       setViewerInsets(prev=>prev.top===next.top&&prev.bottom===next.bottom?prev:next);
     };
     const observer=new ResizeObserver(update);
     if(toolbarRef.current)observer.observe(toolbarRef.current);
     if(metricsRef.current)observer.observe(metricsRef.current);
     update();return()=>observer.disconnect();
-  },[cameraTools]);
+  },[cameraTools,metricsPosition,metricsCollapsed]);
   const zoomRef=useRef<((factor:number)=>void)|null>(null);
   const [viewPreset,setViewPreset]=useState<ViewPreset|'custom'>('perspective');
   const presetRef=useRef<((view:ViewPreset|'fit')=>void)|null>(null);
@@ -547,7 +554,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const onMove = (e: PointerEvent) => {
-      lastPointerRef.current = performance.now();
+      if(mode!=='idle')lastPointerRef.current = performance.now();
       if (mode === 'orbit') {
         const dx = e.clientX - last.x;
         const dy = e.clientY - last.y;
@@ -638,13 +645,13 @@ export default function InteractiveLoadPlanner({
       lastFrame = now;
       // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
       // (slower) after 10s of inactivity so the scene never feels frozen
-      if (autoSpinRef.current && !fixedViewRef.current && !reducedMotion.matches && !selectedIdRef.current && mode === 'idle') {
+      if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools) && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
           if(cameraTools)fitCamera();else applyCamera();
-        } else if (idleFor > 10_000) {
-          theta -= 0.0009 * frameScale;
+        } else if (idleFor > (cameraTools ? 1200 : 10_000)) {
+          theta -= (cameraTools ? 0.0022 : 0.0009) * frameScale;
           if(cameraTools)fitCamera();else applyCamera();
         }
       }
@@ -714,7 +721,7 @@ export default function InteractiveLoadPlanner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
 
-  useEffect(()=>{if(autoSpin){setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
+  useEffect(()=>{if(autoSpin){lastPointerRef.current=0;interactedRef.current=false;setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -991,7 +998,15 @@ export default function InteractiveLoadPlanner({
           )}
         </div>
         </div>
-        {cameraTools&&<div className="absolute bottom-3 inset-x-3 z-10 pointer-events-none flex justify-end"><div ref={metricsRef} className="pointer-events-auto w-full max-w-[560px] rounded-xl border border-white bg-white/95 p-3 shadow-md" data-testid="viewer-metrics">{viewerMetrics}</div></div>}
+        {cameraTools&&<div className="absolute inset-x-3 z-10 pointer-events-none flex justify-end" style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
+          <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[560px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">
+            <div className="flex flex-wrap justify-end items-center gap-2 mb-1 text-xs text-slate-600">
+              <label className="flex items-center gap-1">{IS_ZH?'位置':'Position'}<select aria-label={IS_ZH?'數據卡位置':'Results position'} value={metricsPosition} onChange={e=>setMetricsPosition(e.target.value as 'top'|'bottom')} className="min-h-8 rounded border border-slate-200 bg-white px-1"><option value="top">{IS_ZH?'右上':'Top right'}</option><option value="bottom">{IS_ZH?'右下':'Bottom right'}</option></select></label>
+              <button type="button" aria-expanded={!metricsCollapsed} onClick={()=>setMetricsCollapsed(v=>!v)} className="min-h-8 rounded border border-slate-200 bg-white px-2">{metricsCollapsed?(IS_ZH?'展開裝載數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')}</button>
+            </div>
+            {metricsCollapsed?<div className="text-sm font-semibold text-slate-800">{boxesRef.current.length} {IS_ZH?'箱':'loaded'} · {util.toFixed(1)}%</div>:viewerMetrics}
+          </div>
+        </div>}
         {/* interaction affordance — fades away on first pointer-down */}
         {hintOverlay && threeLoaded && !webglFailed && (
           <div
