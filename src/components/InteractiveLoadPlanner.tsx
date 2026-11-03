@@ -1,4 +1,5 @@
-import {Maximize2, X, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight} from 'lucide-react';
+import type {CameraSync} from '../lib/viewerCameraSync';
+import {Maximize2, X, ChevronDown, ChevronUp, Settings2} from 'lucide-react';
 import {fitOrbitDistance,fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
 import {loweredBox} from '../lib/plannerInteractions';
 import { useRef, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
@@ -34,11 +35,16 @@ export type { PlannerBox };
 
 interface Props {
   cameraTools?: boolean;
+  cameraSync?: CameraSync;
+  onCameraInteract?: ()=>void;
+  minimalViewer?: boolean;
+  viewerComparison?: (close:()=>void,exit:()=>void)=>ReactNode;
   viewerMetrics?: ReactNode;
   viewerActions?: ReactNode;
   viewerOptions?: (expanded:boolean)=>ReactNode;
   onExpandedChange?: (expanded:boolean)=>void;
   highlightIds?: string[];
+  centerMarker?: {x:number;y:number;z:number}|null;
   onViewChange?: (rotating: boolean) => void;
   readOnly?: boolean;
   placedCountTestId?: string;
@@ -118,11 +124,16 @@ const useThree = (): boolean => {
 
 export default function InteractiveLoadPlanner({
   cameraTools = false,
+  cameraSync,
+  onCameraInteract,
+  minimalViewer = false,
+  viewerComparison,
   viewerMetrics,
   viewerActions,
   viewerOptions,
   onExpandedChange,
   highlightIds,
+  centerMarker,
   onViewChange,
   readOnly = false,
   placedCountTestId,
@@ -153,6 +164,11 @@ export default function InteractiveLoadPlanner({
   onAction,
   registerSnapshot,
 }: Props) {
+  const [comparisonOpen,setComparisonOpen]=useState(false);
+  const [panelTall,setPanelTall]=useState(false);
+  const [positionMenu,setPositionMenu]=useState(false);
+  const [metricsLeft,setMetricsLeft]=useState(()=>{try{return localStorage.getItem("planner-metrics-left")==="true";}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem("planner-metrics-left",String(metricsLeft));}catch{}},[metricsLeft]);
   const [expandedView,setExpandedView]=useState(false);
   const [metricsPosition,setMetricsPosition]=useState<'top'|'bottom'>(()=>{try{return localStorage.getItem('planner-metrics-position')==='top'?'top':'bottom';}catch{return 'bottom';}});
   const [metricsCollapsed,setMetricsCollapsed]=useState(()=>{try{return localStorage.getItem('planner-metrics-collapsed')==='true';}catch{return false;}});
@@ -168,8 +184,29 @@ export default function InteractiveLoadPlanner({
     setExpandedView(true);
   };
   const isExpanded=expandedView||fullscreen;
+  useEffect(()=>{if(!isExpanded)setComparisonOpen(false);},[isExpanded]);
   useEffect(()=>{onExpandedChange?.(isExpanded);return()=>onExpandedChange?.(false);},[isExpanded,onExpandedChange]);
   useEffect(()=>{if(!expandedView)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpandedView(false);};window.addEventListener('keydown',close);return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',close);};},[expandedView]);
+  useEffect(()=>{
+    if(!isExpanded)return;
+    const previous=document.activeElement as HTMLElement|null;
+    const stage=stageRef.current;
+    const trap=(e:KeyboardEvent)=>{
+      if(e.key!=='Tab'||!stage)return;
+      const buttons=Array.from(stage.querySelectorAll<HTMLElement>('button:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]')).filter(el=>el.getClientRects().length>0);
+      const first=buttons[0],last=buttons[buttons.length-1];
+      if(!first)return;
+      if(e.shiftKey&&(document.activeElement===first||!stage.contains(document.activeElement))){e.preventDefault();last.focus();}
+      else if(!e.shiftKey&&(document.activeElement===last||!stage.contains(document.activeElement))){e.preventDefault();first.focus();}
+    };
+    stage?.addEventListener('keydown',trap);
+    return()=>{stage?.removeEventListener('keydown',trap);previous?.focus();};
+  },[isExpanded]);
+  useEffect(()=>{
+    if(!isExpanded)return;
+    const frame=requestAnimationFrame(()=>Array.from(stageRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')??[]).find(button=>button.getClientRects().length>0)?.focus());
+    return()=>cancelAnimationFrame(frame);
+  },[isExpanded,comparisonOpen]);
   const toolbarRef=useRef<HTMLDivElement>(null);
   const metricsRef=useRef<HTMLDivElement>(null);
   const [viewerInsets,setViewerInsets]=useState({top:112,bottom:160});
@@ -195,6 +232,7 @@ export default function InteractiveLoadPlanner({
   const highlightRef=useRef(highlighted);highlightRef.current=highlighted;
   const fixedViewRef=useRef(false);
   const resumeViewRef=useRef<(()=>void)|null>(null);
+  const cameraInteractRef=useRef(onCameraInteract);cameraInteractRef.current=onCameraInteract;
   const actionRef=useRef(onAction); actionRef.current=onAction;
   const [actionMessage,setActionMessage]=useState('');
   const resetViewRef = useRef<(() => void) | null>(null);
@@ -278,6 +316,8 @@ export default function InteractiveLoadPlanner({
     let radius = maxDim * (lightTheme ? 1.75 : 2.1);
     let theta = Math.PI * 0.25; // azimuth
     let phi = Math.PI * 0.32;   // polar from +Y
+    let zoomScale=1;
+    let receivingCamera=false;
     const applyCamera = () => {
       camera.position.set(
         target.x + radius * Math.sin(phi) * Math.sin(theta),
@@ -286,11 +326,17 @@ export default function InteractiveLoadPlanner({
       );
       camera.lookAt(target);
       needsRender = true;
+      if(cameraSync&&!receivingCamera)cameraSync.publish({theta,phi,zoom:zoomScale,fixed:fixedViewRef.current,radius,aspect:camera.aspect});
     };
-    let zoomScale=1;
     const fitCamera=()=>{radius=(fixedViewRef.current?fitViewDistance(container,camera.aspect,camera.fov,theta,phi):fitOrbitDistance(container,camera.aspect,camera.fov,phi))*zoomScale;applyCamera();};
-    zoomRef.current=(factor)=>{zoomScale=clamp(zoomScale*factor,.35,3);if(cameraTools)fitCamera();else {radius*=factor;applyCamera();}};
-    if(cameraTools)fitCamera();else applyCamera();
+    zoomRef.current=(factor)=>{zoomScale=clamp(zoomScale*factor,.35,3);if(cameraTools||cameraSync)fitCamera();else {radius*=factor;applyCamera();}};
+    const receiveCamera=(pose:ReturnType<CameraSync['get']>)=>{
+      receivingCamera=true;
+      theta=pose.theta;phi=pose.phi;zoomScale=pose.zoom;fixedViewRef.current=pose.fixed;
+      if(pose.radius!=null&&Math.abs((pose.aspect??0)-camera.aspect)<.001){radius=pose.radius;applyCamera();}else fitCamera();receivingCamera=false;
+    };
+    const unsubscribeCamera=cameraSync?.subscribe(receiveCamera);
+    if(cameraSync)receiveCamera(cameraSync.get());else if(cameraTools)fitCamera();else applyCamera();
     resumeViewRef.current=()=>{fixedViewRef.current=false;theta=Math.PI/4;phi=Math.PI*0.32;setViewPreset('perspective');fitCamera();};
     presetRef.current=(view)=>{
       if(view!=='fit'){const angles=viewAngles(view,doorEdge);theta=angles.theta;phi=angles.phi;setViewPreset(view);}
@@ -531,6 +577,7 @@ export default function InteractiveLoadPlanner({
     };
 
     const onDown = (e: PointerEvent) => {
+      cameraInteractRef.current?.();
       if (!interactedRef.current) { interactedRef.current = true; setInteracted(true); }
       lastPointerRef.current = performance.now();
       setNdc(e);
@@ -623,9 +670,10 @@ export default function InteractiveLoadPlanner({
     };
 
     const onWheel = (e: WheelEvent) => {
+      cameraInteractRef.current?.();
       e.preventDefault();
       lastPointerRef.current = performance.now();
-      if(cameraTools)zoomRef.current?.(1 + Math.sign(e.deltaY)*.1);
+      if(cameraTools||cameraSync)zoomRef.current?.(1 + Math.sign(e.deltaY)*.1);
       else {radius = clamp(radius * (1 + Math.sign(e.deltaY) * 0.1), maxDim * 0.6, maxDim * 6);applyCamera();}
     };
 
@@ -652,7 +700,7 @@ export default function InteractiveLoadPlanner({
       const frameScale = Math.min(elapsed, 100) / (1000 / 60);
       lastFrame = now;
       // Rotate at a fixed radius; refitting each frame causes distracting zoom pumping.
-      if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools) && !selectedIdRef.current && mode === 'idle') {
+      if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools || cameraSync) && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
@@ -702,7 +750,7 @@ export default function InteractiveLoadPlanner({
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      if(cameraTools)fitCamera();
+      if(cameraSync)receiveCamera(cameraSync.get());else if(cameraTools)fitCamera();
       needsRender = true;
     };
     window.addEventListener('resize', onResize);
@@ -710,6 +758,7 @@ export default function InteractiveLoadPlanner({
     sizeObserver.observe(mount);
 
     return () => {
+      unsubscribeCamera?.();
       cancelAnimationFrame(raf);
       visibility.disconnect();
       window.removeEventListener('resize', onResize);
@@ -733,7 +782,7 @@ export default function InteractiveLoadPlanner({
       zoomRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
+  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools, cameraSync]);
 
   useEffect(()=>{if(autoSpin){lastPointerRef.current=0;interactedRef.current=false;setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
@@ -743,9 +792,23 @@ export default function InteractiveLoadPlanner({
     if (!api) return;
     api.meshById.forEach((m: any, id: string) => {
       m.material.emissive?.setHex(id === selectedId ? 0x2563eb : highlighted.has(id) ? 0x14532d : 0x000000);
+      if(cameraTools){m.material.transparent=highlighted.size>0&&!highlighted.has(id);m.material.opacity=m.material.transparent ? .3 : 1;}
     });
     api.invalidate();
   }, [selectedId,highlighted,boxes,threeLoaded]);
+
+  useEffect(()=>{
+    const api=sceneApi.current;
+    if(!api||!centerMarker)return;
+    const {THREE,scene,offset}=api;
+    const radius=Math.max(container.l,container.w,container.h)*.018;
+    const marker=new THREE.Mesh(new THREE.SphereGeometry(radius,16,12),new THREE.MeshBasicMaterial({color:0xdb2777,depthTest:false,transparent:true,opacity:.9}));
+    marker.position.set(offset.x+centerMarker.x,offset.y+centerMarker.y,offset.z+centerMarker.z);
+    marker.renderOrder=100;
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(marker.position.x,offset.y,marker.position.z),marker.position.clone()]),new THREE.LineBasicMaterial({color:0xdb2777,depthTest:false,transparent:true,opacity:.8}));
+    line.renderOrder=100;scene.add(marker,line);api.invalidate();
+    return()=>{scene.remove(marker,line);marker.geometry.dispose();marker.material.dispose();line.geometry.dispose();line.material.dispose();api.invalidate();};
+  },[centerMarker,threeLoaded,container.l,container.w,container.h]);
 
   // tint flagged boxes red (restores the box's own color when unflagged)
   useEffect(() => {
@@ -978,9 +1041,9 @@ export default function InteractiveLoadPlanner({
   const selected = boxesRef.current.find((b) => b.id === selectedId) || null;
 
   return (
-    <div className={`flex flex-col gap-3 ${className}`}>
-      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?`${expandedView?'fixed inset-0 z-[100]':'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl'} border border-slate-200 bg-slate-100 shadow-sm overflow-hidden`:'relative'} style={cameraTools?{height:isExpanded?'100dvh':'clamp(520px, 74dvh, 680px)'}:undefined}>
-        <div className={cameraTools?`absolute inset-0 ${isExpanded&&viewerOptions?'bottom-[240px] lg:bottom-0 lg:right-[320px]':''}`:undefined}>
+    <div className={`flex flex-col ${minimalViewer?'h-full':'gap-3'} ${className}`}>
+      <div ref={stageRef} role={isExpanded?'dialog':undefined} aria-modal={isExpanded?true:undefined} aria-label={isExpanded?(IS_ZH?'裝載方案全螢幕':'Expanded load planner'):undefined} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?`${expandedView?'fixed inset-0 z-[100]':'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl'} border border-slate-200 bg-slate-100 shadow-sm overflow-hidden`:minimalViewer?'relative h-full':'relative'} style={cameraTools?{height:isExpanded?'100dvh':'clamp(520px, 74dvh, 680px)'}:undefined}>
+        <div style={comparisonOpen?{display:'none'}:undefined} className={cameraTools?`absolute inset-0 ${isExpanded&&viewerOptions?(panelTall?'bottom-[45%] lg:bottom-0 lg:right-[320px]':'bottom-[240px] lg:bottom-0 lg:right-[320px]'):''}`:minimalViewer?'h-full':undefined}>
         {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-wrap justify-between gap-2 items-start pointer-events-none">
           <div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="pointer-events-auto max-w-full flex flex-wrap items-center gap-0.5 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
             {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`min-h-9 whitespace-nowrap rounded-lg px-2 ${viewPreset===view?'bg-blue-600 text-white':'text-slate-700 hover:bg-slate-100'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
@@ -990,14 +1053,15 @@ export default function InteractiveLoadPlanner({
             <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>
             <button type="button" aria-label={IS_ZH?'縮小':'Zoom out'} title={IS_ZH?'縮小':'Zoom out'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(1.25)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">−</button>
             <button type="button" aria-label={isExpanded?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')} aria-pressed={isExpanded} onClick={toggleExpanded} className="min-h-9 flex items-center gap-1 rounded-lg px-2 bg-blue-600 text-white hover:bg-blue-700">{isExpanded?<X size={16}/>:<Maximize2 size={16}/>}<span>{isExpanded?(IS_ZH?'關閉':'Close'):(IS_ZH?'放大比較':'Expand view')}</span></button>
+            {isExpanded&&viewerComparison&&<button type="button" onClick={()=>setComparisonOpen(true)} className="min-h-9 rounded-lg px-2 font-semibold text-blue-700 bg-blue-50">{IS_ZH?'比較 A / B':'Compare A / B'}</button>}
             {viewerActions}
           </div>
         </div>}
-        <div className={cameraTools?'absolute inset-x-0':''} style={cameraTools?viewerInsets:undefined}>
+        <div className={cameraTools?'absolute inset-x-0':minimalViewer?'h-full':''} style={cameraTools?viewerInsets:undefined}>
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-          style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: cameraTools?'100%':viewportHeight, aspectRatio: cameraTools?undefined:viewportAspectRatio,
+          style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: cameraTools||minimalViewer?'100%':viewportHeight, aspectRatio: cameraTools?undefined:viewportAspectRatio,
             backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
@@ -1013,12 +1077,15 @@ export default function InteractiveLoadPlanner({
           )}
         </div>
         </div>
-        {cameraTools&&<div className="absolute inset-x-3 z-10 pointer-events-none flex justify-end" style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
-          <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[560px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">
+        {cameraTools&&<div className={`absolute inset-x-3 z-10 pointer-events-none flex ${metricsLeft?'justify-start':'justify-end'}`} style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
+          <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[500px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">
             <div className="flex flex-wrap justify-end items-center gap-2 mb-1 text-xs text-slate-600">
-              <span className="mr-auto text-[10px] font-semibold text-slate-500">DimPack3D</span>
-              <div role="group" aria-label={IS_ZH?'數據卡位置':'Results position'} className="flex rounded-lg bg-slate-100 p-0.5">
-                {(['top','bottom'] as const).map(pos=><button key={pos} type="button" aria-label={pos==='top'?(IS_ZH?'移至右上':'Move results to top right'):(IS_ZH?'移至右下':'Move results to bottom right')} title={pos==='top'?(IS_ZH?'移至右上':'Move results to top right'):(IS_ZH?'移至右下':'Move results to bottom right')} aria-pressed={metricsPosition===pos} onClick={()=>setMetricsPosition(pos)} className={`p-1.5 rounded-md ${metricsPosition===pos?'bg-white text-blue-700 shadow-sm':'text-slate-500'}`}>{pos==='top'?<ArrowUpRight size={16}/>:<ArrowDownRight size={16}/>}</button>)}
+              <h2 className="mr-auto text-xs font-semibold text-slate-800">{IS_ZH?'裝載結果':'Load results'}</h2>
+              <div className="relative">
+                <button type="button" aria-label={IS_ZH?'數據卡位置':'Results position'} aria-expanded={positionMenu} onClick={()=>setPositionMenu(v=>!v)} className="p-1.5 rounded-lg hover:bg-slate-100"><Settings2 size={16}/></button>
+                {positionMenu&&<div className={`absolute ${metricsPosition==='top'?'top-full':'bottom-full'} ${metricsLeft?'left-0':'right-0'} z-30 w-44 rounded-lg border bg-white p-2 shadow-lg`} role="group" aria-label={IS_ZH?'選擇數據位置':'Choose results position'}>
+                  {(['top','bottom'] as const).flatMap(pos=>[false,true].map(left=><button key={`${pos}-${left}`} type="button" aria-label={`Move results to ${pos} ${left?'left':'right'}`} aria-pressed={metricsPosition===pos&&metricsLeft===left} onClick={()=>{setMetricsPosition(pos);setMetricsLeft(left);setPositionMenu(false);}} className="block w-full rounded px-2 py-2 text-left hover:bg-blue-50">{IS_ZH?`${left?'左':'右'}${pos==='top'?'上':'下'}`:`${pos==='top'?'Top':'Bottom'} ${left?'left':'right'}`}</button>))}
+                </div>}
               </div>
               <button type="button" aria-label={metricsCollapsed?(IS_ZH?'展開裝載數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')} title={metricsCollapsed?(IS_ZH?'展開數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')} aria-expanded={!metricsCollapsed} onClick={()=>setMetricsCollapsed(v=>!v)} className="p-2 rounded-lg hover:bg-slate-100">{metricsCollapsed?<ChevronUp size={16}/>:<ChevronDown size={16}/>}</button>
             </div>
@@ -1027,10 +1094,13 @@ export default function InteractiveLoadPlanner({
         </div>}
         {cameraTools&&<div data-testid="viewer-watermark" style={{bottom:metricsPosition==='bottom'?viewerInsets.bottom+8:12}} className="pointer-events-none absolute left-4 z-10 select-none text-xs font-semibold tracking-wide text-slate-500/70">◇ DimPack3D.com</div>}
         </div>
-        {cameraTools&&isExpanded&&viewerOptions&&<aside aria-label={IS_ZH?'全螢幕方案比較':'Expanded layout comparison'} className="absolute bottom-0 inset-x-0 h-[240px] lg:inset-x-auto lg:right-0 lg:top-0 lg:h-full lg:w-[320px] overflow-auto border-t lg:border-t-0 lg:border-l border-slate-200 bg-white p-3">
+        {cameraTools&&isExpanded&&!comparisonOpen&&viewerOptions&&<aside aria-label={IS_ZH?'全螢幕方案比較':'Expanded layout comparison'} className={`absolute bottom-0 inset-x-0 ${panelTall?'h-[45%]':'h-[240px]'} lg:inset-x-auto lg:right-0 lg:top-0 lg:h-full lg:w-[320px] flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white p-3`}>
           <div className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-white pb-2"><strong className="text-sm">{IS_ZH?'選擇裝載方案':'Choose a layout'}</strong><button type="button" onClick={toggleExpanded} aria-label={IS_ZH?'關閉放大畫面':'Close expanded view'} className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs"><X size={16}/>{IS_ZH?'關閉':'Close'}</button></div>
-          {viewerOptions(true)}
+          <button type="button" className="lg:hidden shrink-0 rounded bg-slate-100 py-1 text-xs mb-1" aria-expanded={panelTall} onClick={()=>setPanelTall(v=>!v)}>{panelTall?(IS_ZH?'縮小方案面板':'Less panel'):(IS_ZH?'展開方案面板':'More layouts')}</button>
+          <div className="min-h-0 flex-1 overflow-auto">{viewerOptions(true)}</div>
+          <div className="sticky bottom-0 bg-white pt-2"><button type="button" onClick={toggleExpanded} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white">{IS_ZH?'使用此方案 · 返回':'Use this layout · return'}</button></div>
         </aside>}
+        {cameraTools&&isExpanded&&comparisonOpen&&viewerComparison?.(()=>setComparisonOpen(false),()=>{void toggleExpanded();})}
         {/* interaction affordance — fades away on first pointer-down */}
         {hintOverlay && threeLoaded && !webglFailed && (
           <div
@@ -1048,6 +1118,7 @@ export default function InteractiveLoadPlanner({
         )}
       </div>
 
+      {!minimalViewer&&<>
       {!readOnly && !selected && <p className="text-xs text-slate-500">{IS_ZH ? "先點選 3D 紙箱，才可旋轉、放低或刪除。" : "Select a carton in 3D to enable Rotate, Drop and Delete."}</p>}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {lightTheme && <button type="button" onClick={() => resetViewRef.current?.()} className="rounded border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700">{IS_ZH ? "重設視角" : "Reset view"}</button>}
@@ -1106,6 +1177,7 @@ export default function InteractiveLoadPlanner({
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>}
+      </>}
       {cameraTools&&!isExpanded&&viewerOptions?.(false)}
     </div>
   );

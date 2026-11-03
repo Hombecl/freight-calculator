@@ -11,6 +11,7 @@ export default function PlannerLayoutOptions({compact=false,container,benchmark,
  const options=[{id:'recommended' as const,result:base},...items];
  const ranked=options.map((option,i)=>({option,i})).sort((a,b)=>b.option.result.stats.volumeUtil-a.option.result.stats.volumeUtil || b.option.result.boxes.length-a.option.result.boxes.length);
  const recommended=ranked[0].option.result;
+ const current=options[selected]?.result??base;
  const difference=(result:OptimizedResult,rank:number)=>{
    if(rank===0)return ranked.some((o,j)=>j>0&&Math.abs(o.option.result.stats.volumeUtil-recommended.stats.volumeUtil)<.05)?T('Recommended · joint-highest capacity','推薦 · 並列最高容量'):T('Recommended · highest capacity','推薦 · 最高容量');
    const volumeGap=(recommended.stats.volumeUtil-result.stats.volumeUtil).toFixed(1);
@@ -40,9 +41,10 @@ export default function PlannerLayoutOptions({compact=false,container,benchmark,
        <span>{T('Loaded','已裝')}<strong className="block text-lg text-slate-900">{option.result.boxes.length}</strong></span>
        <span>{T('Remaining','未裝')}<strong className="block text-lg text-amber-800">{option.result.unplaced}</strong></span>
      </span>
+     {!modified&&selected!==i&&<span className="mt-2 text-xs font-medium text-blue-800">{option.result.boxes.length===current.boxes.length?T('Same carton count as selected','與已選方案箱數相同'):T(`${option.result.boxes.length-current.boxes.length>0?'+':''}${option.result.boxes.length-current.boxes.length} cartons vs selected`, `比已選方案 ${option.result.boxes.length-current.boxes.length>0?'+':''}${option.result.boxes.length-current.boxes.length} 箱`)}</span>}
      <span className="mt-2 text-xs text-slate-600">{option.result.stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} kg · {T('Cargo centre height','重心高度')} {option.result.stats.cog.y.toFixed(1)} cm</span>
      {rank>0&&<span className="mt-1 text-xs text-slate-600">{Math.abs(option.result.stats.cog.y-recommended.stats.cog.y)>=.5?T(`Cargo centre ${Math.abs(option.result.stats.cog.y-recommended.stats.cog.y).toFixed(1)} cm ${option.result.stats.cog.y<recommended.stats.cog.y?'lower':'higher'} than recommended`, `重心比推薦方案${option.result.stats.cog.y<recommended.stats.cog.y?'低':'高'} ${Math.abs(option.result.stats.cog.y-recommended.stats.cog.y).toFixed(1)} cm`):T('Similar centre height; inspect placement to choose.','重心高度相近；可按擺位選擇。')}</span>}
-     <span className="mt-2 text-[11px] text-slate-500">{layoutName(option.id,zh)}</span>
+     <span className={compact?'sr-only':'mt-2 text-[11px] text-slate-500'}>{layoutName(option.id,zh)}</span>
     </button>)}
    </div>
   </>}
