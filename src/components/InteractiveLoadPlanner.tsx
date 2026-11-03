@@ -1,6 +1,6 @@
 import {fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
 import {loweredBox} from '../lib/plannerInteractions';
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { IS_ZH } from '../lib/locale';
 import type { PlannerBox } from '../lib/plannerBox';
 
@@ -33,8 +33,10 @@ export type { PlannerBox };
 
 interface Props {
   cameraTools?: boolean;
+  viewerMetrics?: ReactNode;
+  viewerActions?: ReactNode;
   highlightIds?: string[];
-  onViewChange?: () => void;
+  onViewChange?: (rotating: boolean) => void;
   readOnly?: boolean;
   placedCountTestId?: string;
   className?: string;
@@ -113,6 +115,8 @@ const useThree = (): boolean => {
 
 export default function InteractiveLoadPlanner({
   cameraTools = false,
+  viewerMetrics,
+  viewerActions,
   highlightIds,
   onViewChange,
   readOnly = false,
@@ -144,6 +148,31 @@ export default function InteractiveLoadPlanner({
   onAction,
   registerSnapshot,
 }: Props) {
+  const [expandedView,setExpandedView]=useState(false);
+  const stageRef=useRef<HTMLDivElement>(null);
+  const [fullscreen,setFullscreen]=useState(false);
+  useEffect(()=>{const update=()=>setFullscreen(document.fullscreenElement===stageRef.current);document.addEventListener('fullscreenchange',update);return()=>document.removeEventListener('fullscreenchange',update);},[]);
+  const toggleExpanded=async()=>{
+    if(document.fullscreenElement===stageRef.current){await document.exitFullscreen();return;}
+    if(expandedView){setExpandedView(false);return;}
+    if(stageRef.current?.requestFullscreen){try{await stageRef.current.requestFullscreen();return;}catch{/* Embedded browsers may block fullscreen; keep an in-page expanded view. */}}
+    setExpandedView(true);
+  };
+  const toolbarRef=useRef<HTMLDivElement>(null);
+  const metricsRef=useRef<HTMLDivElement>(null);
+  const [viewerInsets,setViewerInsets]=useState({top:112,bottom:160});
+  useEffect(()=>{
+    if(!cameraTools)return;
+    const update=()=>{
+      const next={top:(toolbarRef.current?.offsetHeight??88)+24,bottom:(metricsRef.current?.offsetHeight??136)+24};
+      setViewerInsets(prev=>prev.top===next.top&&prev.bottom===next.bottom?prev:next);
+    };
+    const observer=new ResizeObserver(update);
+    if(toolbarRef.current)observer.observe(toolbarRef.current);
+    if(metricsRef.current)observer.observe(metricsRef.current);
+    update();return()=>observer.disconnect();
+  },[cameraTools]);
+  const zoomRef=useRef<((factor:number)=>void)|null>(null);
   const [viewPreset,setViewPreset]=useState<ViewPreset|'custom'>('perspective');
   const presetRef=useRef<((view:ViewPreset|'fit')=>void)|null>(null);
   const viewChangeRef=useRef(onViewChange);viewChangeRef.current=onViewChange;
@@ -243,15 +272,19 @@ export default function InteractiveLoadPlanner({
       camera.lookAt(target);
       needsRender = true;
     };
-    const fitCamera=()=>{radius=fitViewDistance(container,camera.aspect,camera.fov,theta,phi);applyCamera();};
+    let zoomScale=1;
+    const fitCamera=()=>{radius=fitViewDistance(container,camera.aspect,camera.fov,theta,phi)*zoomScale;applyCamera();};
+    zoomRef.current=(factor)=>{zoomScale=clamp(zoomScale*factor,.35,3);if(cameraTools)fitCamera();else {radius*=factor;applyCamera();}};
     if(cameraTools)fitCamera();else applyCamera();
     resumeViewRef.current=()=>{theta=Math.PI/4;phi=Math.PI*0.32;setViewPreset('perspective');fitCamera();};
     presetRef.current=(view)=>{
       if(view!=='fit'){const angles=viewAngles(view,doorEdge);theta=angles.theta;phi=angles.phi;setViewPreset(view);}
-      fixedViewRef.current=true;viewChangeRef.current?.();fitCamera();
+      zoomScale=1;
+      if(view!=='fit'){fixedViewRef.current=view!=='perspective';viewChangeRef.current?.(view==='perspective');}
+      fitCamera();
     };
     resetViewRef.current = () => { theta = Math.PI * 0.25; phi = Math.PI * 0.32;setViewPreset('perspective');
-      if(cameraTools){fixedViewRef.current=true;viewChangeRef.current?.();fitCamera();}
+      if(cameraTools){zoomScale=1;fixedViewRef.current=false;viewChangeRef.current?.(true);fitCamera();}
       else {radius=maxDim*(lightTheme?1.75:2.1);applyCamera();}
     };
 
@@ -577,8 +610,8 @@ export default function InteractiveLoadPlanner({
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       lastPointerRef.current = performance.now();
-      radius = clamp(radius * (1 + Math.sign(e.deltaY) * 0.1), maxDim * 0.6, maxDim * 6);
-      applyCamera();
+      if(cameraTools)zoomRef.current?.(1 + Math.sign(e.deltaY)*.1);
+      else {radius = clamp(radius * (1 + Math.sign(e.deltaY) * 0.1), maxDim * 0.6, maxDim * 6);applyCamera();}
     };
 
     dom.addEventListener('pointerdown', onDown);
@@ -676,11 +709,12 @@ export default function InteractiveLoadPlanner({
       resetViewRef.current = null;
       presetRef.current = null;
       resumeViewRef.current = null;
+      zoomRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools]);
 
-  useEffect(()=>{if(autoSpin){if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
+  useEffect(()=>{if(autoSpin){setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
   // keep highlight in sync when selection changes via React
   useEffect(() => {
@@ -924,16 +958,24 @@ export default function InteractiveLoadPlanner({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      {cameraTools&&<div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="flex flex-wrap items-center gap-1 text-xs">
-        {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`rounded border px-2.5 py-2 ${viewPreset===view?'border-blue-400 bg-blue-50 text-blue-800':'bg-white text-slate-700'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
-        <button type="button" disabled={!threeLoaded||webglFailed} className="rounded border bg-white px-2.5 py-2" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合畫面':'Fit to view'}</button>
-        {showDoor&&<span className="text-emerald-800 px-1">{IS_ZH?'綠色框＝門口':'Green frame = door'}</span>}
-      </div>}
-      <div className="relative">
+      <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden':'relative'} style={cameraTools?{height:fullscreen?'100dvh':expandedView?'max(600px, 88dvh)':'clamp(520px, 74dvh, 680px)'}:undefined}>
+        {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-col gap-2 items-start pointer-events-none">
+          <div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="pointer-events-auto max-w-full flex flex-wrap items-center gap-0.5 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
+            {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`min-h-9 whitespace-nowrap rounded-lg px-2 ${viewPreset===view?'bg-blue-600 text-white':'text-slate-700 hover:bg-slate-100'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
+            <button type="button" aria-label={IS_ZH?'貼合畫面':'Fit to view'} disabled={!threeLoaded||webglFailed} className="min-h-9 whitespace-nowrap rounded-lg px-2 text-slate-700 hover:bg-slate-100" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合':'Fit'}</button>
+          </div>
+          <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
+            <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>
+            <button type="button" aria-label={IS_ZH?'縮小':'Zoom out'} title={IS_ZH?'縮小':'Zoom out'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(1.25)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">−</button>
+            <button type="button" aria-pressed={expandedView||fullscreen} onClick={toggleExpanded} className="min-h-9 rounded-lg px-2 hover:bg-slate-100">{expandedView||fullscreen?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')}</button>
+            {viewerActions}
+          </div>
+        </div>}
+        <div className={cameraTools?'absolute inset-x-0':''} style={cameraTools?viewerInsets:undefined}>
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
-          style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: viewportHeight, aspectRatio: viewportAspectRatio,
+          style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: cameraTools?'100%':viewportHeight, aspectRatio: cameraTools?undefined:viewportAspectRatio,
             backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
@@ -948,6 +990,8 @@ export default function InteractiveLoadPlanner({
             </div>
           )}
         </div>
+        </div>
+        {cameraTools&&<div className="absolute bottom-3 inset-x-3 z-10 pointer-events-none flex justify-end"><div ref={metricsRef} className="pointer-events-auto w-full max-w-[560px] rounded-xl border border-white bg-white/95 p-3 shadow-md" data-testid="viewer-metrics">{viewerMetrics}</div></div>}
         {/* interaction affordance — fades away on first pointer-down */}
         {hintOverlay && threeLoaded && !webglFailed && (
           <div

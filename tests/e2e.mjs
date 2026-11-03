@@ -1412,7 +1412,6 @@ await test('planner: improved single-SKU layout and cancellable background calcu
   };
   await load('name,length,width,height,weight,qty\nBenchmark,60,40,35,1,1000');
   await p.getByText('886 / 1000',{exact:true}).waitFor();
-  await p.getByRole('button',{name:'More detail',exact:true}).click();
   await p.getByTestId('packing-improvement').getByText(/66 cartons/).waitFor();
   await p.getByText('What does this mean for my freight cost?',{exact:true}).click();
   await p.getByLabel('Freight quote for this container (optional)',{exact:true}).fill('8200');
@@ -1467,7 +1466,8 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
   for(const name of ['Top view','Side view','Door view','3D view']){
    await p.getByRole('button',{name,exact:true}).click();
    if(await p.getByRole('button',{name,exact:true}).getAttribute('aria-pressed')!=='true')throw Error('Preset not selected');
-   if(await p.getByRole('button',{name:'Auto rotate',exact:true}).getAttribute('aria-pressed')!=='false')throw Error('Preset rotated away');
+   const spin=p.getByRole('button',{name:name==='3D view'?'Pause rotation':'Auto rotate',exact:true});
+   if(await spin.getAttribute('aria-pressed')!==(name==='3D view'?'true':'false'))throw Error('View rotation policy mismatch');
    if(await p.getByTestId('planner-packed').innerText()!==count)throw Error('Camera changed cargo');
   }
   await p.getByRole('button',{name:'Top view',exact:true}).click();
@@ -1494,6 +1494,70 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
   await p.locator('input[type="number"]').nth(4).fill('141');
   if(!await p.getByRole('button',{name:'Highlight in 3D',exact:true}).first().isDisabled())throw Error('Stale cargo can be focused');
   await p.getByTestId('planner-view-state').getByText(/Inputs changed/).waitFor();
+ }finally{await isolated.close();}
+},page);
+
+await test('planner: floating viewer keeps metrics visible and rotation controllable',async()=>{
+ const isolated=await browser.newContext({viewport:{width:1440,height:1000},screen:{width:1440,height:1000}});
+ await isolated.addInitScript(()=>{
+  Object.defineProperty(window,'THREE',{configurable:true,set(three){
+   Object.defineProperty(three,'WebGLRenderer',{configurable:true,set(Renderer){
+    Object.defineProperty(three,'WebGLRenderer',{configurable:true,writable:true,value:class extends Renderer{
+     constructor(...args){super(...args);const render=this.render.bind(this);this.render=(scene,camera)=>{render(scene,camera);this.domElement.dataset.camera=camera.position.toArray().join(',');this.domElement.dataset.distance=String(camera.position.length());};}
+    }});
+   }});
+   Object.defineProperty(window,'THREE',{configurable:true,writable:true,value:three});
+  }});
+ });
+ const p=await isolated.newPage();
+ try{
+  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+  const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
+  const pose=async()=>{const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
+  let before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Default slow rotation stopped');
+  await p.getByRole('button',{name:'Pause rotation',exact:true}).click();await p.waitForTimeout(100);
+  before=await pose();await p.waitForTimeout(250);if(await pose()!==before)throw Error('Pause ignored');
+  const distance=Number(await canvas.getAttribute('data-distance'));
+  await p.getByRole('button',{name:'Zoom in',exact:true}).click();await p.waitForTimeout(100);
+  if(Number(await canvas.getAttribute('data-distance'))>=distance*.9)throw Error('Zoom in did not enlarge model');
+  await p.getByRole('button',{name:'Zoom out',exact:true}).click();await p.waitForTimeout(100);
+  if(Math.abs(Number(await canvas.getAttribute('data-distance'))-distance)>1)throw Error('Zoom out did not restore model scale');
+  await p.getByRole('button',{name:'Top view',exact:true}).click();
+  await p.waitForFunction(()=>{const xyz=document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera?.split(',').map(Number);return xyz&&xyz[1]/Math.hypot(...xyz)>.999;});
+  before=await pose();await p.waitForTimeout(250);if(await pose()!==before)throw Error('Fixed view rotates');
+  await p.getByRole('button',{name:'3D view',exact:true}).click();await p.waitForTimeout(100);
+  before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('3D view failed to resume rotation');
+  await p.getByRole('button',{name:'Fit to view',exact:true}).click();before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Fit stopped rotation');
+  const initialHeight=(await stage.boundingBox()).height;
+  await p.getByRole('button',{name:'Expand view',exact:true}).click();
+  await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
+  if(!await stage.evaluate(el=>document.fullscreenElement===el)&&(await stage.boundingBox()).height<=initialHeight)throw Error('Expand did not enter fullscreen or enlarge workspace');
+  await p.getByRole('button',{name:'Remaining',exact:false}).click();
+  await stage.locator('#remaining-cargo').waitFor({state:'visible'});
+  await p.getByRole('button',{name:'Remaining',exact:false}).click();
+  await p.getByRole('button',{name:'Compact view',exact:true}).click();
+  await p.getByRole('button',{name:'Expand view',exact:true}).waitFor();
+  await stage.evaluate(el=>{el.requestFullscreen=undefined;});
+  const fallbackHeight=(await stage.boundingBox()).height;
+  await p.getByRole('button',{name:'Expand view',exact:true}).click();
+  await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
+  if((await stage.boundingBox()).height<=fallbackHeight)throw Error('In-page expansion fallback failed');
+  await p.getByRole('button',{name:'Compact view',exact:true}).click();
+  await p.getByRole('button',{name:'Expand view',exact:true}).waitFor();
+  await mkdir('test-artifacts',{recursive:true});
+  for(const width of [390,768,1440]){
+   await p.setViewportSize({width,height:1000});
+   await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();const m=stage.querySelector('[data-testid="viewer-metrics"]')?.getBoundingClientRect();return c&&m&&c.bottom<=m.top+2;},{},{timeout:5000});
+   await stage.evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
+   const bounds=await stage.boundingBox(),metrics=await p.getByTestId('viewer-metrics').boundingBox(),model=await canvas.boundingBox();
+   if(metrics.y+metrics.height>bounds.y+bounds.height+1||metrics.x<bounds.x||metrics.x+metrics.width>bounds.x+bounds.width+1)throw Error('Floating metrics overflow viewer');
+   await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
+   if(model.y+model.height>metrics.y+2)throw Error(`Metrics cover model at ${width}: bottom ${model.y+model.height}, metrics ${metrics.y}, height ${metrics.height}`);
+   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2))throw Error('Viewer causes horizontal overflow');
+   await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
+  }
+  if(await p.getByRole('button',{name:'More detail',exact:true}).count())throw Error('Key metrics are still hidden');
  }finally{await isolated.close();}
 },page);
 
@@ -1583,11 +1647,9 @@ await test('planner: workspace settings persist and responsive navigation preser
     const packed = await p.getByTestId('planner-packed').innerText();
     const resultsPanel=p.getByRole('region',{name:'Load results',exact:true});
     if(await resultsPanel.getByTestId('planner-packed').innerText()!==packed) throw Error('Loaded count is not beside the 3D results');
-    await p.getByRole('button',{name:'More detail',exact:true}).click();
-    await resultsPanel.getByText('Cartons remaining',{exact:true}).waitFor();
+    await resultsPanel.getByText('Remaining',{exact:true}).waitFor();
     await resultsPanel.getByText('Loaded cargo weight',{exact:true}).waitFor();
-    await p.getByRole('button',{name:'Less detail',exact:true}).click();
-    if(await p.getByTestId('planner-packed').innerText()!==packed) throw Error('Collapse changed cargo');
+    if(await p.getByRole('button',{name:'Less detail',exact:true}).count())throw Error('Key metrics must not be collapsible');
     const rotation=p.getByRole('button',{name:/^(Auto rotate|Pause rotation)$/});
     const before=await rotation.getAttribute('aria-pressed'); await rotation.click();
     if(await rotation.getAttribute('aria-pressed')===before) throw Error('Rotation toggle failed');
