@@ -1080,7 +1080,7 @@ export default function InteractiveLoadPlanner({
         {cameraTools&&<div className={`absolute inset-x-3 z-10 pointer-events-none flex ${metricsLeft?'justify-start':'justify-end'}`} style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
           <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[500px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">
             <div className="flex flex-wrap justify-end items-center gap-2 mb-1 text-xs text-slate-600">
-              <span className="mr-auto text-xs font-semibold text-slate-800">{IS_ZH?'裝載結果':'Load results'}</span>
+              <h2 className="mr-auto text-xs font-semibold text-slate-800">{IS_ZH?'裝載結果':'Load results'}</h2>
               <div className="relative">
                 <button type="button" aria-label={IS_ZH?'數據卡位置':'Results position'} aria-expanded={positionMenu} onClick={()=>setPositionMenu(v=>!v)} className="p-1.5 rounded-lg hover:bg-slate-100"><Settings2 size={16}/></button>
                 {positionMenu&&<div className={`absolute ${metricsPosition==='top'?'top-full':'bottom-full'} ${metricsLeft?'left-0':'right-0'} z-30 w-44 rounded-lg border bg-white p-2 shadow-lg`} role="group" aria-label={IS_ZH?'選擇數據位置':'Choose results position'}>
