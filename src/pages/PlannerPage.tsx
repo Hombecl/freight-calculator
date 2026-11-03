@@ -284,7 +284,6 @@ export default function PlannerPage() {
 
   // ---- save to account (Tier 1 data gravity — see ENTERPRISE.md) ----
   const [saveState, setSaveState] = useState<'idle' | 'busy' | 'saved' | 'error'>('idle');
-  const [resultDetails,setResultDetails]=useState(false);
   const [rotateView,setRotateView]=useState(()=>typeof window!=='undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [accountName,setAccountName]=useState('');
   const [saveAsTemplate,setSaveAsTemplate]=useState(false);
@@ -342,7 +341,7 @@ export default function PlannerPage() {
   useEffect(()=>{setFocusedSpec(null);setSelectedBox(null);},[result,hasPendingChanges]);
   const currentBoxes = liveBoxes ?? sharedBoxes ?? result.boxes;
   const highlightedIds=useMemo(()=>focusedSpec&&!hasPendingChanges?currentBoxes.filter(b=>sourceSpec(b,appliedSpecs)?.id===focusedSpec).map(b=>b.id):[],[focusedSpec,hasPendingChanges,currentBoxes,appliedSpecs]);
-  const focusCargo=(id:string)=>{setFocusedSpec(v=>v===id?null:id);setSelectedBox(null);setRotateView(false);if(window.matchMedia('(max-width: 1023px)').matches)document.querySelector('[data-testid="planner-sticky-view"]')?.scrollIntoView({block:'start'});};
+  const focusCargo=(id:string)=>{setFocusedSpec(v=>v===id?null:id);setSelectedBox(null);if(window.matchMedia('(max-width: 1023px)').matches)document.querySelector('[data-testid="planner-sticky-view"]')?.scrollIntoView({block:'start'});};
   const meta = (): PlanMeta => ({
     title: T('Container Load Plan','貨櫃裝載計劃') + (selectedLayout>0 && !liveBoxes && !sharedBoxes ? ` — ${layoutName(selectedMethod,IS_ZH)}` : ''),
     containerLabel: container.label,
@@ -633,43 +632,33 @@ export default function PlannerPage() {
         {/* right: 3D editor */}
         <div className="min-w-0 lg:sticky lg:top-28 xl:top-20 self-start" data-testid="planner-sticky-view">
           {packing.ready && <>
-          <section aria-label={T('Load results', '裝載結果')} className="mb-2 rounded-xl border border-blue-200 bg-white p-2.5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-              <div><h2 className="text-sm font-bold text-slate-900">{T('Load results', '裝載結果')}</h2><p className="text-xs text-slate-500">{CONTAINERS[containerKey].label} · {packSpace.l} × {packSpace.w} × {packSpace.h} cm</p></div>
-              <button type="button" aria-expanded={resultDetails} aria-controls="planner-result-detail" onClick={()=>setResultDetails(v=>!v)} className="text-xs font-semibold text-blue-700 px-2 py-1 rounded border border-blue-200">{resultDetails ? T("Less detail", "收起詳情") : T("More detail", "展開詳情")}</button>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${hasInputChanges ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{hasInputChanges ? T('Previous plan · inputs changed', '上次方案 · 輸入已修改') : liveBoxes ? T('Manually adjusted layout', '手動調整擺位') : sharedBoxes ? T('Shared layout', '分享擺位') : T('Calculated layout', '已計算擺位')}</span>
-            </div>
-            {!resultDetails && <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-xs" data-testid="planner-result-compact">
-              <div><span className="text-slate-500">{T('Loaded','已裝')}</span> <strong data-testid="planner-packed" className="text-slate-900 tabular-nums">{currentBoxes.length} / {totalQty}</strong></div>
-              <button type="button" aria-expanded={showRemaining} aria-controls="remaining-cargo" className="text-left underline decoration-dotted text-amber-800" onClick={()=>setShowRemaining(v=>!v)}>{T('Remaining','未裝')} <strong>{Math.max(0,totalQty-currentBoxes.length)}</strong></button>
-              <div><span className="text-slate-500">{T('Volume','空間')}</span> <strong>{stats.volumeUtil.toFixed(1)}%</strong></div>
-              <div><span className="text-slate-500">{T('Cargo','貨重')}</span> <strong>{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} kg</strong>{appliedSpecs.some(s=>s.weightKnown===false)&&<span className="text-amber-800"> · {T('Incomplete','未完整')}</span>}</div>
-            </div>}
-            {resultDetails && <div id="planner-result-detail">
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-2" data-testid="planner-result-cards">
-              <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs font-medium text-blue-800">{T('Cartons loaded', '已裝箱數')}</p><p data-testid={resultDetails ? "planner-packed" : undefined} className="mt-1 text-xl font-bold text-blue-950 tabular-nums">{currentBoxes.length} / {totalQty}</p><p className="mt-1 text-xs text-blue-700">{T('Loaded / requested', '已裝 / 要求數量')}</p></div>
-              <div className={`rounded-lg p-3 ${totalQty > currentBoxes.length ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-900'}`}><p className="text-xs font-medium">{T('Cartons remaining', '未裝箱數')}</p><p className="mt-1 text-xl font-bold tabular-nums">{Math.max(0,totalQty-currentBoxes.length)}</p><p className="mt-1 text-xs">{totalQty > currentBoxes.length ? T('Review fit & loading rules', '檢查尺寸及裝載限制') : T('All requested cartons fit', '全部要求箱數已裝入')}</p></div>
-              <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-medium text-slate-600">{T('Volume utilization', '空間利用率')}</p><p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stats.volumeUtil.toFixed(1)}%</p><div className="h-1.5 rounded-full bg-slate-200 mt-2 overflow-hidden" aria-hidden="true"><div className="h-full bg-blue-600" style={{width:`${Math.min(100,Math.max(0,stats.volumeUtil))}%`}}/></div><p className="mt-1 text-xs text-slate-500">{T('Of internal volume', '佔內部容積')}</p></div>
-              <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-medium text-slate-600">{T('Loaded cargo weight', '已裝貨物重量')}</p><p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} <span className="text-sm">kg</span></p><p className={`mt-1 text-xs ${appliedSpecs.some(s=>s.weightKnown===false) || (stats.weightUtil??0)>100 ? 'text-amber-800' : 'text-slate-500'}`}>{appliedSpecs.some(s=>s.weightKnown===false) ? T('Incomplete · missing weights', '未完整 · 部分箱重欠缺') : stats.weightUtil != null ? `${stats.weightUtil.toFixed(1)}% ${T('of payload limit', '佔載重上限')}` : T('Payload limit not set', '未設定載重上限')}</p></div>
-            </div>
-            {!liveBoxes && !sharedBoxes && result.optimization.addedCount > 0 && <div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
-            </div>}
-          </section>
           <div role="status" data-testid="planner-view-state" className={`mb-2 text-xs ${hasPendingChanges?'text-amber-800':'text-slate-600'}`}>{hasPendingChanges?T('Inputs changed · calculate to update this view','輸入已修改 · 請重新計算更新畫面'):review.complete?T('Up to date · ready to export','已更新 · 可匯出'):T('Up to date · draft export includes remaining cargo and checks','已更新 · 草稿匯出會包括餘貨及核對項目')}</div>
-          {showRemaining&&<section id="remaining-cargo" className="mb-3 rounded-lg border bg-white p-3 text-xs max-h-52 overflow-auto"><h3 className="font-semibold mb-2">{T('Remaining cargo by type','按貨物類別查看餘貨')}</h3>{review.cargo.filter(r=>r.remaining>0).map(r=><div key={r.id} className="border-t py-2"><strong>{r.label}</strong> · {r.remaining} {T('remaining','箱未裝')} / {r.requested} {T('requested','箱要求')}<p className="text-slate-600">{r.reason&&remainderText(r.reason,IS_ZH)}</p></div>)}{!review.cargo.some(r=>r.remaining>0)&&<p>{T('No remaining cartons in this calculated plan.','此計算方案沒有餘貨。')}</p>}</section>}
+
           {focusedSpec&&<div className="mb-2 flex items-center justify-between gap-2 rounded bg-blue-50 px-2 py-1 text-xs" data-testid="cargo-focus-status"><span>{T('Highlighted','已標示')}: {appliedSpecs.find(s=>s.id===focusedSpec)?.label} · {highlightedIds.length} {T('loaded cartons','箱已裝')}</span><button type="button" className="underline" onClick={()=>{setFocusedSpec(null);setSelectedBox(null);}}>{T('Clear highlight','清除標示')}</button></div>}
-          <div className="flex items-center justify-between gap-2 text-xs mb-2"><span className="text-slate-500">{T("Auto rotation pauses while a carton is selected and follows reduced-motion settings.", "選取紙箱時會暫停自動旋轉，亦會遵從減少動態效果設定。")}</span><button type="button" aria-pressed={rotateView} onClick={()=>setRotateView(v=>!v)} className="shrink-0 border rounded px-2 py-1 text-blue-700">{rotateView ? T("Pause rotation", "暫停旋轉") : T("Auto rotate", "自動旋轉")}</button></div>
           <InteractiveLoadPlanner
             cameraTools
+            viewerActions={<button type="button" aria-pressed={rotateView&&!selectedBox} onClick={()=>{if(rotateView&&!selectedBox)setRotateView(false);else {setSelectedBox(null);setRotateView(true);}}} className="min-h-9 rounded-lg px-2 font-medium text-blue-700 hover:bg-blue-50">{rotateView&&!selectedBox?T('Pause rotation','暫停旋轉'):T('Auto rotate','自動旋轉')}</button>}
+            viewerMetrics={<section aria-label={T('Load results','裝載結果')}>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2 text-xs">
+                <h2 className="font-bold text-slate-900">{T('Load results','裝載結果')} · {container.label}</h2>
+                <span className={hasInputChanges?'text-amber-800':'text-blue-700'}>{hasInputChanges?T('Previous plan · inputs changed','上次方案 · 輸入已修改'):liveBoxes?T('Manually adjusted layout','手動調整擺位'):sharedBoxes?T('Shared layout','分享擺位'):T('Calculated layout','已計算擺位')}</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2" data-testid="planner-result-cards">
+                <div><p className="text-xs text-slate-500">{T('Cartons loaded','已裝箱數')}</p><strong data-testid="planner-packed" className="text-lg leading-tight tabular-nums text-blue-950">{currentBoxes.length} / {totalQty}</strong></div>
+                <button type="button" aria-expanded={showRemaining} aria-controls="remaining-cargo" className="text-left text-amber-800" onClick={()=>setShowRemaining(v=>!v)}><p className="text-xs underline decoration-dotted">{T('Remaining','未裝')}</p><strong className="text-lg leading-tight tabular-nums">{Math.max(0,totalQty-currentBoxes.length)}</strong></button>
+                <div><p className="text-xs text-slate-500">{T('Volume utilization','空間利用率')}</p><strong className="text-lg leading-tight tabular-nums text-blue-950">{stats.volumeUtil.toFixed(1)}%</strong><div className="h-1 rounded bg-slate-100 overflow-hidden mt-1" aria-hidden="true"><div className="h-full bg-blue-500" style={{width:`${Math.min(100,Math.max(0,stats.volumeUtil))}%`}}/></div></div>
+                <div><p className="text-xs text-slate-500">{T('Loaded cargo weight','已裝貨物重量')}</p><strong className="text-lg leading-tight tabular-nums">{stats.totalWeight.toLocaleString(undefined,{maximumFractionDigits:0})} <span className="text-xs">kg</span></strong><p className="text-[10px] text-slate-500">{appliedSpecs.some(s=>s.weightKnown===false)?T('Incomplete · missing weights','未完整 · 部分箱重欠缺'):stats.weightUtil!=null?`${stats.weightUtil.toFixed(1)}% ${T('of payload','佔載重上限')}`:''}</p></div>
+              </div>
+              {showRemaining&&<section id="remaining-cargo" className="mt-3 border-t pt-2 text-xs max-h-32 overflow-auto"><h3 className="font-semibold mb-2">{T('Remaining cargo by type','按貨物類別查看餘貨')}</h3>{review.cargo.filter(r=>r.remaining>0).map(r=><div key={r.id} className="border-t py-2"><strong>{r.label}</strong> · {r.remaining} {T('remaining','箱未裝')} / {r.requested} {T('requested','箱要求')}<p className="text-slate-600">{r.reason&&remainderText(r.reason,IS_ZH)}</p></div>)}{!review.cargo.some(r=>r.remaining>0)&&<p>{T('No remaining cartons in this calculated plan.','此計算方案沒有餘貨。')}</p>}</section>}
+            </section>}
             readOnly={hasPendingChanges}
-            onViewChange={()=>setRotateView(false)}
+            onViewChange={setRotateView}
             highlightIds={highlightedIds}
             selectId={selectedBox}
             onSelect={id=>{setSelectedBox(id);const box=currentBoxes.find(b=>b.id===id);setFocusedSpec(box?sourceSpec(box,appliedSpecs)?.id??null:null);}}
             viewportAspectRatio="16 / 10"
             lightTheme
-            autoSpin={rotateView}
-            viewportHeight={resultDetails ? "min(62.5vw, clamp(180px, calc(100dvh - 540px), 360px))" : "min(62.5vw, clamp(220px, calc(100dvh - 350px), 520px))"}
+            autoSpin={rotateView&&!selectedBox}
             hideSummary
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
             key={`${containerKey}-${seed}-${selectedLayout}-${sharedBoxes ? shareId : ''}`}
@@ -681,6 +670,8 @@ export default function PlannerPage() {
             onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
             registerSnapshot={(fn) => { snapshotFn.current = fn; }}
           />
+          {!liveBoxes&&!sharedBoxes&&result.optimization.addedCount>0&&<div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
+          <p className="mt-2 text-xs text-slate-500">{T('Green frame = door · slow rotation resumes in 3D view; fixed views stay still.','綠色框＝門口 · 返回立體視角會恢復慢轉；固定視角保持靜止。')}</p>
 </>} 
           {!packing.ready && <div className="min-h-96 rounded-xl border bg-slate-50 flex items-center justify-center text-slate-600">{T('Your 3D layout will appear when calculation finishes.', '計算完成後會顯示 3D 擺位。')}</div>}
         </div>
