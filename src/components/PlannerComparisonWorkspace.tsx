@@ -1,5 +1,5 @@
 import {useMemo,useState,useEffect} from 'react';
-import {X} from 'lucide-react';
+import {X,ArrowLeft} from 'lucide-react';
 import InteractiveLoadPlanner from './InteractiveLoadPlanner';
 import {createCameraSync} from '../lib/viewerCameraSync';
 import {viewAngles,type ViewPreset} from '../lib/viewGeometry';
@@ -25,11 +25,11 @@ export default function PlannerComparisonWorkspace({options,container,selected,d
   const best=ranked[0].result.stats.volumeUtil;
   const difference=right.result.boxes.length-left.result.boxes.length;
   const volumeDifference=right.result.stats.volumeUtil-left.result.stats.volumeUtil;
-  return <section className="absolute inset-0 z-30 flex flex-col bg-slate-100" aria-label={T('Compare two layouts','比較兩個方案')} data-testid="planner-comparison-workspace">
+  return <section className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-slate-100" aria-label={T('Compare two layouts','比較兩個方案')} data-testid="planner-comparison-workspace">
     <header className="shrink-0 border-b bg-white px-3 py-2 flex flex-wrap items-center gap-2">
       <h2 className="mr-auto text-sm font-bold">{T('Compare layouts','比較裝載方案')}</h2>
       <span className="hidden sm:inline text-xs text-slate-500">{T('Linked cameras · preview only','同步視角 · 預覽模式')}</span>
-      <button type="button" aria-label={T('Back to selected layout','返回已選方案')} onClick={onClose} className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"><X size={16}/><span className="hidden sm:inline">{T('Back to selected layout','返回已選方案')}</span><span className="sm:hidden">{T('Back','返回')}</span></button>
+      <button type="button" aria-label={T('Back to selected layout','返回已選方案')} onClick={onClose} className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"><ArrowLeft size={16}/><span className="hidden sm:inline">{T('Back to selected layout','返回已選方案')}</span><span className="sm:hidden">{T('Back','返回')}</span></button>
       <button type="button" onClick={onExit} aria-label={T('Close comparison and expanded view','關閉比較及全螢幕')} className="rounded-lg border p-2.5" title={T('Close expanded view','關閉全螢幕')}><X size={18}/></button>
     </header>
     <div className="shrink-0 flex flex-wrap items-center gap-1 px-3 py-2 text-xs">
@@ -44,7 +44,7 @@ export default function PlannerComparisonWorkspace({options,container,selected,d
       {T('B compared with A: ','B 相比 A：')}{difference===0&&Math.abs(volumeDifference)<.05?T('Same capacity · compare arrangement and centre height.','容量相同 · 可比較擺位及重心高度。'):`${difference>0?'+':''}${difference} ${T('cartons','箱')} · ${volumeDifference>0?'+':''}${volumeDifference.toFixed(1)} ${T('percentage points utilization','個百分點利用率')}`}
     </div>
     {!wide&&<div className="shrink-0 flex gap-2 px-3 pb-2" role="group" aria-label={T('Visible comparison','顯示比較方案')}>{(['A','B'] as const).map(side=><button key={side} type="button" aria-pressed={mobileSide===side} onClick={()=>setMobileSide(side)} className={`flex-1 rounded-lg py-2 font-semibold ${mobileSide===side?'bg-blue-600 text-white':'bg-white'}`}>{side}</button>)}</div>}
-    <div className="min-h-0 flex-1 grid lg:grid-cols-2 gap-3 px-3 pb-3">
+    <div className="min-h-[400px] flex-1 grid lg:grid-cols-2 gap-3 px-3 pb-3">
       {([{side:'A',option:left,set:setA},{side:'B',option:right,set:setB}] as const).filter(p=>wide||p.side===mobileSide).map(({side,option,set})=><article key={side} className="min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden" aria-label={`${side}: ${option.name}`}>
         <div className="shrink-0 px-3 pt-3 pb-2 flex gap-2 items-center"><strong className="text-blue-800">{side}</strong><select aria-label={T(`Layout ${side}`,`方案 ${side}`)} value={option.index} onChange={e=>set(Number(e.target.value))} className="min-w-0 flex-1 rounded-lg border px-2 py-2 text-sm">{ranked.map((o,i)=><option key={o.index} value={o.index} disabled={o.index===(side==='A'?b:a)}>{T(`Option ${i+1}`,`方案 ${i+1}`)} · {o.result.stats.volumeUtil.toFixed(1)}% · {o.result.boxes.length} {T('cartons','箱')}</option>)}</select></div>
         <div className="shrink-0 px-3 pb-2 grid grid-cols-3 gap-2 text-xs text-slate-500">
