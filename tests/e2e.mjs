@@ -1498,7 +1498,7 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
 },page);
 
 await test('planner: floating viewer keeps metrics visible and rotation controllable',async()=>{
- const isolated=await browser.newContext({viewport:{width:1440,height:1000}});
+ const isolated=await browser.newContext({viewport:{width:1440,height:1000},screen:{width:1440,height:1000}});
  await isolated.addInitScript(()=>{
   Object.defineProperty(window,'THREE',{configurable:true,set(three){
    Object.defineProperty(three,'WebGLRenderer',{configurable:true,set(Renderer){
@@ -1531,15 +1531,20 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('button',{name:'Fit to view',exact:true}).click();before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Fit stopped rotation');
   const initialHeight=(await stage.boundingBox()).height;
   await p.getByRole('button',{name:'Expand view',exact:true}).click();
-  if((await stage.boundingBox()).height<=initialHeight)throw Error('Expand did not enlarge workspace');
+  await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
+  if(!await stage.evaluate(el=>document.fullscreenElement===el)&&(await stage.boundingBox()).height<=initialHeight)throw Error('Expand did not enter fullscreen or enlarge workspace');
   await p.getByRole('button',{name:'Remaining',exact:false}).click();
   await stage.locator('#remaining-cargo').waitFor({state:'visible'});
   await p.getByRole('button',{name:'Remaining',exact:false}).click();
   await p.getByRole('button',{name:'Compact view',exact:true}).click();
+  await p.getByRole('button',{name:'Expand view',exact:true}).waitFor();
   await stage.evaluate(el=>{el.requestFullscreen=undefined;});
+  const fallbackHeight=(await stage.boundingBox()).height;
   await p.getByRole('button',{name:'Expand view',exact:true}).click();
-  if((await stage.boundingBox()).height<=initialHeight)throw Error('In-page expansion fallback failed');
+  await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
+  if((await stage.boundingBox()).height<=fallbackHeight)throw Error('In-page expansion fallback failed');
   await p.getByRole('button',{name:'Compact view',exact:true}).click();
+  await p.getByRole('button',{name:'Expand view',exact:true}).waitFor();
   await mkdir('test-artifacts',{recursive:true});
   for(const width of [390,768,1440]){
    await p.setViewportSize({width,height:1000});
