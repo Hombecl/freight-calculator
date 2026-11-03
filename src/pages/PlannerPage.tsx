@@ -636,6 +636,12 @@ export default function PlannerPage() {
           {focusedSpec&&<div className="mb-2 flex items-center justify-between gap-2 rounded bg-blue-50 px-2 py-1 text-xs" data-testid="cargo-focus-status"><span>{T('Highlighted','已標示')}: {appliedSpecs.find(s=>s.id===focusedSpec)?.label} · {highlightedIds.length} {T('loaded cartons','箱已裝')}</span><button type="button" className="underline" onClick={()=>{setFocusedSpec(null);setSelectedBox(null);}}>{T('Clear highlight','清除標示')}</button></div>}
           <InteractiveLoadPlanner
             cameraTools
+            viewerOptions={expanded=>(<PlannerLayoutOptions compact={expanded} container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
+        if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
+        if(!preserve())return;
+        setLiveBoxes(null);setSharedBoxes(null);setSelectedBox(null);setFocusedSpec(null);setLayoutChoice({base:packing.result,index});
+        track('planner_layout_select',index===0?'recommended':alternatives.items[index-1]?.id??'recommended');
+      }}/>)}
             viewerActions={<button type="button" aria-pressed={rotateView&&!selectedBox} onClick={()=>{if(rotateView&&!selectedBox)setRotateView(false);else {setSelectedBox(null);setRotateView(true);}}} className="min-h-9 rounded-lg px-2 font-medium text-blue-700 hover:bg-blue-50">{rotateView&&!selectedBox?T('Pause rotation','暫停旋轉'):T('Auto rotate','自動旋轉')}</button>}
             viewerMetrics={<section aria-label={T('Load results','裝載結果')}>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2 text-xs">
@@ -660,7 +666,7 @@ export default function PlannerPage() {
             autoSpin={rotateView&&!selectedBox}
             hideSummary
             flagIds={[...new Set(review.issues.flatMap(i=>i.ids))]}
-            key={`${containerKey}-${seed}-${selectedLayout}-${sharedBoxes ? shareId : ''}`}
+            key={`${containerKey}-${seed}-${sharedBoxes ? shareId : ''}`}
             container={packSpace}
             boxes={sharedBoxes ?? result.boxes}
             grid={1}
@@ -669,12 +675,7 @@ export default function PlannerPage() {
             onAction={(action,outcome)=>track('planner_edit',`${action}:${outcome}`)}
             registerSnapshot={(fn) => { snapshotFn.current = fn; }}
           />
-      {packing.ready && <PlannerLayoutOptions container={packSpace} benchmark={matchingPackingBenchmark(packSpace,appliedSpecs)} base={packing.result} items={alternatives.items} status={alternatives.status} selected={selectedLayout} modified={!!liveBoxes||!!sharedBoxes} disabled={hasPendingChanges} zh={IS_ZH} onFind={()=>{alternatives.start();track('planner_layout_compare');}} onCancel={alternatives.cancel} onSelect={index=>{
-        if(hasPendingChanges || (!liveBoxes && !sharedBoxes && index===selectedLayout))return;
-        if(!preserve())return;
-        setLiveBoxes(null);setSharedBoxes(null);setLayoutChoice({base:packing.result,index});
-        track('planner_layout_select',index===0?'recommended':alternatives.items[index-1]?.id??'recommended');
-      }}/> }
+
           {!liveBoxes&&!sharedBoxes&&result.optimization.addedCount>0&&<div className="mt-3"><PackingGain baseline={result.optimization.baselineCount} loaded={result.boxes.length} zh={IS_ZH}/></div>}
           <p className="mt-2 text-xs text-slate-500">{T('Green frame = door · slow rotation resumes in 3D view; fixed views stay still.','綠色框＝門口 · 返回立體視角會恢復慢轉；固定視角保持靜止。')}</p>
 </>} 
@@ -685,6 +686,7 @@ export default function PlannerPage() {
       {packing.ready && <div className="mt-4 space-y-3"><PlannerReviewPanel review={review} zh={IS_ZH}/>
           {packing.ready && <div data-testid="planner-load-checks" className="text-sm text-slate-600 space-y-4 rounded-xl border border-slate-200 bg-white p-4">
             <h3 className="font-semibold text-slate-900">{T("Load checks & distribution", "裝載檢查與分佈")}</h3>
+            {container.door&&<p className="text-xs text-slate-600 rounded-lg bg-slate-50 p-3">{T(`Door opening: ${container.door.w} × ${container.door.h} cm. Green frame marks the door. Carton fit and unloading-order access are checked; forklift paths and door-swing clearance are not simulated.`, `門口尺寸：${container.door.w} × ${container.door.h} cm。綠框標示門口；會檢查紙箱能否通過及卸貨次序阻擋，未模擬叉車路線或門扇開啟空間。`)}</p>}
             {doorBlocked.length > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-1">
                 🚪 <b>Won't fit through the door:</b> {doorBlocked.map((s) => s.label).join(', ')} — the {CONTAINERS[containerKey].label} door aperture is {CONTAINERS[containerKey].door!.w}×{CONTAINERS[containerKey].door!.h} cm (smaller than the interior). Rotate, resize, or allow a different orientation.

@@ -1,4 +1,5 @@
-import {fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
+import {Maximize2, X, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight} from 'lucide-react';
+import {fitOrbitDistance,fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
 import {loweredBox} from '../lib/plannerInteractions';
 import { useRef, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { IS_ZH } from '../lib/locale';
@@ -35,6 +36,7 @@ interface Props {
   cameraTools?: boolean;
   viewerMetrics?: ReactNode;
   viewerActions?: ReactNode;
+  viewerOptions?: (expanded:boolean)=>ReactNode;
   highlightIds?: string[];
   onViewChange?: (rotating: boolean) => void;
   readOnly?: boolean;
@@ -117,6 +119,7 @@ export default function InteractiveLoadPlanner({
   cameraTools = false,
   viewerMetrics,
   viewerActions,
+  viewerOptions,
   highlightIds,
   onViewChange,
   readOnly = false,
@@ -162,6 +165,8 @@ export default function InteractiveLoadPlanner({
     if(stageRef.current?.requestFullscreen){try{await stageRef.current.requestFullscreen();return;}catch{/* Embedded browsers may block fullscreen; keep an in-page expanded view. */}}
     setExpandedView(true);
   };
+  const isExpanded=expandedView||fullscreen;
+  useEffect(()=>{if(!expandedView)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpandedView(false);};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[expandedView]);
   const toolbarRef=useRef<HTMLDivElement>(null);
   const metricsRef=useRef<HTMLDivElement>(null);
   const [viewerInsets,setViewerInsets]=useState({top:112,bottom:160});
@@ -280,10 +285,10 @@ export default function InteractiveLoadPlanner({
       needsRender = true;
     };
     let zoomScale=1;
-    const fitCamera=()=>{radius=fitViewDistance(container,camera.aspect,camera.fov,theta,phi)*zoomScale;applyCamera();};
+    const fitCamera=()=>{radius=(fixedViewRef.current?fitViewDistance(container,camera.aspect,camera.fov,theta,phi):fitOrbitDistance(container,camera.aspect,camera.fov,phi))*zoomScale;applyCamera();};
     zoomRef.current=(factor)=>{zoomScale=clamp(zoomScale*factor,.35,3);if(cameraTools)fitCamera();else {radius*=factor;applyCamera();}};
     if(cameraTools)fitCamera();else applyCamera();
-    resumeViewRef.current=()=>{theta=Math.PI/4;phi=Math.PI*0.32;setViewPreset('perspective');fitCamera();};
+    resumeViewRef.current=()=>{fixedViewRef.current=false;theta=Math.PI/4;phi=Math.PI*0.32;setViewPreset('perspective');fitCamera();};
     presetRef.current=(view)=>{
       if(view!=='fit'){const angles=viewAngles(view,doorEdge);theta=angles.theta;phi=angles.phi;setViewPreset(view);}
       zoomScale=1;
@@ -643,16 +648,15 @@ export default function InteractiveLoadPlanner({
       if (mode === 'idle' && elapsed < 1000 / 30) return;
       const frameScale = Math.min(elapsed, 100) / (1000 / 60);
       lastFrame = now;
-      // gentle idle orbit so visitors can SEE it is a live 3D scene; resumes
-      // (slower) after 10s of inactivity so the scene never feels frozen
+      // Rotate at a fixed radius; refitting each frame causes distracting zoom pumping.
       if (autoSpinRef.current && !fixedViewRef.current && (!reducedMotion.matches || cameraTools) && !selectedIdRef.current && mode === 'idle') {
         const idleFor = now - lastPointerRef.current;
         if (!interactedRef.current) {
           theta -= 0.0022 * frameScale;
-          if(cameraTools)fitCamera();else applyCamera();
+          applyCamera();
         } else if (idleFor > (cameraTools ? 1200 : 10_000)) {
           theta -= (cameraTools ? 0.0022 : 0.0009) * frameScale;
-          if(cameraTools)fitCamera();else applyCamera();
+          applyCamera();
         }
       }
       // animate the route marker (forklift) along the current path
@@ -676,7 +680,14 @@ export default function InteractiveLoadPlanner({
     registerSnapshot?.(() => {
       try {
         renderScene();
-        return renderer.domElement.toDataURL('image/png');
+        if(!cameraTools)return renderer.domElement.toDataURL('image/png');
+        const branded=document.createElement('canvas');branded.width=renderer.domElement.width;branded.height=renderer.domElement.height;
+        const ctx=branded.getContext('2d');if(!ctx)return renderer.domElement.toDataURL('image/png');
+        ctx.drawImage(renderer.domElement,0,0);
+        const font=Math.max(14,Math.round(branded.width*.02));ctx.font=`600 ${font}px sans-serif`;
+        ctx.fillStyle='rgba(255,255,255,0.8)';ctx.fillRect(8,branded.height-font-20,ctx.measureText('DimPack3D.com').width+16,font+12);
+        ctx.fillStyle='rgba(51,65,85,0.75)';ctx.fillText('DimPack3D.com',16,branded.height-14);
+        return branded.toDataURL('image/png');
       } catch {
         return null;
       }
@@ -966,15 +977,16 @@ export default function InteractiveLoadPlanner({
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
       <div ref={stageRef} data-testid={cameraTools?'planner-viewport':undefined} className={cameraTools?'relative scroll-mt-28 xl:scroll-mt-20 rounded-2xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden':'relative'} style={cameraTools?{height:fullscreen?'100dvh':expandedView?'max(600px, 88dvh)':'clamp(520px, 74dvh, 680px)'}:undefined}>
-        {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-col gap-2 items-start pointer-events-none">
+        <div className={cameraTools?`absolute inset-0 ${isExpanded&&viewerOptions?'bottom-[240px] lg:bottom-0 lg:right-[320px]':''}`:undefined}>
+        {cameraTools&&<div ref={toolbarRef} className="absolute inset-x-3 top-3 z-10 flex flex-wrap justify-between gap-2 items-start pointer-events-none">
           <div role="group" aria-label={IS_ZH?'3D 視角':'3D views'} className="pointer-events-auto max-w-full flex flex-wrap items-center gap-0.5 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
             {(['perspective','top','side','door'] as ViewPreset[]).map((view,i)=><button key={view} type="button" disabled={!threeLoaded||webglFailed} aria-pressed={viewPreset===view} onClick={()=>presetRef.current?.(view)} className={`min-h-9 whitespace-nowrap rounded-lg px-2 ${viewPreset===view?'bg-blue-600 text-white':'text-slate-700 hover:bg-slate-100'}`}>{(IS_ZH?['立體','俯視','側視','門口視角']:['3D view','Top view','Side view','Door view'])[i]}</button>)}
             <button type="button" aria-label={IS_ZH?'貼合畫面':'Fit to view'} disabled={!threeLoaded||webglFailed} className="min-h-9 whitespace-nowrap rounded-lg px-2 text-slate-700 hover:bg-slate-100" onClick={()=>presetRef.current?.('fit')}>{IS_ZH?'貼合':'Fit'}</button>
           </div>
-          <div className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
+          <div className="pointer-events-auto ml-auto flex flex-wrap justify-end items-center gap-1 rounded-xl border border-white bg-white/95 shadow-sm p-1 text-xs">
             <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>
             <button type="button" aria-label={IS_ZH?'縮小':'Zoom out'} title={IS_ZH?'縮小':'Zoom out'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(1.25)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">−</button>
-            <button type="button" aria-pressed={expandedView||fullscreen} onClick={toggleExpanded} className="min-h-9 rounded-lg px-2 hover:bg-slate-100">{expandedView||fullscreen?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')}</button>
+            <button type="button" aria-label={isExpanded?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')} aria-pressed={isExpanded} onClick={toggleExpanded} className="min-h-9 flex items-center gap-1 rounded-lg px-2 bg-blue-600 text-white hover:bg-blue-700">{isExpanded?<X size={16}/>:<Maximize2 size={16}/>}<span>{isExpanded?(IS_ZH?'關閉':'Close'):(IS_ZH?'放大比較':'Expand view')}</span></button>
             {viewerActions}
           </div>
         </div>}
@@ -1001,12 +1013,21 @@ export default function InteractiveLoadPlanner({
         {cameraTools&&<div className="absolute inset-x-3 z-10 pointer-events-none flex justify-end" style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
           <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[560px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">
             <div className="flex flex-wrap justify-end items-center gap-2 mb-1 text-xs text-slate-600">
-              <label className="flex items-center gap-1">{IS_ZH?'位置':'Position'}<select aria-label={IS_ZH?'數據卡位置':'Results position'} value={metricsPosition} onChange={e=>setMetricsPosition(e.target.value as 'top'|'bottom')} className="min-h-8 rounded border border-slate-200 bg-white px-1"><option value="top">{IS_ZH?'右上':'Top right'}</option><option value="bottom">{IS_ZH?'右下':'Bottom right'}</option></select></label>
-              <button type="button" aria-expanded={!metricsCollapsed} onClick={()=>setMetricsCollapsed(v=>!v)} className="min-h-8 rounded border border-slate-200 bg-white px-2">{metricsCollapsed?(IS_ZH?'展開裝載數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')}</button>
+              <span className="mr-auto text-[10px] font-semibold text-slate-500">DimPack3D</span>
+              <div role="group" aria-label={IS_ZH?'數據卡位置':'Results position'} className="flex rounded-lg bg-slate-100 p-0.5">
+                {(['top','bottom'] as const).map(pos=><button key={pos} type="button" aria-label={pos==='top'?(IS_ZH?'移至右上':'Move results to top right'):(IS_ZH?'移至右下':'Move results to bottom right')} title={pos==='top'?(IS_ZH?'移至右上':'Move results to top right'):(IS_ZH?'移至右下':'Move results to bottom right')} aria-pressed={metricsPosition===pos} onClick={()=>setMetricsPosition(pos)} className={`p-1.5 rounded-md ${metricsPosition===pos?'bg-white text-blue-700 shadow-sm':'text-slate-500'}`}>{pos==='top'?<ArrowUpRight size={16}/>:<ArrowDownRight size={16}/>}</button>)}
+              </div>
+              <button type="button" aria-label={metricsCollapsed?(IS_ZH?'展開裝載數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')} title={metricsCollapsed?(IS_ZH?'展開數據':'Show load results'):(IS_ZH?'收起數據':'Collapse results')} aria-expanded={!metricsCollapsed} onClick={()=>setMetricsCollapsed(v=>!v)} className="p-2 rounded-lg hover:bg-slate-100">{metricsCollapsed?<ChevronUp size={16}/>:<ChevronDown size={16}/>}</button>
             </div>
             {metricsCollapsed?<div className="text-sm font-semibold text-slate-800">{boxesRef.current.length} {IS_ZH?'箱':'loaded'} · {util.toFixed(1)}%</div>:viewerMetrics}
           </div>
         </div>}
+        {cameraTools&&<div data-testid="viewer-watermark" style={{bottom:metricsPosition==='bottom'?viewerInsets.bottom+8:12}} className="pointer-events-none absolute left-4 z-10 select-none text-xs font-semibold tracking-wide text-slate-500/70">◇ DimPack3D.com</div>}
+        </div>
+        {cameraTools&&isExpanded&&viewerOptions&&<aside aria-label={IS_ZH?'全螢幕方案比較':'Expanded layout comparison'} className="absolute bottom-0 inset-x-0 h-[240px] lg:inset-x-auto lg:right-0 lg:top-0 lg:h-full lg:w-[320px] overflow-auto border-t lg:border-t-0 lg:border-l border-slate-200 bg-white p-3">
+          <div className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-white pb-2"><strong className="text-sm">{IS_ZH?'選擇裝載方案':'Choose a layout'}</strong><button type="button" onClick={toggleExpanded} aria-label={IS_ZH?'關閉放大畫面':'Close expanded view'} className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs"><X size={16}/>{IS_ZH?'關閉':'Close'}</button></div>
+          {viewerOptions(true)}
+        </aside>}
         {/* interaction affordance — fades away on first pointer-down */}
         {hintOverlay && threeLoaded && !webglFailed && (
           <div
@@ -1082,6 +1103,7 @@ export default function InteractiveLoadPlanner({
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>}
+      {cameraTools&&!isExpanded&&viewerOptions?.(false)}
     </div>
   );
 }

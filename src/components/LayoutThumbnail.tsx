@@ -1,7 +1,7 @@
 import {useEffect,useRef} from 'react';
 import type {PlannerBox} from '../lib/plannerBox';
 /** A common isometric camera draws actual placements; no extra WebGL contexts. */
-export default function LayoutThumbnail({boxes,container,label}:{boxes:PlannerBox[];container:{l:number;w:number;h:number};label:string}){
+export default function LayoutThumbnail({boxes,container,label,compact=false}:{compact?:boolean;boxes:PlannerBox[];container:{l:number;w:number;h:number};label:string}){
  const ref=useRef<HTMLCanvasElement>(null);
  useEffect(()=>{
   const canvas=ref.current,ctx=canvas?.getContext('2d');if(!canvas||!ctx)return;
@@ -24,5 +24,5 @@ export default function LayoutThumbnail({boxes,container,label}:{boxes:PlannerBo
   const verts=[[0,0,0],[l,0,0],[l,0,w],[0,0,w],[0,h,0],[l,h,0],[l,h,w],[0,h,w]];
   for(const [a,b]of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]){const p=point(...verts[a] as [number,number,number]),q=point(...verts[b] as [number,number,number]);ctx.beginPath();ctx.moveTo(...p as [number,number]);ctx.lineTo(...q as [number,number]);ctx.stroke();}
  },[boxes,container.l,container.w,container.h]);
- return <canvas ref={ref} role="img" aria-label={label} className="w-full h-24 object-contain rounded bg-slate-50 my-2"/>;
+ return <canvas ref={ref} role="img" aria-label={label} className={`w-full ${compact?'h-16':'h-24'} object-contain rounded bg-slate-50 my-2`}/>;
 }
