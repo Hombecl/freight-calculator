@@ -32,6 +32,7 @@ async function test(name, fn, page) {
     failed++;
     results.push(`FAIL  ${name} — ${String(e.message ?? e).split('\n')[0].slice(0, 140)}`);
     console.log(results.at(-1));
+    console.error(e.stack);
     try { await page?.screenshot({ path: `/tmp/e2e-fail-${name.replace(/\W+/g, '_')}.png` }); } catch { /* */ }
   }
 }
@@ -324,13 +325,13 @@ await test('compare: the three switching questions link to real evidence', async
 await test('planner: loads with stats and 3D', async () => {
   await page.goto(`${BASE}/planner`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('planner-packed').waitFor();await page.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
-  await page.locator('canvas').first().waitFor();
+  await page.getByTestId('planner-viewport').locator('canvas').first().waitFor();
 }, page);
 
 await test('planner: unchanged calculations and current vessel cannot reset the editor',async()=>{
   const optimize=page.getByRole('button',{name:'Optimise pack',exact:true});
   if(!await optimize.isDisabled())throw Error('Unchanged deterministic calculation is enabled');
-  const canvas=page.locator('canvas').first();
+  const canvas=page.getByTestId('planner-viewport').locator('canvas').first();
   await canvas.evaluate(node=>node.dataset.regressionMarker='retained');
   await page.getByRole('button',{name:"20' GP",exact:true}).click();
   if(await canvas.getAttribute('data-regression-marker')!=='retained')throw Error('Current vessel remounted editor and lost undo history');
@@ -1505,7 +1506,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   Object.defineProperty(window,'THREE',{configurable:true,set(three){
    Object.defineProperty(three,'WebGLRenderer',{configurable:true,set(Renderer){
     Object.defineProperty(three,'WebGLRenderer',{configurable:true,writable:true,value:class extends Renderer{
-     constructor(...args){super(...args);const render=this.render.bind(this);this.render=(scene,camera)=>{render(scene,camera);this.domElement.dataset.camera=camera.position.toArray().join(',');this.domElement.dataset.distance=String(camera.position.length());};}
+     constructor(...args){super(...args);const render=this.render.bind(this);this.render=(scene,camera)=>{render(scene,camera);this.domElement.dataset.camera=camera.position.toArray().join(',');this.domElement.dataset.distance=String(camera.position.length());this.domElement.dataset.renderedSize=`${this.domElement.width}x${this.domElement.height}`;};}
     }});
    }});
    Object.defineProperty(window,'THREE',{configurable:true,writable:true,value:three});
@@ -1515,7 +1516,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
  try{
   await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
   await p.getByText('215 / 240',{exact:true}).waitFor();
-  const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  const stage=p.getByTestId('planner-viewport'),canvas=stage.locator('canvas').first();await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
   const pose=async()=>{await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);const xyz=(await canvas.getAttribute('data-camera')).split(',').map(Number);const r=Math.hypot(...xyz);return xyz.map(v=>(v/r).toFixed(6)).join(',');};
   let before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Default slow rotation stopped');
@@ -1539,22 +1540,32 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await p.getByRole('button',{name:'Pause rotation',exact:true}).click();
   await p.getByRole('button',{name:'Auto rotate',exact:true}).click();
   before=await pose();await p.waitForTimeout(400);if(await pose()===before)throw Error('Explicit resume waited for inactivity');
-  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('top');
+  await p.getByRole('button',{name:'Move results to top right',exact:true}).click();
   await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');return stage.querySelector('canvas').getBoundingClientRect().top>=stage.querySelector('[data-testid="viewer-metrics"]').getBoundingClientRect().bottom;});
   await p.getByRole('button',{name:'Collapse results',exact:true}).click();
   if(await p.getByTestId('planner-result-cards').count())throw Error('Results did not collapse');
   if(!/loaded.*%/.test(await p.getByTestId('viewer-metrics').innerText()))throw Error('Collapsed results lost key totals');
   if(await p.evaluate(()=>localStorage.getItem('planner-metrics-position'))!=='top')throw Error('Position not remembered');
   await p.getByRole('button',{name:'Show load results',exact:true}).click();
-  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('bottom');
+  await p.getByRole('button',{name:'Move results to bottom right',exact:true}).click();
+  const orbitDistance=Number(await canvas.getAttribute('data-distance'));
+  await p.waitForTimeout(1200);
+  if(Math.abs(Number(await canvas.getAttribute('data-distance'))-orbitDistance)>.01)throw Error('Auto rotation changes zoom distance');
+  await p.getByTestId('viewer-watermark').waitFor({state:'visible'});
   const initialHeight=(await stage.boundingBox()).height;
   await p.getByRole('button',{name:'Expand view',exact:true}).click();
   await p.getByRole('button',{name:'Compact view',exact:true}).waitFor();
   if(!await stage.evaluate(el=>document.fullscreenElement===el)&&(await stage.boundingBox()).height<=initialHeight)throw Error('Expand did not enter fullscreen or enlarge workspace');
+  const expanded=p.getByRole('complementary',{name:'Expanded layout comparison',exact:true});
+  await expanded.waitFor();
+  await expanded.getByTestId('planner-layout-0').click();await p.getByText('188 / 240',{exact:true}).waitFor();
+  if(!await stage.evaluate(el=>document.fullscreenElement===el))throw Error('Layout selection exited fullscreen');
+  await expanded.getByTestId('planner-layout-1').click();await p.getByText('215 / 240',{exact:true}).waitFor();
+  await p.screenshot({path:'test-artifacts/expanded-layout-comparison.png'});
   await p.getByRole('button',{name:'Remaining',exact:false}).click();
   await stage.locator('#remaining-cargo').waitFor({state:'visible'});
   await p.getByRole('button',{name:'Remaining',exact:false}).click();
-  await p.getByRole('button',{name:'Compact view',exact:true}).click();
+  await p.getByRole('button',{name:'Close expanded view',exact:true}).click();
   await p.getByRole('button',{name:'Expand view',exact:true}).waitFor();
   await stage.evaluate(el=>{el.requestFullscreen=undefined;});
   const fallbackHeight=(await stage.boundingBox()).height;
@@ -1576,12 +1587,25 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
   }
   if(await p.getByRole('button',{name:'More detail',exact:true}).count())throw Error('Key metrics are still hidden');
-  await p.getByRole('combobox',{name:'Results position',exact:true}).selectOption('top');
+  await p.setViewportSize({width:390,height:900});
+  await p.getByRole('button',{name:'Expand view',exact:true}).click();
+  const mobileOptions=p.getByRole('complementary',{name:'Expanded layout comparison',exact:true});await mobileOptions.waitFor();
+  await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();return c&&c.height>120;});
+  const mobileCanvas=await canvas.boundingBox(),mobilePanel=await mobileOptions.boundingBox();
+  if(mobileCanvas.y+mobileCanvas.height>mobilePanel.y+2)throw Error('Mobile comparison covers 3D');
+  if(!await stage.evaluate(el=>el.contains(document.elementFromPoint(20,20))))throw Error('Site header covers fallback viewer');
+  const mobileStage=await stage.boundingBox();
+  if(Math.abs(mobileStage.y)>1||Math.abs(mobileStage.height-900)>2)throw Error('Fallback does not fill the mobile screen');
+  await p.waitForFunction(()=>{const c=document.querySelector('[data-testid="planner-viewport"] canvas');return c?.dataset.renderedSize===`${c?.width}x${c?.height}`;});
+  await p.screenshot({path:'test-artifacts/expanded-mobile-comparison.png'});
+  await p.keyboard.press('Escape');await mobileOptions.waitFor({state:'hidden'});
+
+  await p.getByRole('button',{name:'Move results to top right',exact:true}).click();
   await p.getByRole('button',{name:'Collapse results',exact:true}).click();
   await p.emulateMedia({reducedMotion:'reduce'});await p.reload();
   await p.locator('[data-testid="planner-layout-1"][aria-pressed="true"]').waitFor();
   await p.getByRole('button',{name:'Show load results',exact:true}).waitFor();
-  if(await p.getByRole('combobox',{name:'Results position',exact:true}).inputValue()!=='top')throw Error('Corner preference lost after reload');
+  if(await p.getByRole('button',{name:'Move results to top right',exact:true}).getAttribute('aria-pressed')!=='true')throw Error('Corner preference lost after reload');
   await canvas.scrollIntoViewIfNeeded();
   await p.waitForFunction(()=>!!document.querySelector('[data-testid="planner-viewport"] canvas')?.dataset.camera);
   await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});

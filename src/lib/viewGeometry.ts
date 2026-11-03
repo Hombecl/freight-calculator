@@ -17,3 +17,11 @@ export function fitViewDistance(c:{l:number;w:number;h:number},aspect:number,fov
   }
   return distance;
 }
+
+/** Constant orbit distance enclosing every azimuth, without per-frame zoom pumping. */
+export function fitOrbitDistance(c:{l:number;w:number;h:number},aspect:number,fovDegrees:number,phi:number) {
+  const r=Math.hypot(c.l,c.w)/2, y=c.h/2;
+  const tv=Math.tan(fovDegrees*Math.PI/360), th=tv*Math.max(.1,aspect);
+  const sp=Math.abs(Math.sin(phi)),cp=Math.abs(Math.cos(phi));
+  return Math.max(1, y*cp+r*Math.hypot(sp,1.16/th), y*(cp+1.16*sp/tv)+r*(sp+1.16*cp/tv));
+}
