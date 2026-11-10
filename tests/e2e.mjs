@@ -374,13 +374,14 @@ await test('planner: rotate/drop/delete/undo buttons exist', async () => {
 
 await test('planner: export gate opens for anonymous CSV', async () => {
   await page.getByRole('button', { name: /^csv$/i }).click();
-  await page.getByText(/unlock export/i).waitFor();
-  const purpose = page.getByRole('combobox', { name: /what will you use this plan for/i });
+  await page.getByText(/download your plan/i).waitFor();
+  await page.getByText('Add your task (optional)',{exact:true}).click();
+  const purpose = page.getByRole('combobox', { name: /what is this plan for/i });
   if (await purpose.inputValue() !== '') throw new Error('purpose must be optional and unselected');
   await purpose.selectOption('freight-quote');
   if (await purpose.inputValue() !== 'freight-quote') throw new Error('purpose selection not retained');
   await page.keyboard.press('Escape');
-  await page.getByRole('dialog', { name: /unlock export/i }).waitFor({ state: 'hidden' });
+  await page.getByRole('dialog', { name: /download your plan/i }).waitFor({ state: 'hidden' });
 }, page);
 
 await test('planner: PDF snapshot retains the rendered 3D plan', async () => {
@@ -391,7 +392,8 @@ await test('planner: PDF snapshot retains the rendered 3D plan', async () => {
   });
   await page.getByRole('button', { name: /^pdf plan$/i }).click();
   await page.getByPlaceholder('you@company.com', { exact: true }).fill('render-test@example.test');
-  await page.getByRole('combobox', { name: /what will you use this plan for/i }).selectOption('pallet-planning');
+  await page.getByText('Add your task (optional)',{exact:true}).click();
+  await page.getByRole('combobox', { name: /what is this plan for/i }).selectOption('pallet-planning');
   const opened = page.waitForEvent('popup');
   await page.getByRole('button', { name: /unlock & download/i }).click();
   const pdf = await opened;
@@ -1475,6 +1477,7 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
   }
   await p.getByRole('button',{name:'Top view',exact:true}).click();
   const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+  if(await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).count())await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).click();
   const rect=await canvas.boundingBox();
   for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
   await p.getByTestId('cargo-focus-status').waitFor();
@@ -1669,6 +1672,7 @@ await test('planner: inspecting, undo and reset preserve selected-layout state',
   const pick=async()=>{
    await p.getByRole('button',{name:'Top view',exact:true}).click();
    const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
+   if(await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).count())await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).click();
    const rect=await canvas.boundingBox();
    for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
    await p.getByTestId('cargo-focus-status').waitFor();
@@ -1809,6 +1813,34 @@ await test('planner: workspace settings persist and responsive navigation preser
     await dialog.getByRole('checkbox',{name:'Show calculation updates in Planner',exact:true}).check();
     await dialog.getByRole('button',{name:'Done',exact:true}).click();
   } finally { await p.close(); }
+},page);
+
+
+await test('planner: missing weight preflight precedes email gate and feedback needs no export',async()=>{
+ const ctx=await browser.newContext();const p=await ctx.newPage();
+ try{
+  await p.goto(`${BASE}/planner`);
+  await p.getByRole('button',{name:/import excel\/csv/i}).click();
+  await p.getByLabel('Paste carton list',{exact:true}).fill('name,length,width,height,qty\nUnknown weight,50,40,30,2');
+  await p.getByRole('button',{name:'Review pasted rows',exact:true}).click();
+  await p.getByRole('checkbox',{name:'I checked units, accepted quantities and excluded rows.',exact:true}).check();
+  await p.getByRole('button',{name:'Use this list and calculate',exact:true}).click();
+  await p.getByText('2 / 2',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'PDF plan',exact:true}).click();
+  if(await p.getByRole('dialog',{name:/download your plan/i}).count())throw Error('Email gate shown before missing-weight validation');
+  const weight=p.getByRole('spinbutton',{name:'Unknown weight weight (kg)',exact:true});
+  if(!await weight.evaluate(el=>el===document.activeElement))throw Error('Missing weight did not receive focus');
+  await weight.fill('5');await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
+  await p.getByTestId('planner-pending-changes').waitFor({state:'hidden'});
+  await p.getByRole('button',{name:'Having trouble? Tell us what to improve',exact:true}).click();
+  await p.getByRole('button',{name:'Export / email step',exact:true}).click();
+  await p.getByText('Thank you. Your feedback is recorded.',{exact:true}).waitFor();
+  await p.getByRole('button',{name:'PDF plan',exact:true}).click();
+  const dialog=p.getByRole('dialog',{name:/download your plan/i});await dialog.waitFor();
+  if(await dialog.getByText(/Billing activation|Pro.*soon/).count())throw Error('Free export contains billing distractions');
+  await p.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  if(!await p.getByRole('button',{name:'PDF plan',exact:true}).evaluate(el=>el===document.activeElement))throw Error('Gate did not restore focus');
+ }finally{await ctx.close();}
 },page);
 
 await browser.close();

@@ -1,3 +1,5 @@
+import {plannerExportBlocker} from '../lib/exportPreflight';
+import ToolFeedback from '../components/ToolFeedback';
 import PlannerComparisonWorkspace from '../components/PlannerComparisonWorkspace';
 import {matchingPackingBenchmark} from '../lib/packingBenchmark';
 import {usePlannerAlternatives} from '../hooks/usePlannerAlternatives';
@@ -388,13 +390,26 @@ export default function PlannerPage() {
   };
   const [exportError, setExportError] = useState<string | null>(null);
   const [feedbackFormat, setFeedbackFormat] = useState<'pdf'|'csv'|null>(null);
+  useEffect(()=>{
+    const target=document.getElementById('planner-export');
+    if(!target || typeof IntersectionObserver==='undefined')return;
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){track('planner_export_visible');observer.disconnect();}},{threshold:.1});
+    observer.observe(target);return()=>observer.disconnect();
+  },[]);
+
   const runExport = (format: ExportFormat) => {
     if (hasPendingChanges) {
       trackExport('export_failed', 'planner', format, 'stale_plan');
       setExportError(T('Select Optimise pack to update your plan first.', '請先按 Optimise pack 更新方案。'));
       return;
     }
-    if(appliedSpecs.some(s=>s.weightKnown===false)) { setExportError(T('Supply each missing carton weight and optimise again before exporting a weight estimate.','請填寫缺少嘅箱重並重新計算，再匯出重量估算。'));return; }
+    if(appliedSpecs.some(s=>s.weightKnown===false)) {
+      trackExport('export_failed','planner',format,'missing_weight');
+      setExportError(T('Supply each missing carton weight and optimise again before exporting a weight estimate.','請填寫缺少嘅箱重並重新計算，再匯出重量估算。'));
+      const field=document.querySelector<HTMLInputElement>('[data-missing-weight="true"]');
+      field?.scrollIntoView({block:'center',behavior:'smooth'});field?.focus({preventScroll:true});
+      return;
+    }
     const outcome = performExport('planner', format, () => {
       if (format === 'csv') return downloadText(`load-plan-${revision}.csv`, plannerManifestCSV(reportInput()));
       return openPrintablePlan({
@@ -416,7 +431,7 @@ export default function PlannerPage() {
   const guardExport = (format: ExportFormat) => {
     trackExport('export_requested', 'planner', format);
     setExportError(null);
-    if (hasPendingChanges || auth.isPro || ent.canExport) { runExport(format); return; }
+    if (plannerExportBlocker(hasPendingChanges,appliedSpecs) || auth.isPro || ent.canExport) { runExport(format); return; }
     pending.current = format;
     trackExport('export_gate_viewed', 'planner', format);
     setPaywallOpen(true);
@@ -545,6 +560,9 @@ export default function PlannerPage() {
                       <label className="block text-[10px] uppercase text-slate-400">{k === 'weight' ? 'kg' : k}</label>
                       <input
                         type="number"
+                        aria-label={`${s.label} ${k === 'weight' ? T('weight (kg)','重量（kg）') : k}`}
+                        data-missing-weight={k==='weight'&&s.weightKnown===false ? 'true' : undefined}
+                        aria-invalid={k==='weight'&&s.weightKnown===false}
                         min={k === 'weight' ? 0 : 1}
                         value={s[k] as number}
                         onChange={(e) => updateSpec(s.id, { [k]: Math.max(k === 'weight' ? 0 : 1, Number(e.target.value) || 0) })}
@@ -553,6 +571,7 @@ export default function PlannerPage() {
                     </div>
                   ))}
                 </div>
+                {s.weightKnown===false&&<p className="text-xs text-amber-800">{T('Enter carton weight (kg), then optimise before exporting.','請輸入箱重（kg），重新計算後即可匯出。')}</p>}
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   <label className="flex items-center gap-1">
                     <input
@@ -646,6 +665,10 @@ export default function PlannerPage() {
           <div role="status" data-testid="planner-view-state" className={`mb-2 text-xs ${hasPendingChanges?'text-amber-800':'text-slate-600'}`}>{hasPendingChanges?T('Inputs changed · calculate to update this view','輸入已修改 · 請重新計算更新畫面'):review.complete?T('Up to date · ready to export','已更新 · 可匯出'):T('Up to date · draft export includes remaining cargo and checks','已更新 · 草稿匯出會包括餘貨及核對項目')}</div>
 
           {focusedSpec&&<div className="mb-2 flex items-center justify-between gap-2 rounded bg-blue-50 px-2 py-1 text-xs" data-testid="cargo-focus-status"><span>{T('Highlighted','已標示')}: {appliedSpecs.find(s=>s.id===focusedSpec)?.label} · {highlightedIds.length} {T('loaded cartons','箱已裝')}</span><button type="button" className="underline" onClick={()=>{setFocusedSpec(null);setSelectedBox(null);}}>{T('Clear highlight','清除標示')}</button></div>}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <ToolFeedback zh={IS_ZH}/>
+            <button type="button" className="rounded-lg bg-blue-600 text-white px-3 py-2 text-sm font-semibold" onClick={()=>{track('planner_report_open','results');const el=document.getElementById('planner-export');el?.scrollIntoView({block:'start',behavior:'smooth'});el?.focus({preventScroll:true});}}>{T('Report / PDF / CSV','報告／PDF／CSV')}</button>
+          </div>
           <InteractiveLoadPlanner
             cameraTools
             onExpandedChange={setExpandedViewer}
@@ -789,7 +812,7 @@ export default function PlannerPage() {
           </div>}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2 items-start" aria-label={T('Export and manage your plan', '匯出及管理方案')}>
-        <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+        <section id="planner-export" tabIndex={-1} className="scroll-mt-28 min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
           <h2 className="font-bold text-slate-900">{T('Export & compare', '匯出與比較')}</h2>
           <section className="rounded border p-3 space-y-2 text-sm"><label className="block">{T('Report reference (optional)','報告參考編號（可略過）')}<input className="border rounded p-2 w-full" maxLength={120} value={reportName} onChange={e=>setReportName(e.target.value)}/></label><label className="block">{T('Report for','報告對象')}<select className="border rounded p-2 w-full" value={reportView} onChange={e=>setReportView(e.target.value as PlannerReportView)}><option value="summary">{T('Customer — summary','客戶 — 摘要')}</option><option value="crew">{T('Warehouse — loading steps','倉庫 — 裝載步驟')}</option><option value="manifest">{T('Forwarder — reconciliation and positions','貨代 — 對數及位置')}</option></select></label><p className="text-xs break-all">{T('Revision','版本')}: {revision}</p></section>
           <div className="flex gap-2">
