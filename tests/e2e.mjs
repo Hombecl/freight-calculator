@@ -1338,7 +1338,7 @@ await test('packing evidence: no prompt on sample, optional feedback after editi
   if(await p.getByRole('region',{name:'Packing feedback',exact:true}).count())throw Error('Sample should not show own-job feedback');
   await p.getByRole('spinbutton').first().fill('25');
   await p.getByRole('checkbox',{name:'These dimensions are for my own job',exact:true}).check();
-  await p.getByText('Does this layout help? (optional)',{exact:true}).click();
+  if(!await p.getByRole('button',{name:'Missing a constraint',exact:true}).isVisible())throw Error('Feedback answers should be visible after editing');
   await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
   await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
   if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
