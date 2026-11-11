@@ -20,8 +20,8 @@ export default function PrivacyPage() {
       h: T('The short version', '重點'),
       body: [
         T(
-          'Your shipment data stays on your device when you use the planner and calculators: those computations run in your browser, and carton lists and load plans are not uploaded unless you explicitly create a share link or save a plan to your account. If you call a calculation REST API, the request is processed on Cloudflare edge servers and is not stored; we keep only per-key rate-limit counters. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
-          '用規劃器同計算器時,你嘅貨運數據留喺你部機:計算喺瀏覽器進行,除非你主動建立分享連結或儲存方案,箱單同裝載方案唔會上傳。如果你調用計算 REST API,請求會喺 Cloudflare edge 伺服器處理,唔會儲存;我哋只保留每條 key 嘅限流計數。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
+          'Your shipment data stays on your device when you use the planner and calculators: those computations run in your browser, and carton lists and load plans are not uploaded unless you explicitly create a share link or save a plan to your account. If you call a calculation REST API, the request is processed on Cloudflare edge servers and is not stored; we keep per-key rate-limit counters and pseudonymous usage records (endpoint, response status and latency range) to measure activation, reliability and repeat usage. Usage analytics do not contain raw API keys, email addresses, IP addresses or cargo contents. We collect an email only when you choose to give it, and we use light analytics to see which features are used.',
+          '用規劃器同計算器時,你嘅貨運數據留喺你部機:計算喺瀏覽器進行,除非你主動建立分享連結或儲存方案,箱單同裝載方案唔會上傳。如果你調用計算 REST API,請求會喺 Cloudflare edge 伺服器處理,唔會儲存;我哋保留每條 key 嘅限流計數，以及去識別化用量紀錄（功能、回應狀態及耗時範圍），以了解啟用、穩定性及重複使用情況。用量分析不包含原始 API key、電郵、IP 地址或貨物內容。只有你主動提供先會收集 email,我哋用輕量分析了解邊啲功能有人用。',
         ),
       ],
     },
@@ -29,8 +29,8 @@ export default function PrivacyPage() {
       h: T('What we collect', '我哋收集啲乜'),
       body: [
         T(
-          'Email addresses — when you submit one to unlock exports, join a waitlist, request an API key or sign in. Export, waitlist and API requests are stored with their source and date on Cloudflare; optional company and use-case details are stored for API requests, and an optional task category is stored with export requests. Our email provider Resend processes internal notifications to the site operator. Product updates require a separate opt-in; unlocking an export alone does not subscribe you. Addresses are never sold or shared for third-party marketing.',
-          'Email — 喺你提交地址解鎖導出、加入等候名單、申請 API key 或登入時收集。導出、等候名單及 API 申請會連同來源同日期儲存喺 Cloudflare；API 申請亦會儲存你自願填寫嘅公司同用途，導出申請會儲存你自選嘅工作類別。電郵服務 Resend 會處理發畀網站營運者嘅內部通知。產品更新需要另外選擇同意，解鎖導出本身唔代表訂閱。地址永不出售或交畀第三方作營銷用途。',
+          'Email addresses — when you submit one to unlock exports, join a waitlist, request an API key or sign in. Export, waitlist and API requests are stored with their source and date on Cloudflare; optional company, use-case and expected monthly-volume details are stored for API requests, and an optional task category is stored with export requests. Our email provider Resend processes internal notifications to the site operator. Product updates require a separate opt-in; unlocking an export alone does not subscribe you. Addresses are never sold or shared for third-party marketing.',
+          'Email — 喺你提交地址解鎖導出、加入等候名單、申請 API key 或登入時收集。導出、等候名單及 API 申請會連同來源同日期儲存喺 Cloudflare；API 申請亦會儲存你自願填寫嘅公司、用途同預計每月用量，導出申請會儲存你自選嘅工作類別。電郵服務 Resend 會處理發畀網站營運者嘅內部通知。產品更新需要另外選擇同意，解鎖導出本身唔代表訂閱。地址永不出售或交畀第三方作營銷用途。',
         ),
         T(
           'Usage analytics — our own cookie-less counter records the event type (e.g. page view, export), the page path, the referring site\'s hostname, and a country code derived from the request. No cookies, no fingerprinting, no persistent identifiers on our side.',

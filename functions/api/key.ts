@@ -16,6 +16,7 @@
  * (wrangler kv key list) sees API signups next to export/waitlist leads.
  */
 
+import { apiDemand } from '../../src/lib/apiDemand';
 import { API_KEY_PREFIX, ENDPOINT_BASE_LIMITS, planFor } from '../../src/lib/apiTiers';
 import { apiKeyKvKey, rateLimit, tooManyRequests, type ApiKeyRecord, type RateLimitEnv } from './_rateLimit';
 import { queueLeadNotification, type LeadNotificationEnv } from './_leadNotification';
@@ -69,6 +70,7 @@ export const onRequestPost: PagesFunction<RateLimitEnv & LeadNotificationEnv> = 
 
   const email = String(data.email ?? '').trim().slice(0, 200);
   if (!EMAIL_RE.test(email)) return json({ error: 'valid email required' }, 400);
+  const demand = apiDemand(data);
   const company = String(data.company ?? '').trim().slice(0, 120);
   const useCase = String(data.useCase ?? '').trim().slice(0, 300);
   if (!ctx.env?.LEADS) return json({ error: 'key storage not configured' }, 503);
@@ -78,7 +80,7 @@ export const onRequestPost: PagesFunction<RateLimitEnv & LeadNotificationEnv> = 
   const record: ApiKeyRecord = { email, tier: 'free', company, useCase, createdAt: now };
   const country = (ctx.request as { cf?: { country?: string } }).cf?.country ?? '';
   const leadKey = `${now}_${key.slice(-8)}`;
-  const lead = { email, source: 'api-key', proWaitlist: false, company, useCase, country, at: now };
+  const lead = { email, source: 'api-key', proWaitlist: false, company, useCase, ...demand, country, at: now };
 
   await Promise.all([
     ctx.env.LEADS.put(apiKeyKvKey(key), JSON.stringify(record)),

@@ -12,3 +12,8 @@ id = "13e65133a1414b1ebe5d125d38d43eb8"
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "dimpack3d_events"
+
+# Separate from the public browser-event collector to prevent event spoofing.
+[[analytics_engine_datasets]]
+binding = "API_ANALYTICS"
+dataset = "dimpack3d_api_usage"

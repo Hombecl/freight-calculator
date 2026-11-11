@@ -6,7 +6,7 @@ import { open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const FIELDS = ['at', 'email', 'source', 'country', 'proWaitlist', 'company', 'useCase', 'purpose'];
+const FIELDS = ['at', 'email', 'source', 'country', 'proWaitlist', 'company', 'useCase', 'purpose', 'apiPurpose', 'monthlyVolume'];
 const csvCell = value => {
   let text = String(value ?? '');
   // Treat user-supplied spreadsheet cells as text, including leading whitespace.
