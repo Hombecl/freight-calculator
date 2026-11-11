@@ -1,3 +1,4 @@
+import { API_USE_CASES, API_VOLUMES } from '../lib/apiDemand';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -43,6 +44,8 @@ export default function ApiPricingPage() {
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [useCase, setUseCase] = useState('');
+  const [apiPurpose, setApiPurpose] = useState('');
+  const [monthlyVolume, setMonthlyVolume] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<Issued | null>(null);
@@ -56,7 +59,7 @@ export default function ApiPricingPage() {
       const r = await fetch('/api/key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, company, useCase }),
+        body: JSON.stringify({ email, company, useCase, apiPurpose, monthlyVolume }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
@@ -155,9 +158,22 @@ export default function ApiPricingPage() {
         )}</p>
         {!issued ? (
           <form onSubmit={submit} className="grid sm:grid-cols-2 gap-3">
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={T('Work email', '工作電郵')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={T('Company (optional)', '公司(可選)')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            <input value={useCase} onChange={(e) => setUseCase(e.target.value)} placeholder={T('What will you build? e.g. pallet height at order time (optional)', '你想做啲乜?例如落單時估卡板高度(可選)')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm sm:col-span-2" />
+            <input aria-label={T('Work email', '工作電郵')} required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={T('Work email', '工作電郵')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <input aria-label={T('Company (optional)', '公司（可選）')} value={company} onChange={(e) => setCompany(e.target.value)} placeholder={T('Company (optional)', '公司(可選)')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <input aria-label={T('What will you build? (optional)', '你想做啲乜？（可選）')} value={useCase} onChange={(e) => setUseCase(e.target.value)} placeholder={T('What will you build? e.g. pallet height at order time (optional)', '你想做啲乜?例如落單時估卡板高度(可選)')} className="px-3 py-2 rounded-lg border border-slate-300 text-sm sm:col-span-2" />
+            <label className="text-sm text-slate-700">{T('Main use (optional)', '主要用途（可選）')}
+              <select value={apiPurpose} onChange={e => setApiPurpose(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                <option value="">{T('Choose a use', '選擇用途')}</option>
+                {API_USE_CASES.map(([value, en, zh]) => <option key={value} value={value}>{T(en, zh)}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-slate-700">{T('Expected calls / month (optional)', '預計每月調用次數（可選）')}
+              <select value={monthlyVolume} onChange={e => setMonthlyVolume(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                <option value="">{T('Choose a range', '選擇範圍')}</option>
+                {API_VOLUMES.map((value, i) => <option key={value} value={value}>{[T('Under 1,000', '少於 1,000'), '1,000–10,000', '10,000–100,000', T('Over 100,000', '多於 100,000'), T('Not sure yet', '暫時未確定')][i]}</option>)}
+              </select>
+            </label>
+            <p className="sm:col-span-2 text-xs text-slate-500">{T('We measure API usage and errors using a pseudonymous key identifier to improve the service. Cargo contents are not logged.', '我們以匿名化 key 識別碼統計 API 用量及錯誤，以改善服務；不記錄貨物內容。')}</p>
             <div className="sm:col-span-2 flex items-center gap-3">
               <button disabled={busy} type="submit" className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold px-5 py-2.5 rounded-lg text-sm">{busy ? T('Issuing…', '發出中…') : T('Create my key', '建立我嘅 key')}</button>
               {error && <span className="text-sm text-red-600">{error}</span>}
@@ -183,7 +199,7 @@ export default function ApiPricingPage() {
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('Where does my data go?', '我嘅數據去咗邊?')}</div>
-          <p className="text-slate-600">{T('Requests are computed on Cloudflare’s edge and not stored. We log only counts per key for rate limiting. No carton data is retained.', '請求喺 Cloudflare edge 計算,唔會儲存。我們只記錄每條 key 嘅調用次數作限流。唔保留任何箱單數據。')}</p>
+          <p className="text-slate-600">{T('Requests are computed on Cloudflare’s edge and not stored. We record rate-limit counts and pseudonymous API usage (endpoint, status and response-time range). No carton data is retained.', '請求喺 Cloudflare edge 計算,唔會儲存。我們記錄限流次數及匿名化 API 用量（功能、狀態及回應時間範圍）。唔保留任何箱單數據。')}</p>
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="font-bold text-slate-900 mb-1">{T('Why is Starter not self-serve yet?', '為何 Starter 未可以自助購買?')}</div>

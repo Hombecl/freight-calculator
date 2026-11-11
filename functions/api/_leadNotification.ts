@@ -9,6 +9,8 @@ export interface LeadRecord {
   at: string;
   company?: string;
   useCase?: string;
+  apiPurpose?: string;
+  monthlyVolume?: string;
   purpose?: LeadPurpose;
 }
 
@@ -56,6 +58,8 @@ export async function notifyLead(env: LeadNotificationEnv, lead: LeadRecord, lea
           ...(lead.purpose ? [`Plan purpose: ${LEAD_PURPOSES.find(([key]) => key === lead.purpose)?.[1] ?? lead.purpose}`] : []),
           ...(lead.company ? [`Company: ${lead.company}`] : []),
           ...(lead.useCase ? [`Requested use: ${lead.useCase}`] : []),
+          ...(lead.apiPurpose ? [`API purpose: ${lead.apiPurpose}`] : []),
+          ...(lead.monthlyVolume ? [`Expected monthly calls: ${lead.monthlyVolume}`] : []),
           '', 'Internal notification only. A download is not a confirmed sale.',
           'Do not add this address to product-update mail unless the opt-in above is Yes.',
         ].join('\n'),

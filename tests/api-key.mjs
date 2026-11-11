@@ -35,7 +35,7 @@ const req = (url, { body, headers = {}, ip = '203.0.113.7', method = 'POST' } = 
 // ---- issuance ----
 {
   const LEADS = memKV();
-  const res = await keyMod.onRequestPost({ env: { LEADS }, request: req('https://x/api/key', { body: { email: 'tom@example.com', company: 'Acme', useCase: 'pallet height' } }) });
+  const res = await keyMod.onRequestPost({ env: { LEADS }, request: req('https://x/api/key', { body: { email: 'tom@example.com', company: 'Acme', useCase: 'pallet height', apiPurpose: 'pallet-planning', monthlyVolume: 'under-1000' } }) });
   assert.equal(res.status, 200);
   const j = await res.json();
   assert.match(j.key, API_KEY_RE, 'key format');
@@ -49,6 +49,8 @@ const req = (url, { body, headers = {}, ip = '203.0.113.7', method = 'POST' } = 
   const leadRows = [...LEADS.store.entries()].filter(([k]) => !k.startsWith('apikey|') && !k.startsWith('rl|'));
   assert.equal(leadRows.length, 1);
   assert.equal(JSON.parse(leadRows[0][1]).source, 'api-key');
+  assert.equal(JSON.parse(leadRows[0][1]).apiPurpose, 'pallet-planning');
+  assert.equal(JSON.parse(leadRows[0][1]).monthlyVolume, 'under-1000');
 }
 
 // bad email → 400; bad json → 400
