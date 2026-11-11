@@ -1,3 +1,4 @@
+import {track} from '../lib/track';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {computeStats, type PackContainer, type PackItemSpec} from '../lib/binPacking';
 import type {OptimizedResult, PackingPhase} from '../lib/optimizePacking';
@@ -12,10 +13,12 @@ export function usePackingWorker(container: PackContainer, specs: PackItemSpec[]
   const stop = useRef<(() => void) | null>(null);
   useEffect(() => {
     let active = true;
+    let measured=false;const started=performance.now();
+    const measure=(outcome:string)=>{if(measured)return;measured=true;const ms=performance.now()-started;track('planner_compute',`${outcome}:${ms<1000?'under_1s':ms<5000?'1_5s':ms<15000?'5_15s':'15s_plus'}`);};
     let worker: Worker | undefined;
     setState({key, status: 'running', phase: 'packing'});
     const finishError = () => {
-      if (active) setState({key, status: 'error', phase: 'packing'});
+      if (active) {measure('error');setState({key, status: 'error', phase: 'packing'});}
       worker?.terminate();
     };
     try {
@@ -24,6 +27,7 @@ export function usePackingWorker(container: PackContainer, specs: PackItemSpec[]
         if (!active) return;
         if (data.type === 'progress') setState({key, status: 'running', phase: data.phase});
         else if (data.type === 'result') {
+          measure('done');
           setState({key, status: 'done', phase: 'checking', result: data.result});
           worker?.terminate();
         } else finishError();
@@ -33,6 +37,7 @@ export function usePackingWorker(container: PackContainer, specs: PackItemSpec[]
       worker.postMessage({container, specs});
     } catch { finishError(); }
     stop.current = () => {
+      measure('cancelled');
       active = false;
       worker?.terminate();
       setState({key, status: 'cancelled', phase: 'packing'});

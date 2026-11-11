@@ -1,3 +1,4 @@
+import {track} from '../lib/track';
 import {useMemo,useState,useEffect} from 'react';
 import {X,ArrowLeft} from 'lucide-react';
 import InteractiveLoadPlanner from './InteractiveLoadPlanner';
@@ -46,7 +47,7 @@ export default function PlannerComparisonWorkspace({options,container,selected,d
     {!wide&&<div className="shrink-0 flex gap-2 px-3 pb-2" role="group" aria-label={T('Visible comparison','顯示比較方案')}>{(['A','B'] as const).map(side=><button key={side} type="button" aria-pressed={mobileSide===side} onClick={()=>setMobileSide(side)} className={`flex-1 rounded-lg py-2 font-semibold ${mobileSide===side?'bg-blue-600 text-white':'bg-white'}`}>{side}</button>)}</div>}
     <div className="min-h-[400px] flex-1 grid lg:grid-cols-2 gap-3 px-3 pb-3">
       {([{side:'A',option:left,set:setA},{side:'B',option:right,set:setB}] as const).filter(p=>wide||p.side===mobileSide).map(({side,option,set})=><article key={side} className="min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden" aria-label={`${side}: ${option.name}`}>
-        <div className="shrink-0 px-3 pt-3 pb-2 flex gap-2 items-center"><strong className="text-blue-800">{side}</strong><select aria-label={T(`Layout ${side}`,`方案 ${side}`)} value={option.index} onChange={e=>set(Number(e.target.value))} className="min-w-0 flex-1 rounded-lg border px-2 py-2 text-sm">{ranked.map((o,i)=><option key={o.index} value={o.index} disabled={o.index===(side==='A'?b:a)}>{T(`Option ${i+1}`,`方案 ${i+1}`)} · {o.result.stats.volumeUtil.toFixed(1)}% · {o.result.boxes.length} {T('cartons','箱')}</option>)}</select></div>
+        <div className="shrink-0 px-3 pt-3 pb-2 flex gap-2 items-center"><strong className="text-blue-800">{side}</strong><select aria-label={T(`Layout ${side}`,`方案 ${side}`)} value={option.index} onChange={e=>{set(Number(e.target.value));track('planner_comparison_preview',side);}} className="min-w-0 flex-1 rounded-lg border px-2 py-2 text-sm">{ranked.map((o,i)=><option key={o.index} value={o.index} disabled={o.index===(side==='A'?b:a)}>{T(`Option ${i+1}`,`方案 ${i+1}`)} · {o.result.stats.volumeUtil.toFixed(1)}% · {o.result.boxes.length} {T('cartons','箱')}</option>)}</select></div>
         <div className="shrink-0 px-3 pb-2 grid grid-cols-3 gap-2 text-xs text-slate-500">
           <span>{T('Utilization','利用率')}<strong className="block text-lg text-slate-900">{option.result.stats.volumeUtil.toFixed(1)}%</strong></span>
           <span>{T('Loaded','已裝')}<strong className="block text-lg text-slate-900">{option.result.boxes.length}</strong></span>
@@ -58,7 +59,7 @@ export default function PlannerComparisonWorkspace({options,container,selected,d
         </div>
         <footer className="shrink-0 p-3 border-t">
           <p className="text-xs text-slate-600 mb-2">{option.result.stats.totalWeight.toLocaleString()} kg · {T('Centre height','重心高度')} {option.result.stats.cog.y.toFixed(1)} cm{Math.abs(option.result.stats.volumeUtil-best)<.05?T(' · Highest capacity',' · 最高容量'):''}</p>
-          <button type="button" disabled={disabled} onClick={()=>{if(onUse(option.index))onClose();}} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">{T(`Use layout ${side}`,`使用方案 ${side}`)}</button>
+          <button type="button" disabled={disabled} onClick={()=>{if(onUse(option.index)){track('planner_comparison_apply',side);onClose();}}} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">{T(`Use layout ${side}`,`使用方案 ${side}`)}</button>
         </footer>
       </article>)}
     </div>

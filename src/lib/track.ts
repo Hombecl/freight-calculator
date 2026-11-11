@@ -93,7 +93,7 @@ function hookLifecycle() {
 export interface ExportParameters {
   export_tool: 'planner' | 'warehouse';
   export_format: 'pdf' | 'csv';
-  export_reason?: 'stale_plan' | 'popup_blocked' | 'render_error' | 'download_error';
+  export_reason?: 'stale_plan' | 'missing_weight' | 'popup_blocked' | 'render_error' | 'download_error';
 }
 
 export function track(event: string, meta?: string, details?: ExportParameters) {

@@ -115,3 +115,12 @@ assert.equal(legacyCount(), 3);
 assert.equal(events().at(-2)[1], 'export_download_triggered');
 assert.ok(!JSON.stringify(window.dataLayer).includes('private'), 'export tracking excludes shipment contents and email');
 console.log('PASS export delivery: blocked popup, render failure, download failure cleanup, success semantics and privacy');
+
+const {plannerExportBlocker,normalizedExportEmail}=await import('../src/lib/exportPreflight.ts');
+assert.equal(plannerExportBlocker(false,[{weightKnown:false}]),'missing_weight','missing imported weights block before email capture');
+assert.equal(plannerExportBlocker(true,[{weightKnown:false}]),'stale_plan','draft must be recalculated first');
+assert.equal(plannerExportBlocker(false,[{weightKnown:true},{}]),null,'known and legacy weights can export');
+assert.equal(normalizedExportEmail('  person@example.com  '),'person@example.com');
+assert.equal(normalizedExportEmail('person @example.com'),null);
+assert.equal(normalizedExportEmail(''),null);
+console.log('PASS export preflight: unknown weight, stale inputs, legacy weights and pasted email');

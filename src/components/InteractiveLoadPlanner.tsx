@@ -1,3 +1,4 @@
+import {track} from '../lib/track';
 import type {CameraSync} from '../lib/viewerCameraSync';
 import {Maximize2, X, ChevronDown, ChevronUp, Settings2} from 'lucide-react';
 import {fitOrbitDistance,fitViewDistance,viewAngles,type ViewPreset} from '../lib/viewGeometry';
@@ -240,8 +241,9 @@ export default function InteractiveLoadPlanner({
     setActionMessage(outcome==='collision'?(IS_ZH?'移動或旋轉會撞到其他貨物。請先騰出空間，再試一次。':'This move or rotation overlaps another item. Make space first, then try again.'):outcome==='boundary'?(IS_ZH?'已到空間邊界，這個方向放不下。':'This item cannot fit further in that direction.'):outcome==='unchanged'?(IS_ZH?'位置沒有改變，可能已經放在支承面。':'Position unchanged; the item may already be supported.'):'');
     actionRef.current?.(action,outcome);
   };
+  const [editMode,setEditMode]=useState(false);
   const readOnlyRef = useRef(readOnly);
-  readOnlyRef.current = readOnly;
+  readOnlyRef.current = readOnly || (cameraTools && !editMode);
   const autoSpinRef = useRef(autoSpin);
   autoSpinRef.current = autoSpin;
   const mountRef = useRef<HTMLDivElement>(null);
@@ -360,6 +362,7 @@ export default function InteractiveLoadPlanner({
       renderer = new THREE.WebGLRenderer({ antialias: !batchBoxes, preserveDrawingBuffer: false });
     } catch {
       setWebglFailed(true);
+      if(cameraTools)track('planner_viewer_error','webgl_init');
       return;
     }
     renderer.setSize(width, height);
@@ -645,7 +648,7 @@ export default function InteractiveLoadPlanner({
       }
       // idle: hover affordance — glow + grab cursor so boxes read as movable
       setNdc(e);
-      const hid = pickBox();
+      const hid = readOnlyRef.current ? null : pickBox();
       if (hid !== hoveredId) {
         needsRender = true;
         hoveredId = hid;
@@ -660,7 +663,7 @@ export default function InteractiveLoadPlanner({
     const onUp = (e: PointerEvent) => {
       if (mode === 'drag') {
         if(dragMoved){reportAction('drag','ok');commit();}
-        if(dragBlocked)reportAction('drag','collision');
+        else if(dragBlocked)reportAction('drag','collision');
       }
       mode = 'idle';
       dragId = null;
@@ -1053,7 +1056,8 @@ export default function InteractiveLoadPlanner({
             <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>
             <button type="button" aria-label={IS_ZH?'縮小':'Zoom out'} title={IS_ZH?'縮小':'Zoom out'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(1.25)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">−</button>
             <button type="button" aria-label={isExpanded?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')} aria-pressed={isExpanded} onClick={toggleExpanded} className="min-h-9 flex items-center gap-1 rounded-lg px-2 bg-blue-600 text-white hover:bg-blue-700">{isExpanded?<X size={16}/>:<Maximize2 size={16}/>}<span>{isExpanded?(IS_ZH?'關閉':'Close'):(IS_ZH?'放大比較':'Expand view')}</span></button>
-            {isExpanded&&viewerComparison&&<button type="button" onClick={()=>setComparisonOpen(true)} className="min-h-9 rounded-lg px-2 font-semibold text-blue-700 bg-blue-50">{IS_ZH?'比較 A / B':'Compare A / B'}</button>}
+            {isExpanded&&viewerComparison&&<button type="button" onClick={()=>{track('planner_comparison_open');setComparisonOpen(true);}} className="min-h-9 rounded-lg px-2 font-semibold text-blue-700 bg-blue-50">{IS_ZH?'比較 A / B':'Compare A / B'}</button>}
+            {!readOnly&&<button type="button" aria-pressed={editMode} onClick={()=>{setEditMode(v=>!v);track('planner_view_mode',editMode?'view':'edit');if(editMode){setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);}}} className={`min-h-9 rounded-lg px-2 ${editMode?'bg-amber-100 text-amber-900':'bg-slate-100 text-slate-700'}`}>{editMode?(IS_ZH?'編輯貨物：開啟':'Edit cargo: on'):(IS_ZH?'查看模式 · 編輯貨物':'View mode · Edit cargo')}</button>}
             {viewerActions}
           </div>
         </div>}
@@ -1119,7 +1123,7 @@ export default function InteractiveLoadPlanner({
       </div>
 
       {!minimalViewer&&<>
-      {!readOnly && !selected && <p className="text-xs text-slate-500">{IS_ZH ? "先點選 3D 紙箱，才可旋轉、放低或刪除。" : "Select a carton in 3D to enable Rotate, Drop and Delete."}</p>}
+      {!readOnly && (!cameraTools || editMode) && !selected && <p className="text-xs text-slate-500">{IS_ZH ? "先點選 3D 紙箱，才可旋轉、放低或刪除。" : "Select a carton in 3D to enable Rotate, Drop and Delete."}</p>}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {lightTheme && <button type="button" onClick={() => resetViewRef.current?.()} className="rounded border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700">{IS_ZH ? "重設視角" : "Reset view"}</button>}
         {!hideSummary && <>
@@ -1133,34 +1137,35 @@ export default function InteractiveLoadPlanner({
         {!readOnly && <>
         <button
           onClick={rotateSelected}
-          disabled={!selected}
+          disabled={!selected || (cameraTools && !editMode)}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
         >
           {IS_ZH ? "旋轉 90°" : "Rotate 90°"}
         </button>
         <button
           onClick={dropToFloor}
-          disabled={!selected}
+          disabled={!selected || (cameraTools && !editMode)}
           className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-40"
         >
           {IS_ZH ? "放低至支承面" : "Drop to floor"}
         </button>
         <button
           onClick={deleteSelected}
-          disabled={!selected}
+          disabled={!selected || (cameraTools && !editMode)}
           className="px-3 py-1 rounded bg-white border border-red-300 text-red-600 disabled:opacity-40 disabled:border-slate-200 disabled:text-slate-400"
         >
           {IS_ZH ? "刪除" : "Delete"}
         </button>
         <button
           onClick={undo}
-          disabled={histLen === 0}
+          disabled={histLen === 0 || (cameraTools && !editMode)}
           className="px-3 py-1 rounded bg-slate-200 text-slate-700 disabled:opacity-40"
         >
           {IS_ZH ? "↩ 復原" : "↩ Undo"}
         </button>
         <button
           onClick={resetPlan}
+          disabled={cameraTools && !editMode}
           className="px-3 py-1 rounded bg-slate-200 text-slate-700"
         >
           {IS_ZH ? "重設自動擺位" : "Reset to auto"}
@@ -1173,7 +1178,7 @@ export default function InteractiveLoadPlanner({
         )}
       </div>
       {!readOnly && actionMessage && <p role="status" className="text-sm text-amber-700">{actionMessage}</p>}
-      {readOnly ? <p className="text-xs text-slate-400">{IS_ZH ? "唯讀 · 拖動旋轉視角 · 滾動縮放" : "Read-only · drag to orbit · scroll to zoom"}</p> : <p className="text-xs text-slate-400">
+      {(readOnly || (cameraTools && !editMode)) ? <p className="text-xs text-slate-400">{IS_ZH ? "查看模式 · 拖動旋轉視角 · 滾動縮放" : "View mode · drag anywhere to orbit · scroll to zoom"}{!readOnly && (IS_ZH ? " · 按編輯貨物移動紙箱" : " · select Edit cargo to move boxes")}</p> : <p className="text-xs text-slate-400">
         {IS_ZH ? "拖動紙箱移位 · 方向鍵微調 · R 旋轉 · Del 刪除 · ⌘Z 復原 · 拖動空白位置旋轉視角 · 滾動縮放。" : "Drag a box to move it · arrows nudge · R rotate · Del delete · ⌘Z undo · drag empty space to orbit · scroll to zoom."}
         Moves snap to a {grid}{unitLabel} grid and are blocked when boxes would overlap.
       </p>}

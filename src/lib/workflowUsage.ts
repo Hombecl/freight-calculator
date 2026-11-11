@@ -10,7 +10,7 @@ export function usageTransition(state:UsageState,entry:UsageRecord){
  return {state:{records:[...records,entry]},event:{job:repeat?'repeat':previous.some(r=>r.revision===entry.revision)?'same_version':previous.length?'revision':records.length?'next_job':'first_job',return:gap>=30?'30d_plus':gap>=7?'7_29d':gap>=1?'1_6d':'same_day'}};
 }
 export function recordWorkflowOutput(job:string,revision:string,kind:'carrier_csv'|'build_sheet'|'actuals'|'planner_csv'|'planner_pdf'|'catalog_csv'|'catalog_orders'|'calculator_csv',sample:boolean){
- if(sample){track('workflow_output',`sample;${kind}`);return;}
+ if(sample){track('workflow_output',`unconfirmed;${kind}`);return;}
  try{const key='dp_workflow_usage_v1',saved=JSON.parse(localStorage.getItem(key)??'{"records":[]}');
  const records=Array.isArray(saved.records)?saved.records.filter((r:UsageRecord)=>typeof r.job==='string'&&typeof r.revision==='string'&&Number.isFinite(r.day)&&typeof r.kind==='string'):[];
  const next=usageTransition({records},{job,revision,kind,day:Math.floor(Date.now()/86400000)});
