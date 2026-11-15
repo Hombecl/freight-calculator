@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {createViewerRenderer,viewerDiagnostic} from '../src/lib/viewerRecovery.ts';
+let calls=[];
+const renderer={};
+assert.deepEqual(createViewerRenderer(aa=>{calls.push(aa);return renderer;},true),{renderer,reduced:false});
+assert.deepEqual(calls,[true]);calls=[];
+assert.deepEqual(createViewerRenderer(aa=>{calls.push(aa);if(aa)throw Error('MSAA unavailable');return renderer;},true),{renderer,reduced:true});
+assert.deepEqual(calls,[true,false]);calls=[];
+assert.throws(()=>createViewerRenderer(aa=>{calls.push(aa);throw Error('no graphics');},false),/no graphics/);
+assert.deepEqual(calls,[false]);
+assert.equal(viewerDiagnostic(390,true,true),'small:touch:retry');
+console.log('Viewer fallback attempts once at reduced quality and never loops');

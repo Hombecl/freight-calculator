@@ -1843,6 +1843,27 @@ await test('planner: missing weight preflight precedes email gate and feedback n
  }finally{await ctx.close();}
 },page);
 
+await test('planner: graphics failure can retry without losing cargo', async()=>{
+ const p=await ctx.newPage();
+ try{
+  await p.goto(`${BASE}/planner`,{waitUntil:'domcontentloaded'});
+  await p.getByTestId('planner-packed').waitFor();
+  await p.getByRole('button',{name:'Cancel comparison',exact:true}).waitFor({state:'hidden'});
+  const stage=p.getByTestId('planner-viewport');
+  await stage.locator('canvas').first().waitFor();
+  const before=await p.getByTestId('planner-packed').innerText();
+  await stage.locator('canvas').first().evaluate(canvas=>canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})));
+  const retry=p.getByRole('button',{name:'Retry 3D at lower graphics quality',exact:true});
+  await retry.waitFor();
+  await retry.click();
+  await retry.waitFor({state:'hidden'});
+  await stage.locator('canvas').waitFor();
+  if(await stage.locator('canvas').count()!==1)throw Error('Retry leaked a canvas');
+  if(await p.getByTestId('planner-packed').innerText()!==before)throw Error('Retry changed cargo');
+  if(await p.getByRole('button',{name:'Top view',exact:true}).isDisabled())throw Error('Retry did not restore camera tools');
+ }finally{await p.close();}
+},page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

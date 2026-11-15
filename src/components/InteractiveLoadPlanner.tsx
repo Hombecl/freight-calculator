@@ -1,3 +1,4 @@
+import {createViewerRenderer, viewerDiagnostic} from '../lib/viewerRecovery';
 import {track} from '../lib/track';
 import type {CameraSync} from '../lib/viewerCameraSync';
 import {Maximize2, X, ChevronDown, ChevronUp, Settings2} from 'lucide-react';
@@ -253,6 +254,7 @@ export default function InteractiveLoadPlanner({
   const deleteRef = useRef<() => void>(() => {});
   const nudgeRef = useRef<(dx: number, dz: number) => void>(() => {});
   const [webglFailed, setWebglFailed] = useState(false);
+  const [viewerAttempt, setViewerAttempt] = useState(0);
   const [interacted, setInteracted] = useState(false);
   const interactedRef = useRef(false);
   const lastPointerRef = useRef(0); // for resuming the idle spin after inactivity
@@ -359,12 +361,28 @@ export default function InteractiveLoadPlanner({
       // previous frame is unnecessary and prevents GPU buffer optimizations.
       // The compact homepage preview uses outlined cartons without costly MSAA;
       // the full editor and its exported images retain antialiasing.
-      renderer = new THREE.WebGLRenderer({ antialias: !batchBoxes, preserveDrawingBuffer: false });
+      const result = createViewerRenderer(antialias => new THREE.WebGLRenderer({ antialias, preserveDrawingBuffer: false }), !batchBoxes && viewerAttempt === 0);
+      renderer = result.renderer;
+      if(result.reduced && cameraTools)track('planner_viewer_recovery','reduced_quality');
     } catch {
       setWebglFailed(true);
-      if(cameraTools)track('planner_viewer_error','webgl_init');
+      if(cameraTools){track('planner_viewer_error','webgl_init');track('planner_viewer_diagnostic',viewerDiagnostic(window.innerWidth,navigator.maxTouchPoints>0,viewerAttempt>0));}
+      unsubscribeCamera?.();
+      registerSnapshot?.(null);
+      resetViewRef.current = presetRef.current = resumeViewRef.current = zoomRef.current = null;
       return;
     }
+    setWebglFailed(false);
+    let contextLost = false;
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+      setWebglFailed(true);
+      if(cameraTools){track('planner_viewer_error','context_lost');track('planner_viewer_diagnostic',viewerDiagnostic(window.innerWidth,navigator.maxTouchPoints>0,viewerAttempt>0));}
+    };
+    const onContextRestored = () => {contextLost=false;needsRender=true;setWebglFailed(false);if(cameraTools)track('planner_viewer_recovery','context_restored');};
+    renderer.domElement.addEventListener('webglcontextlost',onContextLost);
+    renderer.domElement.addEventListener('webglcontextrestored',onContextRestored);
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
     mount.innerHTML = '';
@@ -695,7 +713,7 @@ export default function InteractiveLoadPlanner({
     let lastFrame = performance.now();
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
-      if (!visible || document.hidden) { lastFrame = now; return; }
+      if (contextLost || !visible || document.hidden) { lastFrame = now; return; }
       // Keep interaction responsive, while decorative motion needs only 30 fps.
       // Elapsed-time motion preserves the same speed across display refresh rates.
       const elapsed = now - lastFrame;
@@ -729,9 +747,11 @@ export default function InteractiveLoadPlanner({
       if (needsRender) { renderScene(); needsRender = false; }
     };
     raf = requestAnimationFrame(loop);
+    if(cameraTools && viewerAttempt > 0)track('planner_viewer_recovery','retry_initialized');
 
     // expose a snapshot fn (renders once then reads the buffer)
     registerSnapshot?.(() => {
+      if(contextLost)return null;
       try {
         renderScene();
         if(!cameraTools)return renderer.domElement.toDataURL('image/png');
@@ -776,7 +796,10 @@ export default function InteractiveLoadPlanner({
       clearBatch();
       if (batchBoxes) meshById.forEach(disposeObject);
       disposeObject(scene);
+      renderer.domElement.removeEventListener('webglcontextlost',onContextLost);
+      renderer.domElement.removeEventListener('webglcontextrestored',onContextRestored);
       renderer.dispose();
+      renderer.forceContextLoss?.();
       mount.innerHTML = '';
       sceneApi.current = null;
       resetViewRef.current = null;
@@ -785,7 +808,7 @@ export default function InteractiveLoadPlanner({
       zoomRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeLoaded, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools, cameraSync]);
+  }, [threeLoaded, viewerAttempt, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools, cameraSync]);
 
   useEffect(()=>{if(autoSpin){lastPointerRef.current=0;interactedRef.current=false;setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
@@ -1061,25 +1084,26 @@ export default function InteractiveLoadPlanner({
             {viewerActions}
           </div>
         </div>}
-        <div className={cameraTools?'absolute inset-x-0':minimalViewer?'h-full':''} style={cameraTools?viewerInsets:undefined}>
+        <div className={cameraTools?'absolute inset-x-0':minimalViewer?'relative h-full':'relative'} style={cameraTools?viewerInsets:undefined}>
         <div
           ref={mountRef}
           className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-slate-900 touch-none select-none"
           style={{ backgroundColor: lightTheme ? "#f1f5f9" : "#0f172a", cursor: selectedId ? 'grab' : 'move', height: cameraTools||minimalViewer?'100%':viewportHeight, aspectRatio: cameraTools?undefined:viewportAspectRatio,
             backgroundImage: !threeLoaded && loadingPreview ? `url(${loadingPreview})` : undefined,
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
-        >
+        />
           {webglFailed ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 text-sm px-6 text-center">
-              <span className="font-semibold text-slate-300">3D view unavailable</span>
-              <span>This device/browser has WebGL disabled. The optimizer still works — utilization and stats are shown below.</span>
+            <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-100 text-slate-700 text-sm p-6 text-center">
+              <span className="font-semibold">{IS_ZH?'3D 畫面暫時未能顯示':'3D view is temporarily unavailable'}</span>
+              <span>{IS_ZH?'可能與瀏覽器圖像支援或暫時的 GPU 資源不足有關。輸入、計算及報告仍可使用。':'Graphics support or temporary GPU resource limits may be involved. Your inputs, calculations and reports are still available.'}</span>
+              <button type="button" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white" onClick={()=>{if(cameraTools)track('planner_viewer_recovery','retry_requested');setViewerAttempt(v=>v+1);}}>{IS_ZH?'以較低畫質重試 3D':'Retry 3D at lower graphics quality'}</button>
+              <span className="text-xs">{IS_ZH?'重試不會清除貨物或方案。若仍失敗，可關閉其他 3D 分頁，或使用其他支援 WebGL 的瀏覽器。':'Retry keeps your cargo and plan. If it still fails, close other 3D tabs or try another WebGL-capable browser.'}</span>
             </div>
           ) : !threeLoaded && (
-            <div className={`w-full h-full flex justify-center text-slate-300 text-sm ${loadingPreview ? 'items-end pb-4' : 'items-center'}`}>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-sm">
               <span className="bg-slate-950/85 rounded-full px-3 py-1">Loading 3D…</span>
             </div>
           )}
-        </div>
         </div>
         {cameraTools&&<div className={`absolute inset-x-3 z-10 pointer-events-none flex ${metricsLeft?'justify-start':'justify-end'}`} style={metricsPosition==='top'?{top:toolbarHeight+24}:{bottom:12}}>
           <div ref={metricsRef} className={`pointer-events-auto ${metricsCollapsed?'w-auto':'w-full max-w-[500px]'} rounded-xl border border-white bg-white/95 p-2.5 shadow-md`} data-testid="viewer-metrics">

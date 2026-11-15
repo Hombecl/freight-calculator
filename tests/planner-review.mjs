@@ -48,3 +48,11 @@ assert.equal(feedbackAnswerMeta('planner','pdf','usefulness','edit'),'p:pdf:edit
 assert.equal(feedbackAnswerMeta('planner','pdf','recipient','private@email.com'),null);
 assert.equal(feedbackAnswerMeta('planner','pdf','choice','gap'),'p:pdf:gap');
 console.log('Planner review: support/stack propagation, reconciliation, draft reports, revisions, constrained transfer and categorical feedback passed');
+const {plannerReportSummary}=await import('../src/lib/plannerReport.ts');
+const metrics=plannerReportSummary({...o,boxes:packed.boxes,requestedSpecs:[s]});
+assert.deepEqual(metrics,{requested:2,placed:2,remaining:0,utilization:50,volumeM3:1,weight:20});
+assert.equal(plannerReportSummary({...o,boxes:[{...base,weight:undefined}]}).weight,null);
+assert.equal(plannerReportSummary({...o,boxes:[{...base,weight:0}]}).weight,0);
+assert.ok(buildPlannerReport({...o,boxes:[{...base,weight:undefined}]}).includes('Incomplete weight data'));
+assert.ok(buildPlannerReport({...o,zh:true}).includes('裝載結果'));
+assert.ok(buildPlannerReport(o).includes('3D image unavailable'));
