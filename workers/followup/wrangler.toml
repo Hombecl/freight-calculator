@@ -1,0 +1,10 @@
+name = "dimpack3d-followup"
+main = "index.ts"
+compatibility_date = "2026-01-01"
+workers_dev = false
+[triggers]
+crons = ["17 4 * * *"]
+[vars]
+FOLLOWUP_ENABLED = "true"
+# Set FOLLOWUP_CRON_TOKEN via managed secrets. The scheduler cannot read leads
+# or the mail provider key; only the Pages dispatcher has those capabilities.

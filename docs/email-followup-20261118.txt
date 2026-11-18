@@ -1,0 +1,55 @@
+DimPack3D opt-in export research follow-up
+
+Implementation: explicit consent only; no existing leads enrolled. Release status
+and live checks are recorded separately in the deployment handoff.
+
+Scope
+- Planner successful PDF/CSV export opens adoption prompt. Real-work respondents
+  may separately opt into one email approximately five days later.
+- Separate unchecked checkbox; editable email; explicit Save email preference.
+- Existing export leads and product-update flags are never imported.
+- Same normalized email has one request per 90-day record lifetime. New request
+  after expiry still requires fresh explicit opt-in. Suppressed addresses stay
+  suppressed. No automatic reminder for nonresponders or not_yet answers.
+- Follow-up POST records explicit consent version export-followup-v1 + timestamp.
+- Queue and responses use followup|, followup-token|, followup-stop| KV prefixes.
+- Public response URL is an opaque bearer link. GET never submits or opts out.
+  Confirming HTML form POST stores result, optional reason/purpose/source/comment.
+- Answers are linked to the request (not anonymous). No shipment data is attached.
+- Email replies go to hello@dimpack3d.com; verify mailbox handling before enabling.
+
+Activation checklist (not completed by writing code)
+1. Pages uses its existing RESEND_API_KEY and LEAD_NOTIFY_FROM (or optional
+   FOLLOWUP_FROM). The scheduler receives no mail-provider key or lead access.
+2. Deploy Pages /api/followup and /api/followup-response plus UI and privacy copy.
+3. Deploy workers/followup/wrangler.toml (daily 04:17 UTC). Store the independent
+   FOLLOWUP_CRON_TOKEN in 1Password and configure it on Pages and Worker.
+4. Test with an operator-owned address: export -> explicit opt-in -> due delivery
+   -> response -> suppression. Verify mobile and desktop forms in Chrome.
+5. Set FOLLOWUP_ENABLED=true on Pages and Worker; build Pages with
+   VITE_EMAIL_FOLLOWUP_ENABLED=true. Without the shared token, dispatch is denied.
+6. Check provider bounce/complaint suppression and verified reply mailbox.
+
+Failure behavior
+- At most 20 attempted sends per scheduler run, pagination through the queue.
+- First writes attempted, then calls provider using stable idempotency key.
+- Failed/ambiguous requests stay attempted: operator must reconcile provider
+  state before any retry. No automatic retry after idempotency retention expires.
+- KV is eventually consistent, not a distributed lock. Concurrent enrollment
+  tokens remain valid aliases to the same request. Provider idempotency
+  protects concurrent identical sends; suppression may have propagation delay.
+- API cannot independently prove an export occurred; it is called from the
+  successful-export flow and rate-limits enrollment. This is not a proof of use.
+- Delivery accepted is not delivered/read. GET requests are not responses.
+
+Reporting
+Count pending / attempted / sent / answered / stopped separately. Read response
+records through authenticated operator access only. Summarize matched / adjusted /
+unused / not_yet with reasons, never count silence as rejection. This opt-in sample
+is biased; do not call its answer rate overall customer adoption. No public email
+or response listing endpoint exists. Free text is untrusted data.
+
+Validation
+Consent, address normalization/dedup, delay, read-only scanner GET, explicit form
+submission, repeated answers, suppression, cross-origin rejection and ambiguous
+provider failure tests run without sending email. Typechecks and SPA build.

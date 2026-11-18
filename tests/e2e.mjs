@@ -1873,6 +1873,39 @@ await test('planner: graphics failure can retry without losing cargo', async()=>
  }finally{await p.close();}
 },page);
 
+await test('planner: adoption follow-up is optional and waits for an explicit answer',async()=>{
+ const context=await browser.newContext({viewport:{width:390,height:844}});const p=await context.newPage();
+ try{
+ await context.addInitScript(()=>localStorage.setItem('dp_plan_adoption_v1',JSON.stringify({job:'fixture',created:Date.now()-3*86400000,next:Date.now()-86400000,frequency:'weekly'})));
+ await p.goto(`${BASE}/planner`);
+ const panel=p.getByRole('region',{name:'Plan use feedback'});await panel.waitFor();
+ if(!await panel.getByRole('button',{name:'Send',exact:true}).isDisabled())throw Error('Empty feedback accepted');
+ await panel.getByRole('combobox',{name:'Result',exact:true}).selectOption('adjusted');
+ if(!await panel.getByRole('button',{name:'Send',exact:true}).isDisabled())throw Error('Missing reason accepted');
+ await panel.getByRole('combobox',{name:'Main reason',exact:true}).selectOption('constraints');
+ await mkdir('test-artifacts',{recursive:true});await p.screenshot({path:'test-artifacts/adoption-mobile.png'});
+ await panel.getByRole('button',{name:'Send',exact:true}).click();await panel.waitFor({state:'hidden'});
+ if(await p.evaluate(()=>localStorage.getItem('dp_plan_adoption_v1')))throw Error('Answered reminder was retained');
+ }finally{await context.close();}
+},page);
+
+if(!IS_LIVE)await test('planner: email follow-up requires separate consent after successful export',async()=>{
+ const context=await browser.newContext({viewport:{width:390,height:844}});const p=await context.newPage();let submissions=[];
+ try{
+ await context.addInitScript(()=>localStorage.setItem('dimpack_entitlement',JSON.stringify({plan:'free',email:'fixture@example.test'})));
+ await p.route('**/api/followup',async route=>{submissions.push(route.request().postDataJSON());await route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+ await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
+ await p.getByRole('button',{name:'CSV',exact:true}).click();
+ const panel=p.getByRole('region',{name:'Plan use feedback'});await panel.getByRole('button',{name:'Real work',exact:true}).click();
+ const consent=panel.getByRole('checkbox',{name:'Email me once in about five days to ask whether this plan worked.',exact:true});await consent.waitFor();
+ if(await consent.isChecked()||submissions.length)throw Error('Email follow-up was preselected or submitted');
+ await consent.check();await panel.getByRole('button',{name:'Save email preference',exact:true}).click();
+ await panel.getByRole('status').waitFor();
+ if(submissions.length!==1||submissions[0].consent!==true||submissions[0].version!=='export-followup-v1')throw Error('Consent payload incorrect');
+ await p.screenshot({path:'test-artifacts/email-followup-mobile.png'});
+ }finally{await context.close();}
+},page);
+
 await browser.close();
 
 console.log('\n' + results.join('\n'));

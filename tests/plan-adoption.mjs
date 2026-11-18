@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {validReminder,reminderDue,deferReminder,adoptionMeta} from '../src/lib/planAdoption.ts';
+const day=86400000,now=100*day;
+const r={job:'local-only',created:now-3*day,next:now-day,frequency:'monthly'};
+assert.ok(validReminder(r,now));assert.ok(reminderDue(r,now));
+assert.equal(reminderDue({...r,created:now-day},now),false);
+assert.equal(reminderDue(deferReminder(r,now),now+6*day),false);
+assert.equal(reminderDue(deferReminder(r,now),now+7*day),true);
+assert.equal(validReminder({...r,created:now-91*day},now),null);
+assert.equal(validReminder({...r,created:now+day},now),null);
+assert.equal(validReminder({job:'x'},now),null);
+assert.equal(adoptionMeta('matched','private text','weekly'),'p:matched:none:weekly');
+assert.equal(adoptionMeta('adjusted','','monthly'),null);
+assert.equal(adoptionMeta('unused','changed_order','occasional'),'p:unused:changed_order:occasional');
+assert.equal(adoptionMeta('private shipment','report','weekly'),null);
+assert.equal(adoptionMeta('matched','','private frequency'),null);
+console.log('Adoption timing, expiry and categorical privacy checks passed');

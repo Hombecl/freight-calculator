@@ -13,7 +13,7 @@ import {reviewPlanner,sourceSpec,remainderText} from '../lib/plannerReview';
 import {plannerManifestCSV,type PlannerReportView} from '../lib/plannerReport';
 import {readPlannerHistory,savePlannerSnapshot,snapshotRevision,snapshotChanges,type PlannerSnapshot} from '../lib/plannerHistory';
 import {samePlannerLayout,shouldCalculate, type CalculationSource} from '../lib/plannerInteractions';
-import ExportFeedback from '../components/ExportFeedback';
+import PlanAdoption from '../components/PlanAdoption';
 import WorkflowJob,{useWorkflowJob} from '../components/WorkflowJob';
 import {recordToolOutput} from '../lib/workflowUsage';
 import {CARGO_TRANSFER} from '../lib/workflowTransfer';
@@ -922,7 +922,7 @@ export default function PlannerPage() {
           onSignOut: auth.signOut,
         } : undefined}
       />
-      <ExportFeedback tool="planner" format={feedbackFormat} onClose={()=>setFeedbackFormat(null)}/>
+      <PlanAdoption format={feedbackFormat} job={workflowJob.id} onClose={()=>setFeedbackFormat(null)}/>
     </div>
   );
 }
