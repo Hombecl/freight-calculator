@@ -27,6 +27,10 @@ jobs:
         env:
           VITE_EMAIL_FOLLOWUP_ENABLED: "true"
         run: npm run build:spa
+      # Regional EC2 mirrors stalled dependency downloads during release CI.
+      - name: Use primary Ubuntu package mirror
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: E2E against preview
