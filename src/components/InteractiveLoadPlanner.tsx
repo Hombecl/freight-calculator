@@ -1,3 +1,4 @@
+import LayoutThumbnail from './LayoutThumbnail';
 import {createViewerRenderer, viewerDiagnostic} from '../lib/viewerRecovery';
 import {track} from '../lib/track';
 import type {CameraSync} from '../lib/viewerCameraSync';
@@ -302,7 +303,7 @@ export default function InteractiveLoadPlanner({
   }, [container, onChange]);
 
   useEffect(() => {
-    if (!threeLoaded || !mountRef.current) return;
+    if (!threeLoaded || !mountRef.current || comparisonOpen) return;
     const THREE = window.THREE as any;
     const mount = mountRef.current;
     let width = mount.clientWidth || 640;
@@ -808,7 +809,7 @@ export default function InteractiveLoadPlanner({
       zoomRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threeLoaded, viewerAttempt, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools, cameraSync]);
+  }, [threeLoaded, viewerAttempt, comparisonOpen, container.l, container.w, container.h, grid, doorEdge, doorEdges, maxPixelRatio, batchBoxes, lightTheme, cameraTools, cameraSync]);
 
   useEffect(()=>{if(autoSpin){lastPointerRef.current=0;interactedRef.current=false;setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);if(fixedViewRef.current)resumeViewRef.current?.();fixedViewRef.current=false;}},[autoSpin]);
 
@@ -1079,8 +1080,8 @@ export default function InteractiveLoadPlanner({
             <button type="button" aria-label={IS_ZH?'放大':'Zoom in'} title={IS_ZH?'放大':'Zoom in'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(.8)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">+</button>
             <button type="button" aria-label={IS_ZH?'縮小':'Zoom out'} title={IS_ZH?'縮小':'Zoom out'} disabled={!threeLoaded||webglFailed} onClick={()=>zoomRef.current?.(1.25)} className="h-9 w-9 rounded-lg hover:bg-slate-100 text-xl">−</button>
             <button type="button" aria-label={isExpanded?(IS_ZH?'縮回畫面':'Compact view'):(IS_ZH?'放大畫面':'Expand view')} aria-pressed={isExpanded} onClick={toggleExpanded} className="min-h-9 flex items-center gap-1 rounded-lg px-2 bg-blue-600 text-white hover:bg-blue-700">{isExpanded?<X size={16}/>:<Maximize2 size={16}/>}<span>{isExpanded?(IS_ZH?'關閉':'Close'):(IS_ZH?'放大比較':'Expand view')}</span></button>
-            {isExpanded&&viewerComparison&&<button type="button" onClick={()=>{track('planner_comparison_open');setComparisonOpen(true);}} className="min-h-9 rounded-lg px-2 font-semibold text-blue-700 bg-blue-50">{IS_ZH?'比較 A / B':'Compare A / B'}</button>}
-            {!readOnly&&<button type="button" aria-pressed={editMode} onClick={()=>{setEditMode(v=>!v);track('planner_view_mode',editMode?'view':'edit');if(editMode){setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);}}} className={`min-h-9 rounded-lg px-2 ${editMode?'bg-amber-100 text-amber-900':'bg-slate-100 text-slate-700'}`}>{editMode?(IS_ZH?'編輯貨物：開啟':'Edit cargo: on'):(IS_ZH?'查看模式 · 編輯貨物':'View mode · Edit cargo')}</button>}
+            {viewerComparison&&<button type="button" onClick={()=>{track('planner_comparison_open');if(!isExpanded)setExpandedView(true);setComparisonOpen(true);}} className="min-h-9 rounded-lg px-2 font-semibold text-blue-700 bg-blue-50">{IS_ZH?'比較 A / B':'Compare A / B'}</button>}
+            {!readOnly&&<button type="button" aria-pressed={editMode} onClick={()=>{setEditMode(v=>!v);track('planner_view_mode',editMode?'view':'edit');if(editMode){setSelectedId(null);selectedIdRef.current=null;onSelect?.(null);}}} className={`min-h-9 rounded-lg px-2 ${editMode?'bg-amber-100 text-amber-900':'bg-slate-100 text-slate-700'}`}>{editMode?(IS_ZH?'編輯貨物：開啟':'Edit cargo: on'):(IS_ZH?'編輯貨物':'Edit cargo')}</button>}
             {viewerActions}
           </div>
         </div>}
@@ -1093,11 +1094,12 @@ export default function InteractiveLoadPlanner({
             backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         />
           {webglFailed ? (
-            <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-100 text-slate-700 text-sm p-6 text-center">
-              <span className="font-semibold">{IS_ZH?'3D 畫面暫時未能顯示':'3D view is temporarily unavailable'}</span>
-              <span>{IS_ZH?'可能與瀏覽器圖像支援或暫時的 GPU 資源不足有關。輸入、計算及報告仍可使用。':'Graphics support or temporary GPU resource limits may be involved. Your inputs, calculations and reports are still available.'}</span>
-              <button type="button" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white" onClick={()=>{if(cameraTools)track('planner_viewer_recovery','retry_requested');setViewerAttempt(v=>v+1);}}>{IS_ZH?'以較低畫質重試 3D':'Retry 3D at lower graphics quality'}</button>
-              <span className="text-xs">{IS_ZH?'重試不會清除貨物或方案。若仍失敗，可關閉其他 3D 分頁，或使用其他支援 WebGL 的瀏覽器。':'Retry keeps your cargo and plan. If it still fails, close other 3D tabs or try another WebGL-capable browser.'}</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-700 text-sm p-4">
+              <div className="w-full min-h-0 flex-1 flex items-center" data-testid="viewer-2d-fallback"><LayoutThumbnail boxes={boxesRef.current} container={container} full label={IS_ZH?'目前方案 · 靜態擺位圖':'Current layout · static preview'}/></div>
+              <div role="status" className="flex flex-wrap items-center justify-center gap-3">
+                <span>{IS_ZH?'靜態預覽 · 3D 暫未可用':'Static preview · 3D unavailable'}</span>
+                <button type="button" className="rounded-lg bg-blue-600 px-3 py-2 font-semibold text-white" onClick={()=>{if(cameraTools)track('planner_viewer_recovery','retry_requested');setViewerAttempt(v=>v+1);}}>{IS_ZH?'重試 3D':'Retry 3D'}</button>
+              </div>
             </div>
           ) : !threeLoaded && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-sm">

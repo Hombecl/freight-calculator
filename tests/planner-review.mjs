@@ -56,3 +56,19 @@ assert.equal(plannerReportSummary({...o,boxes:[{...base,weight:0}]}).weight,0);
 assert.ok(buildPlannerReport({...o,boxes:[{...base,weight:undefined}]}).includes('Incomplete weight data'));
 assert.ok(buildPlannerReport({...o,zh:true}).includes('裝載結果'));
 assert.ok(buildPlannerReport(o).includes('3D image unavailable'));
+
+// Imported missing weights can use numeric engine placeholders, never report them as measured.
+const draft={...o,boxes:packed.boxes.map(b=>({...b,weight:0})),requestedSpecs:[{...s,weight:0,weightKnown:false}]};
+assert.equal(plannerReportSummary(draft).weight,null);
+for(const reportView of ['summary','crew','manifest']) {
+ const html=buildPlannerReport({...draft,reportView});
+ assert.ok(html.includes('DRAFT · weights incomplete · payload not verified'));
+ assert.ok(html.includes('Incomplete weight data'));
+ assert.ok(!html.includes('0.00 kg'));
+}
+const draftCSV=plannerManifestCSV(draft);
+assert.ok(draftCSV.includes('draft_weights_incomplete'));
+for(const line of draftCSV.split('\r\n').filter(x=>x.startsWith('"placement"'))) {
+ assert.equal(line.split(',')[13],'""','unknown weight is blank in CSV');
+ assert.ok(line.includes('Weight missing'));
+}
