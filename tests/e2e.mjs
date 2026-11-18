@@ -1340,6 +1340,7 @@ await test('packing evidence: no prompt on sample, optional feedback after editi
   await p.getByRole('checkbox',{name:'These dimensions are for my own job',exact:true}).check();
   if(!await p.getByRole('button',{name:'Missing a constraint',exact:true}).isVisible())throw Error('Feedback answers should be visible after editing');
   await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
+  await p.getByRole('button',{name:'Stacking limits',exact:true}).click();
   await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
   if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
   await p.getByTestId('calculator-reset').click();
