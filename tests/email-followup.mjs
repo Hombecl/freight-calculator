@@ -43,7 +43,7 @@ const {dispatch}=await import('../workers/followup/index.ts');
 assert.equal((await dispatchPost({env,request:new Request(origin+'/api/followup-dispatch',{method:'POST'})})).status,403);
 let dispatched=0;
 try{
- globalThis.fetch=async(url,init)=>{dispatched++;assert.equal(url,origin+'/api/followup-dispatch');assert.equal(init.headers.Authorization,'Bearer fixture-token');return Response.json({ok:true});};
+ globalThis.fetch=async(url,init)=>{dispatched++;assert.equal(url,origin+'/api/followup-dispatch');assert.equal(init.headers.Authorization,'Bearer fixture-token');assert.equal(init.headers['User-Agent'],'DimPack3D-Followup/1.0');return Response.json({ok:true});};
  await dispatch({FOLLOWUP_ENABLED:'false',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,0);
  await dispatch({FOLLOWUP_ENABLED:'true',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,1);
 }finally{globalThis.fetch=original;}
