@@ -1,12 +1,10 @@
 name = "dimpack3d-followup"
 main = "index.ts"
 compatibility_date = "2026-01-01"
+workers_dev = false
 [triggers]
 crons = ["17 4 * * *"]
 [vars]
-FOLLOWUP_ENABLED = "false"
-[[kv_namespaces]]
-binding = "LEADS"
-id = "13e65133a1414b1ebe5d125d38d43eb8"
-# Configure RESEND_API_KEY and FOLLOWUP_FROM using managed secrets.
-# Enable only after the Pages response endpoint and sender are verified.
+FOLLOWUP_ENABLED = "true"
+# Set FOLLOWUP_CRON_TOKEN via managed secrets. The scheduler cannot read leads
+# or the mail provider key; only the Pages dispatcher has those capabilities.

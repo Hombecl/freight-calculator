@@ -1,7 +1,7 @@
-export interface FollowupEnv { LEADS: KVNamespace; RESEND_API_KEY?: string; FOLLOWUP_FROM?: string; FOLLOWUP_ENABLED?: string }
+export interface FollowupEnv { LEADS: KVNamespace; RESEND_API_KEY?: string; FOLLOWUP_FROM?: string; FOLLOWUP_ENABLED?: string; LEAD_NOTIFY_FROM?:string }
 export interface Followup { email: string; token: string; consentAt: string; consentVersion: 'export-followup-v1'; due: number; state: 'pending'|'attempted'|'sent'|'answered'|'stopped'; result?: string; reason?: string; comment?: string; purpose?:string; source?:string }
 export const TTL=90*86400;
-export const enabled=(env:FollowupEnv)=>env.FOLLOWUP_ENABLED==='true'&&!!env.RESEND_API_KEY&&!!env.FOLLOWUP_FROM;
+export const enabled=(env:FollowupEnv)=>env.FOLLOWUP_ENABLED==='true'&&!!env.RESEND_API_KEY&&!!(env.FOLLOWUP_FROM||env.LEAD_NOTIFY_FROM);
 export async function emailHash(email:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(email.trim().toLowerCase()))),b=>b.toString(16).padStart(2,'0')).join('');}
 export async function saveFollowup(env:FollowupEnv,id:string,r:Followup){await env.LEADS.put(`followup|${id}`,JSON.stringify(r),{expirationTtl:TTL});}
 export async function sendDue(env:FollowupEnv,now=Date.now()) {

@@ -1,6 +1,7 @@
 DimPack3D opt-in export research follow-up
 
-Implementation status: code prepared; no customer emails sent; activation off.
+Implementation: explicit consent only; no existing leads enrolled. Release status
+and live checks are recorded separately in the deployment handoff.
 
 Scope
 - Planner successful PDF/CSV export opens adoption prompt. Real-work respondents
@@ -18,14 +19,15 @@ Scope
 - Email replies go to hello@dimpack3d.com; verify mailbox handling before enabling.
 
 Activation checklist (not completed by writing code)
-1. Verify sender domain and configure FOLLOWUP_FROM and RESEND_API_KEY on Pages
-   and dedicated scheduled Worker. Never use customer addresses as From.
+1. Pages uses its existing RESEND_API_KEY and LEAD_NOTIFY_FROM (or optional
+   FOLLOWUP_FROM). The scheduler receives no mail-provider key or lead access.
 2. Deploy Pages /api/followup and /api/followup-response plus UI and privacy copy.
-3. Deploy workers/followup/wrangler.toml (daily 04:17 UTC) with same LEADS KV.
+3. Deploy workers/followup/wrangler.toml (daily 04:17 UTC). Store the independent
+   FOLLOWUP_CRON_TOKEN in 1Password and configure it on Pages and Worker.
 4. Test with an operator-owned address: export -> explicit opt-in -> due delivery
    -> response -> suppression. Verify mobile and desktop forms in Chrome.
 5. Set FOLLOWUP_ENABLED=true on Pages and Worker; build Pages with
-   VITE_EMAIL_FOLLOWUP_ENABLED=true. Both flags are intentionally off by default.
+   VITE_EMAIL_FOLLOWUP_ENABLED=true. Without the shared token, dispatch is denied.
 6. Check provider bounce/complaint suppression and verified reply mailbox.
 
 Failure behavior
@@ -33,7 +35,8 @@ Failure behavior
 - First writes attempted, then calls provider using stable idempotency key.
 - Failed/ambiguous requests stay attempted: operator must reconcile provider
   state before any retry. No automatic retry after idempotency retention expires.
-- KV is eventually consistent, not a distributed lock. Provider idempotency
+- KV is eventually consistent, not a distributed lock. Concurrent enrollment
+  tokens remain valid aliases to the same request. Provider idempotency
   protects concurrent identical sends; suppression may have propagation delay.
 - API cannot independently prove an export occurred; it is called from the
   successful-export flow and rate-limits enrollment. This is not a proof of use.

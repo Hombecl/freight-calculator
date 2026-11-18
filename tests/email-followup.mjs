@@ -38,3 +38,12 @@ console.log('Follow-up consent, dedup, delay, scanner-safe GET, explicit respons
 // wins provider idempotency must still resolve even if the latest record differs.
 const alias=crypto.randomUUID()+crypto.randomUUID();rows.set('followup-token|'+alias,id);
 assert.equal((await get({env,request:new Request(origin+'/api/followup-response?token='+alias)})).status,200);
+const {onRequestPost:dispatchPost}=await import('../functions/api/followup-dispatch.ts');
+const {dispatch}=await import('../workers/followup/index.ts');
+assert.equal((await dispatchPost({env,request:new Request(origin+'/api/followup-dispatch',{method:'POST'})})).status,403);
+let dispatched=0;
+try{
+ globalThis.fetch=async(url,init)=>{dispatched++;assert.equal(url,origin+'/api/followup-dispatch');assert.equal(init.headers.Authorization,'Bearer fixture-token');return Response.json({ok:true});};
+ await dispatch({FOLLOWUP_ENABLED:'false',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,0);
+ await dispatch({FOLLOWUP_ENABLED:'true',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,1);
+}finally{globalThis.fetch=original;}
