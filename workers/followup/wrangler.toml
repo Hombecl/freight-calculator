@@ -1,0 +1,12 @@
+name = "dimpack3d-followup"
+main = "index.ts"
+compatibility_date = "2026-01-01"
+[triggers]
+crons = ["17 4 * * *"]
+[vars]
+FOLLOWUP_ENABLED = "false"
+[[kv_namespaces]]
+binding = "LEADS"
+id = "13e65133a1414b1ebe5d125d38d43eb8"
+# Configure RESEND_API_KEY and FOLLOWUP_FROM using managed secrets.
+# Enable only after the Pages response endpoint and sender are verified.

@@ -24,6 +24,8 @@ jobs:
       - name: Unit tests (engines)
         run: npm test
       - name: Build (SPA — prerender runs on deploy machine)
+        env:
+          VITE_EMAIL_FOLLOWUP_ENABLED: "true"
         run: npm run build:spa
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

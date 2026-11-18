@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["functions"]
+  "include": ["functions", "workers/followup/index.ts"]
 }

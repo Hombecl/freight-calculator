@@ -1,0 +1,32 @@
+Planner adoption measurement — 2026-11-18
+
+Implemented: optional real-work/exploration answer after successful export;
+explicit opt-in device-only reminder, due after 2 days; self-reported adoption
+(matched / adjusted / unused / not_yet) and categorical reasons. not_yet or close
+defers 7 days. Expiry is 90 days, cleaned when component next loads. No emails.
+Only one pending reminder per browser; later exports never replace its date/job.
+Repeated exports for a job are suppressed while the component remains mounted.
+
+Events:
+adoption_prompt p:export — prompt appearances, not users
+plan_intent p:pdf|csv:real|explore — self-reported purpose
+adoption_reminder p:opt_in:weekly|monthly|occasional — opt-ins
+adoption_followup_shown p — eligible returning-browser prompt
+plan_adoption p:result:reason:frequency — submitted outcome
+
+Do not divide feedback events by all exports and call that adoption rate.
+Report answer counts, opt-in counts, prompt counts and missing responses.
+No response is unknown, not a failed plan. matched is self-report, not verified
+loading. not_yet is pending, not rejection. Sampling and repeated answers after
+not_yet mean these totals are not unique people or a linked cohort funnel.
+
+Existing workflowUsage already keeps job/revision references locally for 90 days
+and transmits repeat / revision / next_job plus coarse return intervals for
+confirmed own-work exports. It is not unique-user retention and fresh job IDs
+must not be equated with new customers. No remote persistent identifier added.
+No retrospective reconstruction of first/second/third users is possible here.
+GA4 returning-user cohort analysis remains a separate access/reporting task.
+
+Validation: TypeScript, adoption timing/expiry/category unit tests, existing
+export-feedback tests, production SPA build. Browser and deployment verification
+are not implied by these checks.
