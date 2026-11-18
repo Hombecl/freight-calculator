@@ -167,6 +167,7 @@ export default function InteractiveLoadPlanner({
   onAction,
   registerSnapshot,
 }: Props) {
+  const savedCamera=useRef<{theta:number;phi:number;zoom:number}|null>(null);
   const [comparisonOpen,setComparisonOpen]=useState(false);
   const [panelTall,setPanelTall]=useState(false);
   const [positionMenu,setPositionMenu]=useState(false);
@@ -319,9 +320,9 @@ export default function InteractiveLoadPlanner({
     // spherical orbit state
     const maxDim = Math.max(container.l, container.w, container.h);
     let radius = maxDim * (lightTheme ? 1.75 : 2.1);
-    let theta = Math.PI * 0.25; // azimuth
-    let phi = Math.PI * 0.32;   // polar from +Y
-    let zoomScale=1;
+    let theta = savedCamera.current?.theta ?? Math.PI * 0.25; // azimuth
+    let phi = savedCamera.current?.phi ?? Math.PI * 0.32;   // polar from +Y
+    let zoomScale=savedCamera.current?.zoom ?? 1;
     let receivingCamera=false;
     const applyCamera = () => {
       camera.position.set(
@@ -782,6 +783,7 @@ export default function InteractiveLoadPlanner({
     sizeObserver.observe(mount);
 
     return () => {
+      if(cameraTools)savedCamera.current={theta,phi,zoom:zoomScale};
       unsubscribeCamera?.();
       cancelAnimationFrame(raf);
       visibility.disconnect();
