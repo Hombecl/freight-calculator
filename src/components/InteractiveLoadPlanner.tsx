@@ -776,6 +776,9 @@ export default function InteractiveLoadPlanner({
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
       if(cameraSync)receiveCamera(cameraSync.get());else if(cameraTools)fitCamera();
+      // Resizing clears the drawing buffer. Paint now, including paused views,
+      // rather than exposing a blank canvas until the next animation frame.
+      if(!contextLost)renderScene();
       needsRender = true;
     };
     window.addEventListener('resize', onResize);

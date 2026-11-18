@@ -1616,6 +1616,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
    await p.setViewportSize({width,height:1000});
    await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();const m=stage.querySelector('[data-testid="viewer-metrics"]')?.getBoundingClientRect();return c&&m&&c.bottom<=m.top+2;},{},{timeout:5000});
    await stage.evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
+   await p.waitForFunction(()=>{const c=document.querySelector('[data-testid="planner-viewport"] canvas');return c?.dataset.renderedSize===`${c?.width}x${c?.height}`;});
    const bounds=await stage.boundingBox(),metrics=await p.getByTestId('viewer-metrics').boundingBox(),model=await canvas.boundingBox();
    if(metrics.y+metrics.height>bounds.y+bounds.height+1||metrics.x<bounds.x||metrics.x+metrics.width>bounds.x+bounds.width+1)throw Error('Floating metrics overflow viewer');
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
