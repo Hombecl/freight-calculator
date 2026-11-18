@@ -1,0 +1,30 @@
+Planner clarity study — 18 November 2026
+
+Research basis (published award/case information, not live interaction testing):
+EAO Digital Product Selector, iF entry:
+https://ifdesign.com/en/winner-ranking/project/digital-product-selector/678886
+EAO 2025 award announcement:
+https://www.eao.com/nl/news/cm9v3uzu7eld008tdba6g2wpj/eao-wint-2025-if-design-award-voor-online-productconfigurator-interactief-3d-gereedschap-geeft-ontwerpers-volledige-besturing-over-configuratie-ervaring
+EAO describes comparison accessible throughout configuration and direct downloads:
+https://www.eao.com/en/news/cli1gc0dzc0tl0bt9vkojemw6/eao-launches-new-website-user-friendly-and-modern-the-new-eao-website
+AIAIAI design presentation hosted by Awwwards, covering typography, layout, navigation and product display:
+https://assets.awwwards.com/assets/files/live-presentation.pdf
+
+Application to this tool (our design decisions, not claims of measured conversion gains):
+- Put Compare A/B in the normal viewer toolbar; do not require users to discover Expand first.
+- Let aligned thumbnails and the same three metrics explain alternatives. One recommendation/tradeoff line instead of several repetitive paragraphs and algorithm names.
+- Keep the existing palette and slow orbit behavior.
+- Preserve usable output: static placement preview if WebGL fails; explicit draft choice when weights are unknown, with no invented zero weights in exports.
+- Ask one optional follow-up only after a user requests a different arrangement or missing constraint. Use fixed categories, not cargo details.
+
+Evidence behind priorities:
+Nov16–17:13PDF events,6 distinct export emails;9 gate dismissals/15views;8 Packing feedback selections including2 constraint and1 arrangement requests. Events are not unique users or session funnels.
+WebGL errors persist after previous release. The old hidden main renderer remained alive during split comparison; suspend and dispose it while split views are active. This reduces concurrent contexts, but does not establish the cause of every historical failure.
+Add coarse calculation workload buckets to understand the slow tail without sending dimensions/names/exact quantities.
+
+Validation boundary:
+Chrome runtime reported Browser is not available: chrome and browser inventory was empty. Live visual inspection requires the connected desktop Chrome session; no substitute browser used locally.
+Existing GitHub CI exercises responsive layouts, rotation, export gating, rendering recovery and comparison. Add regressions for static fallback, main-canvas suspension and draft preflight. Unit tests verify missing numeric weight placeholders are blank/incomplete in PDF HTML and CSV.
+
+Deferred pending evidence/access:
+No removal of email gate without a controlled experiment. No new identity tracking/session IDs. GA4 returning-user analysis requires access to the DimPack property. No API feature expansion or new engine heuristics based only on these small samples.

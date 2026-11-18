@@ -14,7 +14,7 @@ export function usePackingWorker(container: PackContainer, specs: PackItemSpec[]
   useEffect(() => {
     let active = true;
     let measured=false;const started=performance.now();
-    const measure=(outcome:string)=>{if(measured)return;measured=true;const ms=performance.now()-started;track('planner_compute',`${outcome}:${ms<1000?'under_1s':ms<5000?'1_5s':ms<15000?'5_15s':'15s_plus'}`);};
+    const measure=(outcome:string)=>{if(measured)return;measured=true;const ms=performance.now()-started;const duration=ms<1000?'under_1s':ms<5000?'1_5s':ms<15000?'5_15s':'15s_plus';track('planner_compute',`${outcome}:${duration}`);const qty=specs.reduce((n,s)=>n+s.qty,0);track('planner_compute_workload',`${outcome}:${duration}:${qty<=100?'up_to_100':qty<=1000?'up_to_1000':'over_1000'}:${specs.length===1?'single_sku':'mixed_sku'}`);};
     let worker: Worker | undefined;
     setState({key, status: 'running', phase: 'packing'});
     const finishError = () => {

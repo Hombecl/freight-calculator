@@ -2,7 +2,7 @@ import type { PackItemSpec, PackContainer } from './binPacking';
 import type { PlannerBox } from './plannerBox';
 import type { PlanMeta } from './exportPlan';
 import { loadingSequence } from './realism';
-import { reviewPlanner, reviewText, remainderText } from './plannerReview';
+import { reviewPlanner, reviewText, remainderText, sourceSpec } from './plannerReview';
 export type PlannerReportView='summary'|'crew'|'manifest';
 export interface PlannerReportInput {
  meta:PlanMeta; boxes:PlannerBox[]; requestedSpecs:PackItemSpec[];
@@ -12,13 +12,19 @@ export interface PlannerReportInput {
 }
 const esc=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const csv=(v:unknown)=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+/** Imported placeholders must never appear as measured weights in a draft. */
+function reportWeight(b:PlannerBox,o:PlannerReportInput):number|null {
+ const spec=sourceSpec(b,o.requestedSpecs);
+ return spec?.weightKnown===false||typeof b.weight!=='number'||!Number.isFinite(b.weight)||b.weight<0?null:b.weight;
+}
 export function plannerManifestCSV(o:PlannerReportInput):string {
  const review=reviewPlanner(o.boxes,o.reviewContainer??o.meta.container,o.requestedSpecs,o.door);
- const status=review.complete?'screened_complete':'draft_review';
+ const missingWeights=o.requestedSpecs.some(s=>s.weightKnown===false);
+ const status=missingWeights?'draft_weights_incomplete':review.complete?'screened_complete':'draft_review';
  const prefix=[o.reportReference??'',o.revision??'',status];
  const rows:unknown[][]=[['Record','Job','Revision','Status','SKU','Label','Requested','Placed','Remaining','LoadOrder','L(cm)','W(cm)','H(cm)','Weight(kg)','X(cm)','Y(cm)','Z(cm)','Note']];
  for(const r of review.cargo)rows.push(['cargo',...prefix,r.id,r.label,r.requested,r.placed,r.remaining,'','','','','','','','',remainderText(r.reason,!!o.zh)]);
- for(const [i,b] of loadingSequence(o.boxes).entries())rows.push(['placement',...prefix,b.specId??'',b.label,'','','',i+1,b.l,b.w,b.h,b.weight,b.px,b.py,b.pz,'']);
+ for(const [i,b] of loadingSequence(o.boxes).entries())rows.push(['placement',...prefix,b.specId??'',b.label,'','','',i+1,b.l,b.w,b.h,reportWeight(b,o)??'',b.px,b.py,b.pz,reportWeight(b,o)===null?(o.zh?'箱重未提供':'Weight missing'):'']);
  for(const issue of review.issues)rows.push(['issue',...prefix,'','','','','','','','','','','','','',`${reviewText(issue.code,!!o.zh)} ${issue.ids.join(', ')}`]);
  rows.push(['assumption',...prefix,'','','','','','','','','','','','','',o.zh?'幾何及輸入限制篩查；不代表已驗證裝卸路徑、綁紮或運輸安全。':'Geometry and entered-rule screening; loading access, securing and transport safety are not certified.']);
  return rows.map(r=>r.map(csv).join(',')).join('\r\n');
@@ -27,12 +33,12 @@ export function plannerReportSummary(o:PlannerReportInput) {
  const c=o.reviewContainer??o.meta.container;
  const review=reviewPlanner(o.boxes,c,o.requestedSpecs,o.door);
  const volume=o.boxes.reduce((n,b)=>n+b.l*b.w*b.h,0),capacity=c.l*c.w*c.h;
- const knownWeight=o.boxes.filter(b=>typeof b.weight==='number'&&Number.isFinite(b.weight)&&b.weight>=0);
+ const weights=o.boxes.map(b=>reportWeight(b,o));
  return {requested:review.cargo.reduce((n,r)=>n+r.requested,0),placed:o.boxes.length,
   remaining:review.cargo.reduce((n,r)=>n+r.remaining,0),
   utilization:capacity>0&&Number.isFinite(volume)?volume/capacity*100:null,
   volumeM3:Number.isFinite(volume)?volume/1e6:null,
-  weight:knownWeight.length===o.boxes.length?knownWeight.reduce((n,b)=>n+b.weight!,0):null};
+  weight:weights.every(w=>w!==null)?weights.reduce<number>((n,w)=>n+(w??0),0):null};
 }
 export function buildPlannerReport(o:PlannerReportInput):string {
  const zh=!!o.zh,T=(a:string,b:string)=>zh?b:a;
@@ -40,7 +46,7 @@ export function buildPlannerReport(o:PlannerReportInput):string {
  const review=reviewPlanner(o.boxes,c,o.requestedSpecs,o.door),seq=loadingSequence(o.boxes);
  const issueHtml=review.issues.map(i=>`<li>${esc(reviewText(i.code,zh))} ${esc(i.ids.join(', '))}</li>`).join('');
  const ledger=`<h2>${T('Cargo reconciliation','貨物對數')}</h2><table><thead><tr>${[T('SKU / row ID','SKU／行編號'),T('Cargo','貨物'),T('Requested','要求'),T('Placed','已裝'),T('Remaining','餘貨'),T('Note','備註')].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${review.cargo.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.label)}</td><td>${esc(r.requested)}</td><td>${r.placed}</td><td>${r.remaining}</td><td>${esc(remainderText(r.reason,zh))}</td></tr>`).join('')}</tbody></table>`;
- const rows=`<h2>${T('Loading sequence and positions','裝載次序及位置')}</h2><p>${T('Load supporting cartons first. Coordinates are cm: X from the back, Y above the floor, Z across the width. Door is at +X. Review access and securing with your loading team.','先放承托箱。座標單位 cm：X 由櫃尾起、Y 離地高度、Z 橫向；門口在 +X。請與裝載人員核對通道及固定方法。')}</p><table><thead><tr>${[T('Load #','裝載 #'),'SKU',T('Cargo','貨物'),T('Unload','卸貨'),T('L×W×H (cm)','長×闊×高 (cm)'),'kg','X / Y / Z'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${seq.map((b,i)=>`<tr><td>${i+1}</td><td>${esc(b.specId??'')}</td><td>${esc(b.label)}</td><td>${esc(b.unloadOrder??'')}</td><td>${esc(b.l)}×${esc(b.w)}×${esc(b.h)}</td><td>${esc(b.weight??'')}</td><td>${esc(b.px)} / ${esc(b.py)} / ${esc(b.pz)}</td></tr>`).join('')}</tbody></table>`;
+ const rows=`<h2>${T('Loading sequence and positions','裝載次序及位置')}</h2><p>${T('Load supporting cartons first. Coordinates are cm: X from the back, Y above the floor, Z across the width. Door is at +X. Review access and securing with your loading team.','先放承托箱。座標單位 cm：X 由櫃尾起、Y 離地高度、Z 橫向；門口在 +X。請與裝載人員核對通道及固定方法。')}</p><table><thead><tr>${[T('Load #','裝載 #'),'SKU',T('Cargo','貨物'),T('Unload','卸貨'),T('L×W×H (cm)','長×闊×高 (cm)'),'kg','X / Y / Z'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${seq.map((b,i)=>`<tr><td>${i+1}</td><td>${esc(b.specId??'')}</td><td>${esc(b.label)}</td><td>${esc(b.unloadOrder??'')}</td><td>${esc(b.l)}×${esc(b.w)}×${esc(b.h)}</td><td>${esc(reportWeight(b,o)??T('Missing','未提供'))}</td><td>${esc(b.px)} / ${esc(b.py)} / ${esc(b.pz)}</td></tr>`).join('')}</tbody></table>`;
  // Bounded top views: sequence numbers remain readable in the accompanying table.
  const batch=Math.max(10,Math.ceil(seq.length/20));
  const stages=view==='crew'?Array.from({length:Math.ceil(seq.length/batch)},(_,i)=>{
@@ -51,7 +57,8 @@ export function buildPlannerReport(o:PlannerReportInput):string {
   }).join('');
   return `<section class="stage"><h3>${T('Stage','階段')} ${i+1}: ${T('load','裝載')} ${start+1}–${end}</h3><svg role="img" aria-label="${T('Top view, door on right','俯視圖，門口在右')}" viewBox="-3 -3 750 ${height+30}" xmlns="http://www.w3.org/2000/svg"><rect width="700" height="${c.w*scale}" fill="white" stroke="#172d3b"/>${marks}<text x="708" y="20" font-size="11">${T('DOOR','門口')} →</text></svg><p>${T('Top view; stacked boxes may overlap in this view. Follow the numbered table for height and order.','俯視圖；疊箱可能遮住下層。高度及次序請對照編號表。')}</p></section>`;
  }).join(''):'';
- const status=review.complete?T('Complete · passed the listed screening checks','完整 · 通過列出的篩查'):T('DRAFT · remaining cargo or issues need review','草稿 · 有餘貨或問題待核對');
+ const missingWeights=o.requestedSpecs.some(s=>s.weightKnown===false);
+ const status=missingWeights?T('DRAFT · weights incomplete · payload not verified','草稿 · 重量未完整 · 載重未驗證'):review.complete?T('Complete · passed the listed screening checks','完整 · 通過列出的篩查'):T('DRAFT · remaining cargo or issues need review','草稿 · 有餘貨或問題待核對');
  const summary=plannerReportSummary(o);
  const metrics=[[T('Requested cartons','要求箱數'),summary.requested],[T('Loaded cartons','已裝箱數'),summary.placed],[T('Remaining cartons','未裝箱數'),summary.remaining],
  [T('Volume utilization','容積利用率'),summary.utilization===null?'—':`${summary.utilization.toFixed(1)}%`],

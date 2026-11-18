@@ -124,3 +124,6 @@ assert.equal(normalizedExportEmail('  person@example.com  '),'person@example.com
 assert.equal(normalizedExportEmail('person @example.com'),null);
 assert.equal(normalizedExportEmail(''),null);
 console.log('PASS export preflight: unknown weight, stale inputs, legacy weights and pasted email');
+
+assert.equal(plannerExportBlocker(false,[{weightKnown:false}],true),null,'explicit draft can export without weights');
+assert.equal(plannerExportBlocker(true,[{weightKnown:false}],true),'stale_plan','draft still needs current calculation');

@@ -388,6 +388,7 @@ export default function PlannerPage() {
     if(!preserve()){e.preventDefault();return;}
     try{sessionStorage.setItem(CARGO_TRANSFER,JSON.stringify({model:'loose-cartons',orderId:workflowJob.id,revision,specs:appliedSpecs,ownJob:workflowJob.own}));track('workflow_transfer',target==='compare'?'planner_compare':'planner_cartons');}catch{e.preventDefault();setExportError(T('Device storage is full.','本機儲存已滿。'));}
   };
+  const [allowIncompleteDraft,setAllowIncompleteDraft]=useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [feedbackFormat, setFeedbackFormat] = useState<'pdf'|'csv'|null>(null);
   useEffect(()=>{
@@ -403,7 +404,7 @@ export default function PlannerPage() {
       setExportError(T('Select Optimise pack to update your plan first.', '請先按 Optimise pack 更新方案。'));
       return;
     }
-    if(appliedSpecs.some(s=>s.weightKnown===false)) {
+    if(!allowIncompleteDraft&&appliedSpecs.some(s=>s.weightKnown===false)) {
       trackExport('export_failed','planner',format,'missing_weight');
       setExportError(T('Supply each missing carton weight and optimise again before exporting a weight estimate.','請填寫缺少嘅箱重並重新計算，再匯出重量估算。'));
       const field=document.querySelector<HTMLInputElement>('[data-missing-weight="true"]');
@@ -431,7 +432,7 @@ export default function PlannerPage() {
   const guardExport = (format: ExportFormat) => {
     trackExport('export_requested', 'planner', format);
     setExportError(null);
-    if (plannerExportBlocker(hasPendingChanges,appliedSpecs) || auth.isPro || ent.canExport) { runExport(format); return; }
+    if (plannerExportBlocker(hasPendingChanges,appliedSpecs,allowIncompleteDraft) || auth.isPro || ent.canExport) { runExport(format); return; }
     pending.current = format;
     trackExport('export_gate_viewed', 'planner', format);
     setPaywallOpen(true);
@@ -571,7 +572,7 @@ export default function PlannerPage() {
                     </div>
                   ))}
                 </div>
-                {s.weightKnown===false&&<p className="text-xs text-amber-800">{T('Enter carton weight (kg), then optimise before exporting.','請輸入箱重（kg），重新計算後即可匯出。')}</p>}
+                {s.weightKnown===false&&<p className="text-xs text-amber-800">{T('Weight missing (kg).','箱重未填（kg）。')}</p>}
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   <label className="flex items-center gap-1">
                     <input
@@ -813,8 +814,9 @@ export default function PlannerPage() {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2 items-start" aria-label={T('Export and manage your plan', '匯出及管理方案')}>
         <section id="planner-export" tabIndex={-1} className="scroll-mt-28 min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
-          <h2 className="font-bold text-slate-900">{T('Export & compare', '匯出與比較')}</h2>
+          <h2 className="font-bold text-slate-900">{T('Export', '匯出')}</h2>
           <section className="rounded border p-3 space-y-2 text-sm"><label className="block">{T('Report reference (optional)','報告參考編號（可略過）')}<input className="border rounded p-2 w-full" maxLength={120} value={reportName} onChange={e=>setReportName(e.target.value)}/></label><label className="block">{T('Report for','報告對象')}<select className="border rounded p-2 w-full" value={reportView} onChange={e=>setReportView(e.target.value as PlannerReportView)}><option value="summary">{T('Customer — summary','客戶 — 摘要')}</option><option value="crew">{T('Warehouse — loading steps','倉庫 — 裝載步驟')}</option><option value="manifest">{T('Forwarder — reconciliation and positions','貨代 — 對數及位置')}</option></select></label><p className="text-xs break-all">{T('Revision','版本')}: {revision}</p></section>
+          {appliedSpecs.some(s=>s.weightKnown===false)&&<label className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><input type="checkbox" className="mt-1" checked={allowIncompleteDraft} onChange={e=>{setAllowIncompleteDraft(e.target.checked);setExportError(null);}}/>{T('Export a draft · weights incomplete','匯出草稿 · 重量未完整')}</label>}
           <div className="flex gap-2">
             <button
               onClick={exportCsv}
@@ -836,7 +838,7 @@ export default function PlannerPage() {
           <Link to="/order-quote" className="block rounded border p-2 text-sm text-center" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'quote')}>{T('Use this carton list for pallet quoting','用此散箱貨單計算卡板報價')}</Link>
           <Link to="/consolidation?from=planner" className="block rounded border border-teal-300 p-2 text-sm text-center text-teal-900" aria-disabled={hasPendingChanges} onClick={e=>transferCargo(e,'compare')}>{T('Compare containers for this cargo','比較此貨單的櫃型')}</Link>
           <p className="text-xs text-slate-600">{T('Your current layout is saved locally before comparison. Compare the same quantities and rules; costs need your own quotes.','比較前會在本機保存目前擺位。沿用相同數量及限制；成本需提供自己的報價。')}</p>
-          {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Some carton weights are missing. Weight and payload totals are incomplete; enter weights and optimise again before exporting.','部分箱重未提供，重量及載重合計不完整；請填寫並重新計算再匯出。')}</p>}
+          {appliedSpecs.some(s=>s.weightKnown===false)&&<p role="alert" className="text-amber-800 text-sm">{T('Add weights for a checked report, or select draft export.','填寫重量後可匯出核對報告，或選擇草稿匯出。')}</p>}
         </section>
         <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
           <h2 className="font-bold text-slate-900">{T('Save & share this job', '保存與分享工作')}</h2>

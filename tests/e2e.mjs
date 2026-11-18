@@ -1340,6 +1340,7 @@ await test('packing evidence: no prompt on sample, optional feedback after editi
   await p.getByRole('checkbox',{name:'These dimensions are for my own job',exact:true}).check();
   if(!await p.getByRole('button',{name:'Missing a constraint',exact:true}).isVisible())throw Error('Feedback answers should be visible after editing');
   await p.getByRole('button',{name:'Missing a constraint',exact:true}).click();
+  await p.getByRole('button',{name:'Stacking limits',exact:true}).click();
   await p.getByText('Thank you — feedback recorded.',{exact:true}).waitFor();
   if(await p.getByTestId('product-packing-count').innerText()!=='30')throw Error('Feedback altered result');
   await p.getByTestId('calculator-reset').click();
@@ -1477,7 +1478,7 @@ await test('planner: visual comparison, camera presets and cargo focus preserve 
   }
   await p.getByRole('button',{name:'Top view',exact:true}).click();
   const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
-  if(await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).count())await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).click();
+  if(await p.getByRole('button',{name:'Edit cargo',exact:true}).count())await p.getByRole('button',{name:'Edit cargo',exact:true}).click();
   const rect=await canvas.boundingBox();
   for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
   await p.getByTestId('cargo-focus-status').waitFor();
@@ -1568,6 +1569,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
   await expanded.getByTestId('planner-layout-1').click();await p.getByText('215 / 240',{exact:true}).waitFor();
   await p.screenshot({path:'test-artifacts/expanded-layout-comparison.png'});
   await p.getByRole('button',{name:'Compare A / B',exact:true}).click();
+  await p.waitForFunction(()=>!document.querySelector('[data-testid="planner-viewport"] > div[style*="display: none"] canvas'));
   const comparison=p.getByTestId('planner-comparison-workspace');await comparison.waitFor();
   await comparison.getByRole('combobox',{name:'Layout B',exact:true}).selectOption('0');
   await p.waitForFunction(()=>['A','B'].every(side=>!!document.querySelector(`[data-testid="comparison-view-${side}"] canvas`)?.dataset.camera));
@@ -1614,6 +1616,7 @@ await test('planner: floating viewer keeps metrics visible and rotation controll
    await p.setViewportSize({width,height:1000});
    await p.waitForFunction(()=>{const stage=document.querySelector('[data-testid="planner-viewport"]');const c=stage.querySelector('canvas')?.getBoundingClientRect();const m=stage.querySelector('[data-testid="viewer-metrics"]')?.getBoundingClientRect();return c&&m&&c.bottom<=m.top+2;},{},{timeout:5000});
    await stage.evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
+   await p.waitForFunction(()=>{const c=document.querySelector('[data-testid="planner-viewport"] canvas');return c?.dataset.renderedSize===`${c?.width}x${c?.height}`;});
    const bounds=await stage.boundingBox(),metrics=await p.getByTestId('viewer-metrics').boundingBox(),model=await canvas.boundingBox();
    if(metrics.y+metrics.height>bounds.y+bounds.height+1||metrics.x<bounds.x||metrics.x+metrics.width>bounds.x+bounds.width+1)throw Error('Floating metrics overflow viewer');
    await p.screenshot({path:`test-artifacts/floating-viewer-${width}.png`});
@@ -1672,7 +1675,7 @@ await test('planner: inspecting, undo and reset preserve selected-layout state',
   const pick=async()=>{
    await p.getByRole('button',{name:'Top view',exact:true}).click();
    const canvas=p.getByTestId('planner-viewport').locator('canvas');await canvas.scrollIntoViewIfNeeded();
-   if(await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).count())await p.getByRole('button',{name:'View mode · Edit cargo',exact:true}).click();
+   if(await p.getByRole('button',{name:'Edit cargo',exact:true}).count())await p.getByRole('button',{name:'Edit cargo',exact:true}).click();
    const rect=await canvas.boundingBox();
    for(const x of [.5,.4,.6]){await canvas.click({position:{x:rect.width*x,y:rect.height*.5}});if(await p.getByTestId('cargo-focus-status').count())break;}
    await p.getByTestId('cargo-focus-status').waitFor();
@@ -1830,6 +1833,11 @@ await test('planner: missing weight preflight precedes email gate and feedback n
   if(await p.getByRole('dialog',{name:/download your plan/i}).count())throw Error('Email gate shown before missing-weight validation');
   const weight=p.getByRole('spinbutton',{name:'Unknown weight weight (kg)',exact:true});
   if(!await weight.evaluate(el=>el===document.activeElement))throw Error('Missing weight did not receive focus');
+  await p.getByRole('checkbox',{name:'Export a draft · weights incomplete',exact:true}).check();
+  await p.getByRole('button',{name:'PDF plan',exact:true}).click();
+  await p.getByRole('dialog',{name:/download your plan/i}).waitFor();
+  await p.keyboard.press('Escape');
+  await p.getByRole('checkbox',{name:'Export a draft · weights incomplete',exact:true}).uncheck();
   await weight.fill('5');await p.getByRole('button',{name:'Optimise pack',exact:true}).click();
   await p.getByTestId('planner-pending-changes').waitFor({state:'hidden'});
   await p.getByRole('button',{name:'Having trouble? Tell us what to improve',exact:true}).click();
@@ -1853,8 +1861,9 @@ await test('planner: graphics failure can retry without losing cargo', async()=>
   await stage.locator('canvas').first().waitFor();
   const before=await p.getByTestId('planner-packed').innerText();
   await stage.locator('canvas').first().evaluate(canvas=>canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})));
-  const retry=p.getByRole('button',{name:'Retry 3D at lower graphics quality',exact:true});
+  const retry=p.getByRole('button',{name:'Retry 3D',exact:true});
   await retry.waitFor();
+  await stage.getByTestId('viewer-2d-fallback').getByRole('img').waitFor();
   await retry.click();
   await retry.waitFor({state:'hidden'});
   await stage.locator('canvas').waitFor();
