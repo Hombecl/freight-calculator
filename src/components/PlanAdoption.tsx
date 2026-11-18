@@ -28,7 +28,7 @@ export default function PlanAdoption({format,job,onClose}:{format:'pdf'|'csv'|nu
  </>:<>
  {!intent?<div className="flex gap-2">{[['real','Real work','真實工作'],['explore','Just exploring','只係試用']].map(([v,en,zh])=><button type="button" key={v} className="border rounded px-3 py-2" onClick={()=>{setIntent(v);track('plan_intent',`p:${format}:${v}`);if(v==='explore')close();}}>{T(en,zh)}</button>)}</div>:<>
  <label className="text-sm">{T('How often do you plan shipments?','通常幾耐規劃一次出貨？')}<select value={frequency} onChange={e=>setFrequency(e.target.value)} className="border rounded p-2 w-full mt-1"><option value="">{T('Choose…','請選擇…')}</option>{[['weekly','Weekly or more','每週或更頻密'],['monthly','Monthly','每月'],['occasional','Occasionally','間中']].map(([v,en,zh])=><option key={v} value={v}>{T(en,zh)}</option>)}</select></label>
- <p className="text-xs text-slate-500 my-2">{T('Remember this export on this device for up to 90 days and ask when you return after two days. No email reminder.','在本機記住此匯出最多90日，兩日後再返嚟時詢問結果；唔會發電郵。')}</p>
+ <p className="text-xs text-slate-500 my-2">{T('Save a reminder on this device for up to 90 days. We will ask here when you return after two days.','在本機保存提醒最多90日，兩日後再返嚟時喺呢度詢問結果。')}</p>
  <button type="button" disabled={!frequency} className="rounded bg-blue-600 text-white px-3 py-2 disabled:opacity-40" onClick={()=>{if(reminder){track('adoption_reminder','p:already_pending');close();return;}const now=Date.now();if(write({job,created:now,next:now+2*DAY,frequency})){track('adoption_reminder',`p:opt_in:${frequency}`);close();}}}>{T('Ask me next time','下次問我')}</button>
  <button type="button" className="ml-3 underline text-sm" onClick={close}>{T('Done','完成')}</button>
  </>}
