@@ -47,3 +47,20 @@ try{
  await dispatch({FOLLOWUP_ENABLED:'false',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,0);
  await dispatch({FOLLOWUP_ENABLED:'true',FOLLOWUP_CRON_TOKEN:'fixture-token'});assert.equal(dispatched,1);
 }finally{globalThis.fetch=original;}
+// New consent uses next-day delivery and preserves the chosen language.
+env.FOLLOWUP_ENABLED='true';rows.clear();
+await enroll({...data,version:'export-followup-v2',locale:'zh'});
+const zh=JSON.parse(rows.get(key));assert.equal(zh.locale,'zh');assert.equal(zh.consentVersion,'export-followup-v2');
+assert.ok(Math.abs(zh.due-Date.now()-86400000)<2000);
+const zhUrl=origin+'/api/followup-response?token='+zh.token;
+const zhHtml=await (await get({env,request:new Request(zhUrl)})).text();
+assert.match(zhHtml,/lang="zh-Hant"/);assert.match(zhHtml,/你有採用呢個方案嗎/);assert.match(zhHtml,/value="adjusted">調整後採用/);
+try{
+ let message;globalThis.fetch=async(u,init)=>{message=JSON.parse(init.body);return Response.json({id:'zh-test'})};
+ await sendDue(env,zh.due-1);assert.equal(message,undefined);
+ await sendDue(env,zh.due);assert.match(message.subject,/採用/);assert.match(message.text,/直接採用/);
+ const thankyou=await post({env,request:new Request(zhUrl,{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:'result=matched'})});assert.match(await thankyou.text(),/多謝/);
+ rows.clear();await enroll({...data,version:'export-followup-v2',locale:'unsupported'});
+ const fallback=JSON.parse(rows.get(key));assert.equal(fallback.locale,'en');await sendDue(env,fallback.due);assert.match(message.subject,/Did your DimPack3D/);
+}finally{globalThis.fetch=original;}
+console.log('24-hour timing, Traditional Chinese email/form and English fallback passed');
