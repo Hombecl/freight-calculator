@@ -1897,11 +1897,11 @@ if(!IS_LIVE)await test('planner: email follow-up requires separate consent after
  await p.goto(`${BASE}/planner`);await p.getByTestId('planner-packed').waitFor();
  await p.getByRole('button',{name:'CSV',exact:true}).click();
  const panel=p.getByRole('region',{name:'Plan use feedback'});await panel.getByRole('button',{name:'Real work',exact:true}).click();
- const consent=panel.getByRole('checkbox',{name:'Email me once in about five days to ask whether this plan worked.',exact:true});await consent.waitFor();
+ const consent=panel.getByRole('checkbox',{name:'Email me once in about 24 hours to ask whether this plan worked.',exact:true});await consent.waitFor();
  if(await consent.isChecked()||submissions.length)throw Error('Email follow-up was preselected or submitted');
  await consent.check();await panel.getByRole('button',{name:'Save email preference',exact:true}).click();
  await panel.getByRole('status').waitFor();
- if(submissions.length!==1||submissions[0].consent!==true||submissions[0].version!=='export-followup-v1')throw Error('Consent payload incorrect');
+ if(submissions.length!==1||submissions[0].consent!==true||submissions[0].version!=='export-followup-v2'||submissions[0].locale!=='en')throw Error('Consent payload incorrect');
  await p.screenshot({path:'test-artifacts/email-followup-mobile.png'});
  }finally{await context.close();}
 },page);

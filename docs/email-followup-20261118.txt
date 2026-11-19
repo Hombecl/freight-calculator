@@ -5,13 +5,13 @@ and live checks are recorded separately in the deployment handoff.
 
 Scope
 - Planner successful PDF/CSV export opens adoption prompt. Real-work respondents
-  may separately opt into one email approximately five days later.
+  may separately opt into one email approximately 24 hours later (normally 24–25 hours with hourly dispatch).
 - Separate unchecked checkbox; editable email; explicit Save email preference.
 - Existing export leads and product-update flags are never imported.
 - Same normalized email has one request per 90-day record lifetime. New request
   after expiry still requires fresh explicit opt-in. Suppressed addresses stay
   suppressed. No automatic reminder for nonresponders or not_yet answers.
-- Follow-up POST records explicit consent version export-followup-v1 + timestamp.
+- Follow-up POST records explicit consent version export-followup-v2 + timestamp + locale (en/zh).
 - Queue and responses use followup|, followup-token|, followup-stop| KV prefixes.
 - Public response URL is an opaque bearer link. GET never submits or opts out.
   Confirming HTML form POST stores result, optional reason/purpose/source/comment.
@@ -22,7 +22,7 @@ Activation checklist (not completed by writing code)
 1. Pages uses its existing RESEND_API_KEY and LEAD_NOTIFY_FROM (or optional
    FOLLOWUP_FROM). The scheduler receives no mail-provider key or lead access.
 2. Deploy Pages /api/followup and /api/followup-response plus UI and privacy copy.
-3. Deploy workers/followup/wrangler.toml (daily 04:17 UTC). Store the independent
+3. Deploy workers/followup/wrangler.toml (hourly at minute 17 UTC). Store the independent
    FOLLOWUP_CRON_TOKEN in 1Password and configure it on Pages and Worker.
 4. Test with an operator-owned address: export -> explicit opt-in -> due delivery
    -> response -> suppression. Verify mobile and desktop forms in Chrome.
@@ -53,3 +53,8 @@ Validation
 Consent, address normalization/dedup, delay, read-only scanner GET, explicit form
 submission, repeated answers, suppression, cross-origin rejection and ambiguous
 provider failure tests run without sending email. Typechecks and SPA build.
+
+2026-11-19 update: email and response page follow the consent-time language.
+Legacy v1 submissions and existing queued records retain five-day timing; no
+existing leads are migrated or enrolled. Missing/unsupported locale uses English.
+Hourly dispatcher retains the cap of 20 attempts per run (up to 480 per day).

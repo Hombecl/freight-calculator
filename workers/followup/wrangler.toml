@@ -3,7 +3,7 @@ main = "index.ts"
 compatibility_date = "2026-01-01"
 workers_dev = false
 [triggers]
-crons = ["17 4 * * *"]
+crons = ["17 * * * *"]
 [vars]
 FOLLOWUP_ENABLED = "true"
 # Set FOLLOWUP_CRON_TOKEN via managed secrets. The scheduler cannot read leads
